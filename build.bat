@@ -1,1 +1,1 @@
-g++ main.cpp -o main -lws2_32 && .\main
+g++ *.cpp -o main -lws2_32 && .\main
