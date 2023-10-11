@@ -1,13 +1,23 @@
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#pragma comment(lib, "ws2_32.lib")
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    #define WIN32_LEAN_AND_MEAN
+    #include <windows.h>
+    #include <winsock2.h>
+    #include <ws2tcpip.h>
+    #pragma comment(lib, "ws2_32.lib")
+#else
+    #include <sys/types.h>
+    #include <sys/socket.h>
+    #include <netdb.h>
+    #include <arpa/inet.h>
+    #include <netinet/in.h>
+#endif
 
 int main() {
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     WSADATA wsaData;
     int err = 0;
     if (err = WSAStartup(MAKEWORD(2, 2), &wsaData)) {
@@ -19,6 +29,7 @@ int main() {
         WSACleanup();
         return 2;
     }
+#endif
 
     int status;
     addrinfo hints;
@@ -51,5 +62,7 @@ int main() {
 
     freeaddrinfo(servinfo);
 
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     WSACleanup();
+#endif
 }
