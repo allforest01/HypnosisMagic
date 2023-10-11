@@ -1,25 +1,14 @@
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
-#pragma comment(lib, "ws2_32.lib")
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 int main() {
-    WSADATA wsaData;
-    int err = 0;
-    if (err = WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-        printf("WSAStartup failed: %d\n", &err);
-        return 1;
-    }
-    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-        fprintf(stderr, "Version 2.2 is not available!\n");
-        WSACleanup();
-        return 2;
-    }
-
     int status;
     addrinfo hints;
     addrinfo *servinfo;
@@ -50,6 +39,4 @@ int main() {
     }
 
     freeaddrinfo(servinfo);
-
-    WSACleanup();
 }

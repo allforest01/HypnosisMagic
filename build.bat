@@ -1,1 +1,1 @@
-g++ main.cpp -o main -lwsock32 && .\main
+g++ main.cpp -o main -lws2_32 && .\main

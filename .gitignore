@@ -1,4 +1,4 @@
 main
 .vscode/
-build.sh
+main_macos
 *.exe
