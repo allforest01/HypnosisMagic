@@ -3,6 +3,12 @@
 #include <stdio.h>
 // #include <thread>
 
+#ifdef WINDOWS
+    #define __closesocket closesocket
+#else
+    #define __closesocket close
+#endif
+
 EasySocket::EasySocket() {
 #ifdef WINDOWS
     WSADATA wsaData;
@@ -22,14 +28,6 @@ EasySocket::EasySocket() {
 EasySocket::~EasySocket() {   
 #ifdef WINDOWS
     WSACleanup();
-#endif
-}
-
-void __closesocket(SOCKET &socket) {
-#ifdef WINDOWS
-    closesocket(socket);
-#else
-    close(socket);
 #endif
 }
 
@@ -99,8 +97,8 @@ void EasySocket::ServClient(SOCKET client) {
 // }
 
 SOCKET EasySocket::ConnectTo(char* host, char* port) {
-    struct addrinfo *result, hints;
-    memset(&result, 0, sizeof(result));
+    struct addrinfo *result = NULL, hints;
+    memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
@@ -127,5 +125,5 @@ SOCKET EasySocket::ConnectTo(char* host, char* port) {
 }
 
 bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int len) {
-    return send(ConnectSocket, data, len, 0);
+    return send(ConnectSocket, (char*)data, len, 0);
 }
