@@ -27,8 +27,9 @@ public:
     EasySocket();
     ~EasySocket();
     int CreateServer(char*);
-    void FreeServer();
-    // void ConnectTo(char*, char*);
+    // void FreeServer();
+    SOCKET ConnectTo(char*, char*);
+    bool SendData(SOCKET, void*, int);
 private:
     void ServClient(SOCKET);
     // void NewThread(SOCKET);

@@ -77,16 +77,17 @@ int EasySocket::CreateServer(char* port) {
     return 0;
 }
 
-void EasySocket::FreeServer() {
-    // ...
-}
+// void EasySocket::FreeServer() {
+//
+// }
 
 void EasySocket::ServClient(SOCKET client) {
     printf("Client connected!\n");
     char chunk[256];
     while (recv(client, chunk, 256, 0)) {
-        printf("%d: %s\n", client, chunk);
+        printf("%d: %s", client, chunk);
     }
+    printf("Serve end!\n");
 }
 
 // void EasySocket::NewThread(SOCKET client) {
@@ -97,6 +98,34 @@ void EasySocket::ServClient(SOCKET client) {
 // #endif
 // }
 
-// void EasySocket::ConnectTo(char* host, char* port) {
+SOCKET EasySocket::ConnectTo(char* host, char* port) {
+    struct addrinfo *result, hints;
+    memset(&result, 0, sizeof(result));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    int err = getaddrinfo(host, port, &hints, &result);
+    if (err) {
+        printf("getaddrinfo failed: %d\n", err);
+        return 0;
+    }
+    SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (ConnectSocket == INVALID_SOCKET) {
+        printf("socket failed!\n");
+        freeaddrinfo(result);
+        return 0;
+    }
+    err = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
+    freeaddrinfo(result);
+    if (err == SOCKET_ERROR) {
+        printf("connect failed: %d\n", err);
+        __closesocket(ConnectSocket);
+        return 0;
+    }
+    printf("Connect successful!\n");
+    return ConnectSocket;
+}
 
-// }
+bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int len) {
+    return send(ConnectSocket, data, len, 0);
+}
