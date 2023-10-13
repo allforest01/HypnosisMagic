@@ -1,8 +1,15 @@
 #pragma once
 
-class EasyEvent {
-public:
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 
-private:
-    
-}
+#include <windows.h>
+
+
+
+#else
+
+#include <ApplicationServices/ApplicationServices.h>
+
+
+
+#endif

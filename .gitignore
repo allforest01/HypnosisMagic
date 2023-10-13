@@ -2,3 +2,4 @@ main
 .vscode/
 main_macos
 *.exe
+.DS_Store

@@ -1,1 +1,2 @@
-g++ *.cpp -o main && ./main
+g++ -o main *.cpp -std=c++11 -I/opt/homebrew/Cellar/opencv/4.8.1_1/include/opencv4 -L/opt/homebrew/Cellar/opencv/4.8.1_1/lib -lopencv_core -lopencv_highgui -lopencv_imgcodecs && ./main
+# g++ *.cpp -o main -framework ApplicationServices && ./main
