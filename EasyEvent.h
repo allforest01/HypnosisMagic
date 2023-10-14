@@ -14,14 +14,20 @@
 
 class EasyEvent {
 private:
+#ifdef WINDOWS
     HHOOK keyboardHook; MSG msg;
-    void (*KeydownCallback)(int);
-    void (*KeyupCallback)(int);
+    LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
+    static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
+#else
+    static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
+#endif
 public:
     static EasyEvent& getInstance() {
         static EasyEvent instance;
         return instance;
     }
+    void (*KeydownCallback)(int);
+    void (*KeyupCallback)(int);
     cv::Mat CaptureScreen();
     void SendKeyPress(int, int);
     void SendKeyRelease(int, int);
@@ -30,6 +36,4 @@ public:
     void Unhook();
     void setKeydownCallback(void (*)(int));
     void setKeyupCallback(void (*)(int));
-    LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
-    static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
 };

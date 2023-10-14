@@ -1,5 +1,13 @@
 #include "EasyEvent.h"
 
+void EasyEvent::setKeydownCallback(void (*KeydownCallback)(int)) {
+    EasyEvent::getInstance().KeydownCallback = KeydownCallback;
+}
+
+void EasyEvent::setKeyupCallback(void (*KeyupCallback)(int)) {
+    EasyEvent::getInstance().KeyupCallback = KeyupCallback;
+}
+
 #ifdef WINDOWS
 
 BITMAPINFOHEADER createBitmapHeader(int width, int height)
@@ -73,14 +81,6 @@ void EasyEvent::SendKeyRelease(int os, int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::setKeydownCallback(void (*KeydownCallback)(int)) {
-    EasyEvent::getInstance().KeydownCallback = KeydownCallback;
-}
-
-void EasyEvent::setKeyupCallback(void (*KeyupCallback)(int)) {
-    EasyEvent::getInstance().KeyupCallback = KeyupCallback;
-}
-
 LRESULT CALLBACK EasyEvent::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
     return EasyEvent::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
 }
@@ -152,6 +152,43 @@ void EasyEvent::SendKeyRelease(int os, int keyCode) {
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
+}
+
+void EasyEvent::StartHook()
+{
+    CFMachPortRef eventTap = CGEventTapCreate(
+        kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
+        CGEventMaskBit(kCGEventKeyDown), MyCGEventCallback, NULL
+    );
+
+    if (!eventTap) {
+        std::cerr << "Failed to create event tap!" << std::endl;
+        return;
+    }
+
+    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
+    CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
+
+    CGEventTapEnable(eventTap, true);
+}
+
+CGEventRef EasyEvent::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+    CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+    if (type == kCGEventKeyDown) {
+        EasyEvent::getInstance().KeydownCallback(keyCode);
+    }
+    else if (type == kCGEventKeyUp) {
+        EasyEvent::getInstance().KeydownCallback(keyCode);
+    }
+    return event;
+}
+
+void EasyEvent::MsgLoop() {
+    CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false); // Poll for events with a 0.1 second timeout
+}
+
+void EasyEvent::Unhook() {
+    // Cleanup code if needed
 }
 
 #endif
