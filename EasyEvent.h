@@ -14,16 +14,21 @@
 
 class EasyEvent {
 private:
-    HHOOK keyboardHook;
-    MSG msg;
-    KeyMapping keymap;
-    // void (*KeydownCallback)(int);
-    // void (*KeyupCallback)(int);
+    HHOOK keyboardHook; MSG msg;
+    void (*KeydownCallback)(int);
+    void (*KeyupCallback)(int);
 public:
+    static EasyEvent& getInstance() {
+        static EasyEvent instance;
+        return instance;
+    }
     cv::Mat CaptureScreen();
-    void SendKeyPress(int os, int keyCode);
-    void SendKeyRelease(int os, int keyCode);
+    void SendKeyPress(int, int);
+    void SendKeyRelease(int, int);
     void StartHook();
     void MsgLoop();
     void Unhook();
+    void setKeydownCallback(void (*)(int));
+    void setKeyupCallback(void (*)(int));
+    LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
 };

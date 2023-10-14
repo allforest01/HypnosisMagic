@@ -2,6 +2,7 @@
 #include "EasyEvent.h"
 #include <stdio.h>
 #include <opencv2/opencv.hpp>
+#include <iostream>
 
 #ifdef WINDOWS
     #define sleep(x) Sleep(x * 1000)
@@ -9,6 +10,14 @@
 #else
     #define os 1 // macos
 #endif
+
+void KeydownCallback(int keyCode) {
+    std::cout << "Down " << keyCode << '\n';
+}
+
+void KeyupCallback(int keyCode) {
+    std::cout << "Up " << keyCode << '\n';
+}
 
 int main() {
     EasySocket easy_socket;
@@ -33,6 +42,8 @@ int main() {
         //     sleep(1);
         // }
         easy_event.StartHook();
+        easy_event.setKeydownCallback(KeydownCallback);
+        easy_event.setKeyupCallback(KeyupCallback);
         while (true) {
             easy_event.MsgLoop();
         }

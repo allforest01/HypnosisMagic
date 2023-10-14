@@ -13,6 +13,10 @@ class KeyMapping {
 private:
     std::map<std::string, KeyCodeMapping> keyMapping;
 public:
+    static KeyMapping& getInstance() {
+        static KeyMapping instance;
+        return instance;
+    }
     KeyMapping() {
         keyMapping["rbKeyUp"] = {126, 26};
         keyMapping["rbKeyDown"] = {125, 28};
