@@ -1,73 +1,73 @@
+#include <iostream>
 #include <Windows.h>
-#include <opencv2/opencv.hpp>
 
-using namespace cv;
+// HHOOK mouseHook;
+// bool isDragging = false;
+// POINT dragStartPoint;
 
-BITMAPINFOHEADER createBitmapHeader(int width, int height)
-{
-    BITMAPINFOHEADER bi;
+// LRESULT CALLBACK MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+//     if (nCode >= 0) {
+//         if (wParam == WM_LBUTTONDOWN) {
+//             // Left mouse button down event
+//             std::cout << "Left mouse button down" << std::endl;
+//         } else if (wParam == WM_LBUTTONUP) {
+//             // Left mouse button up event
+//             std::cout << "Left mouse button up" << std::endl;
+//             if (isDragging) {
+//                 // Handle the end of the drag-and-drop action here
+//                 std::cout << "Drag-and-drop completed" << std::endl;
+//                 isDragging = false;
+//             }
+//         } else if (wParam == WM_MOUSEMOVE) {
+//             // Mouse move event
+//             MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+//             int x = mouseInfo->pt.x;
+//             int y = mouseInfo->pt.y;
 
-    // create a bitmap
-    bi.biSize = sizeof(BITMAPINFOHEADER);
-    bi.biWidth = width;
-    bi.biHeight = -height;  // This is the line that makes it draw upside down or not
-    bi.biPlanes = 1;
-    bi.biBitCount = 32;
-    bi.biCompression = BI_RGB;
-    bi.biSizeImage = 0;
-    bi.biXPelsPerMeter = 0;
-    bi.biYPelsPerMeter = 0;
-    bi.biClrUsed = 0;
-    bi.biClrImportant = 0;
+//             if (isDragging) {
+//                 // Handle mouse drag here
+//                 std::cout << "Dragging: X = " << x << ", Y = " << y << std::endl;
+//             }
+//         } else if (wParam == WM_LBUTTONDBLCLK) {
+//             // Left mouse button double-click event
+//             std::cout << "Left mouse button double-click" << std::endl;
+//         }
 
-    return bi;
-}
+//         if (wParam == WM_LBUTTONDOWN) {
+//             // Left mouse button down event
+//             std::cout << "Left mouse button down" << std::endl;
+//         }
+//     }
 
-Mat captureScreenMat(HWND hwnd)
-{
-    Mat src;
+//     return CallNextHookEx(mouseHook, nCode, wParam, lParam);
+// }
 
-    // Get handles to a device context (DC)
-    HDC hwindowDC = GetDC(hwnd);
-    HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
-    SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
+int main() {
+    HHOOK keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, [](int nCode, WPARAM wParam, LPARAM lParam) -> LRESULT {
+        if (nCode >= 0) {
+            KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+            if (wParam == WM_KEYDOWN) {
+                // Handle key press events here
+                int key = kbdStruct->vkCode;
+                std::cout << "Key Pressed: " << key << std::endl;
 
-    // Define scale, height, and width
-    int screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    int screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
-    int width = 2560; // GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    int height = 1600; //GetSystemMetrics(SM_CYVIRTUALSCREEN);
+                if (key == VK_ESCAPE) {
+                    // Handle the Escape key press
+                }
+                // Add more key handling logic here
+            }
+        }
+        return CallNextHookEx(NULL, nCode, wParam, lParam);
+    }, GetModuleHandle(NULL), 0);
+    
+    // mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookCallback, GetModuleHandle(NULL), 0);
 
-    // Create Mat object
-    src.create(height, width, CV_8UC4);
+    MSG msg;
+    while (GetMessage(&msg, NULL, 0, 0) > 0) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
 
-    // Create a bitmap
-    HBITMAP hbwindow = CreateCompatibleBitmap(hwindowDC, width, height);
-    BITMAPINFOHEADER bi = createBitmapHeader(width, height);
-
-    // Use the previously created device context with the bitmap
-    SelectObject(hwindowCompatibleDC, hbwindow);
-
-    // Copy from the window device context to the bitmap device context
-    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
-    GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, src.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
-
-    // Avoid memory leak
-    DeleteObject(hbwindow);
-    DeleteDC(hwindowCompatibleDC);
-    ReleaseDC(hwnd, hwindowDC);
-
-    return src;
-}
-
-int main()
-{
-    // Capture image
-    HWND hwnd = GetDesktopWindow();
-    Mat src = captureScreenMat(hwnd);
-
-    // Save image
-    // cv::imwrite("Screenshot.png", src);
-    cv::imshow("Screenshoot", src);
-    cv::waitKey(0);
+    UnhookWindowsHookEx(keyboardHook);
+    // UnhookWindowsHookEx(mouseHook);
 }

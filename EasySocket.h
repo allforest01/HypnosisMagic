@@ -23,6 +23,9 @@
 #endif
 
 class EasySocket {
+private:
+    void ServClient(SOCKET);
+    // void NewThread(SOCKET);
 public:
     EasySocket();
     ~EasySocket();
@@ -30,7 +33,4 @@ public:
     // void FreeServer();
     SOCKET ConnectTo(char*, char*);
     bool SendData(SOCKET, void*, int);
-private:
-    void ServClient(SOCKET);
-    // void NewThread(SOCKET);
 };

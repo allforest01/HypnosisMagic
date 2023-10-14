@@ -55,6 +55,60 @@ cv::Mat EasyEvent::CaptureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
+void EasyEvent::SendKeyPress(int os, int keyCode) {
+    if (os == 1) keyCode = this->keymap.convertMacToWindows(keyCode);
+    INPUT input;
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = keyCode;
+    input.ki.dwFlags = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::SendKeyRelease(int os, int keyCode) {
+    if (os == 1) keyCode = this->keymap.convertMacToWindows(keyCode);
+    INPUT input;
+    input.type = INPUT_KEYBOARD;
+    input.ki.wVk = keyCode;
+    input.ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void KeydownCallback(int key) {
+    std::cout << "Key down: " << key << std::endl;
+}
+
+void KeyupCallback(int key) {
+    std::cout << "Key up: " << key << std::endl;
+}
+
+LRESULT CALLBACK KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+        KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
+        if (wParam == WM_KEYDOWN) {
+            KeydownCallback(kbdStruct->vkCode);
+        }
+        else if (wParam == WM_KEYUP) {
+            KeyupCallback(kbdStruct->vkCode);
+        }
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+void EasyEvent::StartHook() {
+    this->keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, KeyboardHookCallback, GetModuleHandle(NULL), 0);
+}
+
+void EasyEvent::MsgLoop() {
+    if (GetMessage(&this->msg, NULL, 0, 0) > 0) {
+        TranslateMessage(&this->msg);
+        DispatchMessage(&this->msg);
+    }
+}
+
+void EasyEvent::Unhook() {
+    UnhookWindowsHookEx(this->keyboardHook);
+}
+
 #else
 
 cv::Mat EasyEvent::CaptureScreen()
@@ -78,6 +132,22 @@ cv::Mat EasyEvent::CaptureScreen()
     CGColorSpaceRelease(colorSpace);
 
     return bgrim;
+}
+
+void EasyEvent::SendKeyPress(int os, int keyCode) {
+    if (os == 0) keyCode = this->keymap.convertWindowsToMac(keyCode);
+    CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
+    CGEventSetType(keyEvent, kCGEventKeyDown);
+    CGEventPost(kCGHIDEventTap, keyEvent);
+    CFRelease(keyEvent);
+}
+
+void EasyEvent::SendKeyRelease(int os, int keyCode) {
+    if (os == 0) keyCode = this->keymap.convertWindowsToMac(keyCode);
+    CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
+    CGEventSetType(keyEvent, kCGEventKeyUp);
+    CGEventPost(kCGHIDEventTap, keyEvent);
+    CFRelease(keyEvent);
 }
 
 #endif
