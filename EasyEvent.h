@@ -31,4 +31,5 @@ public:
     void setKeydownCallback(void (*)(int));
     void setKeyupCallback(void (*)(int));
     LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
+    static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
 };
