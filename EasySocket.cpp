@@ -84,8 +84,9 @@ int EasySocket::CreateServer(char* port) {
 void EasySocket::ServClient(SOCKET client) {
     printf("Client connected!\n");
     char chunk[MAX_BYTES];
-    int size = 0;
-    while (size = recv(client, chunk, MAX_BYTES, 0)) {
+    while (true) {
+        int size = recv(client, chunk, MAX_BYTES, 0);
+        if (size == 0) break;
         // printf("%d: %s", client, chunk);
         EasySocket::getInstance().Services(client, chunk, size);
     }

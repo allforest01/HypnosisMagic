@@ -286,31 +286,49 @@ void EasyEvent::SendKeyUp(int os, int keyCode) {
 
 void EasyEvent::StartHook()
 {
-    CFMachPortRef eventTap = EasyEvent::getInstance().eventTap;
-    eventTap = CGEventTapCreate(
-        kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
-        CGEventMaskBit(kCGEventKeyDown), MyCGEventCallback, NULL
-    );
+    CFMachPortRef &eventTap = EasyEvent::getInstance().eventTap;
+    eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, kCGEventMaskForAllEvents, MyCGEventCallback, NULL);
 
     if (!eventTap) {
         std::cerr << "Failed to create event tap!" << std::endl;
         return;
     }
 
-    CFRunLoopSourceRef runLoopSource = EasyEvent::getInstance().runLoopSource;
+    CFRunLoopSourceRef &runLoopSource = EasyEvent::getInstance().runLoopSource;
     runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
-
     CGEventTapEnable(eventTap, true);
 }
 
 CGEventRef EasyEvent::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
-    if (type == kCGEventKeyDown) {
-        EasyEvent::getInstance().KeyDownCallback(keyCode);
+    if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
+        CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+        if (type == kCGEventKeyDown) {
+            EasyEvent::getInstance().KeyDownCallback(keyCode);
+        }
+        else if (type == kCGEventKeyUp) {
+            EasyEvent::getInstance().KeyUpCallback(keyCode);
+        }
     }
-    else if (type == kCGEventKeyUp) {
-        EasyEvent::getInstance().KeyUpCallback(keyCode);
+    else if (type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown || type == kCGEventLeftMouseUp || type == kCGEventRightMouseUp || type == kCGEventMouseMoved) {
+        CGPoint cursor = CGEventGetLocation(event);
+        int x = cursor.x;
+        int y = cursor.y;
+        if (type == kCGEventLeftMouseDown) {
+            EasyEvent::getInstance().LDownCallback(x, y);
+        }
+        else if (type == kCGEventLeftMouseUp) {
+            EasyEvent::getInstance().LUpCallback(x, y);
+        }
+        else if (type == kCGEventRightMouseDown) {
+            EasyEvent::getInstance().RDownCallback(x, y);
+        }
+        else if (type == kCGEventRightMouseUp) {
+            EasyEvent::getInstance().RUpCallback(x, y);
+        }
+        else if (type == kCGEventMouseMoved) {
+            EasyEvent::getInstance().MoveCallback(x, y);
+        }
     }
     return event;
 }
@@ -320,12 +338,12 @@ void EasyEvent::MsgLoop() {
 }
 
 void EasyEvent::Unhook() {
-    CFMachPortRef eventTap = EasyEvent::getInstance().eventTap;
+    CFMachPortRef &eventTap = EasyEvent::getInstance().eventTap;
     if (eventTap) {
         CGEventTapEnable(eventTap, false);
         CFRelease(eventTap);
     }
-    CFRunLoopSourceRef runLoopSource = EasyEvent::getInstance().runLoopSource;
+    CFRunLoopSourceRef &runLoopSource = EasyEvent::getInstance().runLoopSource;
     if (runLoopSource) {
         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
         CFRelease(runLoopSource);

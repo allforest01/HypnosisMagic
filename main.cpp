@@ -19,9 +19,9 @@ EasySocket easy_socket;
 SOCKET ConnectSocket;
 
 void KeyDownCallback(int keyCode) {
-    char buff[MAX_BYTES];
-    snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
-    easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
+    // char buff[MAX_BYTES];
+    // snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
+    // easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
     std::cout << "Down " << keyCode << '\n';
 }
 
@@ -54,21 +54,21 @@ void Services(SOCKET id, char data[], int size) {
 }
 
 int main() {
-    char port[] = "1337";
-    int input;
-    printf("input = ");
-    scanf("%d", &input);
-    if (input == 1) {
-        easy_socket.setServices(Services);
-        easy_socket.CreateServer(port);
-    }
-    else
+    // char port[] = "1337";
+    // int input;
+    // printf("input = ");
+    // scanf("%d", &input);
+    // if (input == 1) {
+    //     easy_socket.setServices(Services);
+    //     easy_socket.CreateServer(port);
+    // }
+    // else
     {
-        char host[256];
-        printf("host = ");
-        scanf("%s", host);
-        ConnectSocket = easy_socket.ConnectTo(host, port);
-        if (!ConnectSocket) return 0;
+        // char host[256];
+        // printf("host = ");
+        // scanf("%s", host);
+        // ConnectSocket = easy_socket.ConnectTo(host, port);
+        // if (!ConnectSocket) return 0;
 
         easy_event.setKeyDownCallback(KeyDownCallback);
         easy_event.setKeyUpCallback(KeyUpCallback);
@@ -78,7 +78,6 @@ int main() {
         easy_event.setRUpCallback(RUpCallback);
         easy_event.setMoveCallback(MoveCallback);
 
-        bool flag = true;
         easy_event.StartHook();
         while (true) {
             easy_event.MsgLoop();
