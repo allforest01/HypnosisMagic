@@ -13,6 +13,7 @@
 #endif
 
 class EasyEvent {
+
 private:
 #ifdef WINDOWS
     HHOOK keyboardHook, mouseHook; MSG msg;
@@ -20,33 +21,51 @@ private:
     static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
     LRESULT CALLBACK MouseHookCallback(int, WPARAM, LPARAM);
     static LRESULT CALLBACK GlobalMouseHookCallback(int, WPARAM, LPARAM);
+    void toScrCoor(int&, int&);
 #else
     static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
+    CFMachPortRef eventTap;
+    CFRunLoopSourceRef runLoopSource;
 #endif
+
 public:
     static EasyEvent& getInstance() {
         static EasyEvent instance;
         return instance;
     }
-    void (*KeyDownCallback)(int);
-    void (*KeyUpCallback)(int);
-    void (*LDownCallback)();
-    void (*LUpCallback)();
-    void (*RDownCallback)();
-    void (*RUpCallback)();
-    void (*MoveCallback)(int, int);
+
+    EasyEvent();
+
+    // int screenx, screeny;
+    int width, height;
 
     cv::Mat CaptureScreen();
-    void SendKeyPress(int, int);
-    void SendKeyRelease(int, int);
+
+    void (*KeyDownCallback)(int);
+    void (*KeyUpCallback)(int);
+    void (*LDownCallback)(int, int);
+    void (*LUpCallback)(int, int);
+    void (*RDownCallback)(int, int);
+    void (*RUpCallback)(int, int);
+    void (*MoveCallback)(int, int);
+
     void StartHook();
     void MsgLoop();
     void Unhook();
+
+    void SendKeyDown(int, int);
+    void SendKeyUp(int, int);
+    void SendLDown(int, int);
+    void SendLUp(int, int);
+    void SendRDown(int, int);
+    void SendRUp(int, int);
+    void SendMove(int, int);
+
     void setKeyDownCallback(void (*)(int));
     void setKeyUpCallback(void (*)(int));
-    void setLDownCallback(void (*)());
-    void setLUpCallback(void (*)());
-    void setRDownCallback(void (*)());
-    void setRUpCallback(void (*)());
+    void setLDownCallback(void (*)(int, int));
+    void setLUpCallback(void (*)(int, int));
+    void setRDownCallback(void (*)(int, int));
+    void setRUpCallback(void (*)(int, int));
     void setMoveCallback(void (*)(int, int));
 };

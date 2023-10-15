@@ -8,18 +8,18 @@ void EasyEvent::setKeyUpCallback(void (*KeyUpCallback)(int)) {
     EasyEvent::getInstance().KeyUpCallback = KeyUpCallback;
 }
 
-void EasyEvent::setLDownCallback(void (*LDownCallback)()) {
+void EasyEvent::setLDownCallback(void (*LDownCallback)(int, int)) {
     EasyEvent::getInstance().LDownCallback = LDownCallback;
 }
 
-void EasyEvent::setLUpCallback(void (*LUpCallback)()) {
+void EasyEvent::setLUpCallback(void (*LUpCallback)(int, int)) {
     EasyEvent::getInstance().LUpCallback = LUpCallback;
 }
-void EasyEvent::setRDownCallback(void (*RDownCallback)()) {
+void EasyEvent::setRDownCallback(void (*RDownCallback)(int, int)) {
     EasyEvent::getInstance().RDownCallback = RDownCallback;
 }
 
-void EasyEvent::setRUpCallback(void (*RUpCallback)()) {
+void EasyEvent::setRUpCallback(void (*RUpCallback)(int, int)) {
     EasyEvent::getInstance().RUpCallback = RUpCallback;
 }
 
@@ -48,6 +48,13 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
     return bi;
 }
 
+EasyEvent::EasyEvent() {
+    // EasyEvent::getInstance().screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    // EasyEvent::getInstance().screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
+    width = 2560; // GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    height = 1475; //GetSystemMetrics(SM_CYVIRTUALSCREEN);
+}
+
 cv::Mat captureScreenMat(HWND hwnd)
 {
     cv::Mat src;
@@ -56,10 +63,10 @@ cv::Mat captureScreenMat(HWND hwnd)
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
     SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
 
-    int screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    int screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
-    int width = 2560; // GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    int height = 1600; //GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    // int screenx = EasyEvent::getInstance().screenx;
+    // int screeny = EasyEvent::getInstance().screeny;
+    int width = EasyEvent::getInstance().width;
+    int height = EasyEvent::getInstance().height;
 
     src.create(height, width, CV_8UC4);
 
@@ -68,7 +75,7 @@ cv::Mat captureScreenMat(HWND hwnd)
 
     SelectObject(hwindowCompatibleDC, hbwindow);
 
-    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
+    // StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
     GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, src.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
 
     DeleteObject(hbwindow);
@@ -82,8 +89,8 @@ cv::Mat EasyEvent::CaptureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
-void EasyEvent::SendKeyPress(int os, int keyCode) {
-    if (os == 1) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
+void EasyEvent::SendKeyDown(int os, int keyCode) {
+    if (os != 0) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -91,12 +98,82 @@ void EasyEvent::SendKeyPress(int os, int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::SendKeyRelease(int os, int keyCode) {
-    if (os == 1) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
+void EasyEvent::SendKeyUp(int os, int keyCode) {
+    if (os != 0) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
     input.ki.dwFlags = KEYEVENTF_KEYUP;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::toScrCoor(int &x, int &y) {
+    x = (x * 65536) / EasyEvent::getInstance().width;
+    y = (y * 65536) / EasyEvent::getInstance().height;
+}
+
+void EasyEvent::SendLDown(int x, int y) {
+    toScrCoor(x, y);
+    INPUT input;
+    input.type = INPUT_MOUSE;
+    input.mi.dx = x;
+    input.mi.dy = y;
+    input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTDOWN;
+    input.mi.mouseData = 0;
+    input.mi.dwExtraInfo = 0;
+    input.mi.time = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::SendRDown(int x, int y) {
+    toScrCoor(x, y);
+    INPUT input;
+    input.type = INPUT_MOUSE;
+    input.mi.dx = x;
+    input.mi.dy = y;
+    input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_RIGHTDOWN;
+    input.mi.mouseData = 0;
+    input.mi.dwExtraInfo = 0;
+    input.mi.time = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::SendLUp(int x, int y) {
+    toScrCoor(x, y);
+    INPUT input;
+    input.type = INPUT_MOUSE;
+    input.mi.dx = x;
+    input.mi.dy = y;
+    input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_LEFTUP;
+    input.mi.mouseData = 0;
+    input.mi.dwExtraInfo = 0;
+    input.mi.time = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::SendRUp(int x, int y) {
+    toScrCoor(x, y);
+    INPUT input;
+    input.type = INPUT_MOUSE;
+    input.mi.dx = x;
+    input.mi.dy = y;
+    input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_RIGHTUP;
+    input.mi.mouseData = 0;
+    input.mi.dwExtraInfo = 0;
+    input.mi.time = 0;
+    SendInput(1, &input, sizeof(INPUT));
+}
+
+void EasyEvent::SendMove(int x, int y) {
+    toScrCoor(x, y);
+    INPUT input;
+    input.type = INPUT_MOUSE;
+    input.mi.dx = x;
+    input.mi.dy = y;
+    input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE;
+    input.mi.mouseData = 0;
+    input.mi.dwExtraInfo = 0;
+    input.mi.time = 0;
     SendInput(1, &input, sizeof(INPUT));
 }
 
@@ -124,21 +201,21 @@ LRESULT CALLBACK EasyEvent::GlobalMouseHookCallback(int nCode, WPARAM wParam, LP
 LRESULT CALLBACK EasyEvent::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
     if (nCode >= 0) {
         MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+        int x = mouseInfo->pt.x;
+        int y = mouseInfo->pt.y;
         if (wParam == WM_LBUTTONDOWN) {
-            EasyEvent::getInstance().LDownCallback();
+            EasyEvent::getInstance().LDownCallback(x, y);
         }
         else if (wParam == WM_LBUTTONUP) {
-            EasyEvent::getInstance().LUpCallback();
+            EasyEvent::getInstance().LUpCallback(x, y);
         }
         else if (wParam == WM_RBUTTONDOWN) {
-            EasyEvent::getInstance().RDownCallback();
+            EasyEvent::getInstance().RDownCallback(x, y);
         }
         else if (wParam == WM_RBUTTONUP) {
-            EasyEvent::getInstance().RUpCallback();
+            EasyEvent::getInstance().RUpCallback(x, y);
         }
         else if (wParam == WM_MOUSEMOVE) {
-            int x = mouseInfo->pt.x;
-            int y = mouseInfo->pt.y;
             EasyEvent::getInstance().MoveCallback(x, y);
         }
     }
@@ -163,10 +240,15 @@ void EasyEvent::Unhook() {
 
 #else
 
+EasyEvent::EasyEvent() {
+    width = 1440; // CGDisplayPixelsWide(CGMainDisplayID());
+    height = 900; // CGDisplayPixelsHigh(CGMainDisplayID());
+}
+
 cv::Mat EasyEvent::CaptureScreen()
 {
-    size_t width = 1440; // CGDisplayPixelsWide(CGMainDisplayID());
-    size_t height = 900; // CGDisplayPixelsHigh(CGMainDisplayID());
+    size_t width = EasyEvent::getInstance().width;
+    size_t height = EasyEvent::getInstance().height;
 
     cv::Mat im(cv::Size(width,height), CV_8UC4);
     cv::Mat bgrim(cv::Size(width,height), CV_8UC3);
@@ -186,16 +268,16 @@ cv::Mat EasyEvent::CaptureScreen()
     return bgrim;
 }
 
-void EasyEvent::SendKeyPress(int os, int keyCode) {
-    if (os == 0) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
+void EasyEvent::SendKeyDown(int os, int keyCode) {
+    if (os != 1) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyDown);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void EasyEvent::SendKeyRelease(int os, int keyCode) {
-    if (os == 0) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
+void EasyEvent::SendKeyUp(int os, int keyCode) {
+    if (os != 1) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);
@@ -204,7 +286,8 @@ void EasyEvent::SendKeyRelease(int os, int keyCode) {
 
 void EasyEvent::StartHook()
 {
-    CFMachPortRef eventTap = CGEventTapCreate(
+    CFMachPortRef eventTap = EasyEvent::getInstance().eventTap;
+    eventTap = CGEventTapCreate(
         kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault,
         CGEventMaskBit(kCGEventKeyDown), MyCGEventCallback, NULL
     );
@@ -214,7 +297,8 @@ void EasyEvent::StartHook()
         return;
     }
 
-    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
+    CFRunLoopSourceRef runLoopSource = EasyEvent::getInstance().runLoopSource;
+    runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
     CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
 
     CGEventTapEnable(eventTap, true);
@@ -223,10 +307,10 @@ void EasyEvent::StartHook()
 CGEventRef EasyEvent::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
     CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
     if (type == kCGEventKeyDown) {
-        EasyEvent::getInstance().KeydownCallback(keyCode);
+        EasyEvent::getInstance().KeyDownCallback(keyCode);
     }
     else if (type == kCGEventKeyUp) {
-        EasyEvent::getInstance().KeydownCallback(keyCode);
+        EasyEvent::getInstance().KeyUpCallback(keyCode);
     }
     return event;
 }
@@ -236,10 +320,12 @@ void EasyEvent::MsgLoop() {
 }
 
 void EasyEvent::Unhook() {
+    CFMachPortRef eventTap = EasyEvent::getInstance().eventTap;
     if (eventTap) {
         CGEventTapEnable(eventTap, false);
         CFRelease(eventTap);
     }
+    CFRunLoopSourceRef runLoopSource = EasyEvent::getInstance().runLoopSource;
     if (runLoopSource) {
         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
         CFRelease(runLoopSource);

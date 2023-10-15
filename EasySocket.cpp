@@ -3,6 +3,8 @@
 #include <stdio.h>
 // #include <thread>
 
+#define MAX_BYTES 256
+
 #ifdef WINDOWS
     #define __closesocket closesocket
 #else
@@ -81,8 +83,8 @@ int EasySocket::CreateServer(char* port) {
 
 void EasySocket::ServClient(SOCKET client) {
     printf("Client connected!\n");
-    char chunk[256];
-    while (recv(client, chunk, 256, 0)) {
+    char chunk[MAX_BYTES];
+    while (recv(client, chunk, MAX_BYTES, 0)) {
         printf("%d: %s", client, chunk);
     }
     printf("Serve end!\n");

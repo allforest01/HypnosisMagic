@@ -1,7 +1,7 @@
-#include "EasySocket.h"
+// #include "EasySocket.h"
 #include "EasyEvent.h"
 #include <stdio.h>
-#include <opencv2/opencv.hpp>
+// #include <opencv2/opencv.hpp>
 #include <iostream>
 
 #ifdef WINDOWS
@@ -11,14 +11,15 @@
     #define os 1 // macos
 #endif
 
-EasySocket easy_socket; EasyEvent easy_event;
-SOCKET ConnectSocket;
+EasyEvent easy_event;
+
+// EasySocket easy_socket;
+// SOCKET ConnectSocket;
 
 void KeyDownCallback(int keyCode) {
     // char buff[20];
     // snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
     // easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
-    // easy_event.SendKeyPress(os, keyCode);
     std::cout << "Down " << keyCode << '\n';
 }
 
@@ -26,19 +27,19 @@ void KeyUpCallback(int keyCode) {
     std::cout << "Up " << keyCode << '\n';
 }
 
-void LDownCallback() {
+void LDownCallback(int x, int y) {
     std::cout << "Left Down" << '\n';
 }
 
-void LUpCallback() {
+void LUpCallback(int x, int y) {
     std::cout << "Left Up" << '\n';
 }
 
-void RDownCallback() {
+void RDownCallback(int x, int y) {
     std::cout << "Right Down" << '\n';
 }
 
-void RUpCallback() {
+void RUpCallback(int x, int y) {
     std::cout << "Right Up" << '\n';
 }
 
@@ -61,6 +62,7 @@ int main() {
         // scanf("%s", host);
         // ConnectSocket = easy_socket.ConnectTo(host, port);
         // if (!ConnectSocket) return 0;
+
         easy_event.setKeyDownCallback(KeyDownCallback);
         easy_event.setKeyUpCallback(KeyUpCallback);
         easy_event.setLDownCallback(LDownCallback);
@@ -68,8 +70,18 @@ int main() {
         easy_event.setRDownCallback(RDownCallback);
         easy_event.setRUpCallback(RUpCallback);
         easy_event.setMoveCallback(MoveCallback);
+
+        bool flag = true;
         easy_event.StartHook();
         while (true) {
+            if (flag) {
+                std::cout << "Start!" << '\n';
+                easy_event.SendLDown(500, 500);
+                std::cout << "Send LDown!" << '\n';
+                easy_event.SendLUp(500, 500);
+                std::cout << "Send LUp!" << '\n';
+                flag = false;
+            }
             easy_event.MsgLoop();
         }
         easy_event.Unhook();
@@ -77,4 +89,5 @@ int main() {
 
     // imshow("Test", easy_event.CaptureScreen());
     // cv::waitKey(5000);
+
 }
