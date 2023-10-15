@@ -15,9 +15,11 @@
 class EasyEvent {
 private:
 #ifdef WINDOWS
-    HHOOK keyboardHook; MSG msg;
+    HHOOK keyboardHook, mouseHook; MSG msg;
     LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
     static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
+    LRESULT CALLBACK MouseHookCallback(int, WPARAM, LPARAM);
+    static LRESULT CALLBACK GlobalMouseHookCallback(int, WPARAM, LPARAM);
 #else
     static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
 #endif
@@ -26,14 +28,25 @@ public:
         static EasyEvent instance;
         return instance;
     }
-    void (*KeydownCallback)(int);
-    void (*KeyupCallback)(int);
+    void (*KeyDownCallback)(int);
+    void (*KeyUpCallback)(int);
+    void (*LDownCallback)();
+    void (*LUpCallback)();
+    void (*RDownCallback)();
+    void (*RUpCallback)();
+    void (*MoveCallback)(int, int);
+
     cv::Mat CaptureScreen();
     void SendKeyPress(int, int);
     void SendKeyRelease(int, int);
     void StartHook();
     void MsgLoop();
     void Unhook();
-    void setKeydownCallback(void (*)(int));
-    void setKeyupCallback(void (*)(int));
+    void setKeyDownCallback(void (*)(int));
+    void setKeyUpCallback(void (*)(int));
+    void setLDownCallback(void (*)());
+    void setLUpCallback(void (*)());
+    void setRDownCallback(void (*)());
+    void setRUpCallback(void (*)());
+    void setMoveCallback(void (*)(int, int));
 };

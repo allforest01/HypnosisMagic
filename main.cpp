@@ -14,15 +14,36 @@
 EasySocket easy_socket; EasyEvent easy_event;
 SOCKET ConnectSocket;
 
-void KeydownCallback(int keyCode) {
+void KeyDownCallback(int keyCode) {
     // char buff[20];
     // snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
     // easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
-    printf("%d\n", keyCode);
+    // easy_event.SendKeyPress(os, keyCode);
+    std::cout << "Down " << keyCode << '\n';
 }
 
-void KeyupCallback(int keyCode) {
-    // std::cout << "Up " << keyCode << '\n';
+void KeyUpCallback(int keyCode) {
+    std::cout << "Up " << keyCode << '\n';
+}
+
+void LDownCallback() {
+    std::cout << "Left Down" << '\n';
+}
+
+void LUpCallback() {
+    std::cout << "Left Up" << '\n';
+}
+
+void RDownCallback() {
+    std::cout << "Right Down" << '\n';
+}
+
+void RUpCallback() {
+    std::cout << "Right Up" << '\n';
+}
+
+void MoveCallback(int x, int y) {
+    std::cout << "Move " << x << ' ' << y << '\n';
 }
 
 int main() {
@@ -40,8 +61,13 @@ int main() {
         // scanf("%s", host);
         // ConnectSocket = easy_socket.ConnectTo(host, port);
         // if (!ConnectSocket) return 0;
-        easy_event.setKeydownCallback(KeydownCallback);
-        easy_event.setKeyupCallback(KeyupCallback);
+        easy_event.setKeyDownCallback(KeyDownCallback);
+        easy_event.setKeyUpCallback(KeyUpCallback);
+        easy_event.setLDownCallback(LDownCallback);
+        easy_event.setLUpCallback(LUpCallback);
+        easy_event.setRDownCallback(RDownCallback);
+        easy_event.setRUpCallback(RUpCallback);
+        easy_event.setMoveCallback(MoveCallback);
         easy_event.StartHook();
         while (true) {
             easy_event.MsgLoop();

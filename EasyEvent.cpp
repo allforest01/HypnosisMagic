@@ -1,11 +1,30 @@
 #include "EasyEvent.h"
 
-void EasyEvent::setKeydownCallback(void (*KeydownCallback)(int)) {
-    EasyEvent::getInstance().KeydownCallback = KeydownCallback;
+void EasyEvent::setKeyDownCallback(void (*KeyDownCallback)(int)) {
+    EasyEvent::getInstance().KeyDownCallback = KeyDownCallback;
 }
 
-void EasyEvent::setKeyupCallback(void (*KeyupCallback)(int)) {
-    EasyEvent::getInstance().KeyupCallback = KeyupCallback;
+void EasyEvent::setKeyUpCallback(void (*KeyUpCallback)(int)) {
+    EasyEvent::getInstance().KeyUpCallback = KeyUpCallback;
+}
+
+void EasyEvent::setLDownCallback(void (*LDownCallback)()) {
+    EasyEvent::getInstance().LDownCallback = LDownCallback;
+}
+
+void EasyEvent::setLUpCallback(void (*LUpCallback)()) {
+    EasyEvent::getInstance().LUpCallback = LUpCallback;
+}
+void EasyEvent::setRDownCallback(void (*RDownCallback)()) {
+    EasyEvent::getInstance().RDownCallback = RDownCallback;
+}
+
+void EasyEvent::setRUpCallback(void (*RUpCallback)()) {
+    EasyEvent::getInstance().RUpCallback = RUpCallback;
+}
+
+void EasyEvent::setMoveCallback(void (*MoveCallback)(int, int)) {
+    EasyEvent::getInstance().MoveCallback = MoveCallback;
 }
 
 #ifdef WINDOWS
@@ -89,10 +108,38 @@ LRESULT CALLBACK EasyEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARA
     if (nCode >= 0) {
         KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
         if (wParam == WM_KEYDOWN) {
-            EasyEvent::getInstance().KeydownCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().KeyDownCallback(kbdStruct->vkCode);
         }
         else if (wParam == WM_KEYUP) {
-            EasyEvent::getInstance().KeyupCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().KeyUpCallback(kbdStruct->vkCode);
+        }
+    }
+    return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK EasyEvent::GlobalMouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+    return EasyEvent::getInstance().MouseHookCallback(nCode, wParam, lParam);
+}
+
+LRESULT CALLBACK EasyEvent::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+    if (nCode >= 0) {
+        MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
+        if (wParam == WM_LBUTTONDOWN) {
+            EasyEvent::getInstance().LDownCallback();
+        }
+        else if (wParam == WM_LBUTTONUP) {
+            EasyEvent::getInstance().LUpCallback();
+        }
+        else if (wParam == WM_RBUTTONDOWN) {
+            EasyEvent::getInstance().RDownCallback();
+        }
+        else if (wParam == WM_RBUTTONUP) {
+            EasyEvent::getInstance().RUpCallback();
+        }
+        else if (wParam == WM_MOUSEMOVE) {
+            int x = mouseInfo->pt.x;
+            int y = mouseInfo->pt.y;
+            EasyEvent::getInstance().MoveCallback(x, y);
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);
@@ -100,6 +147,7 @@ LRESULT CALLBACK EasyEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARA
 
 void EasyEvent::StartHook() {
     EasyEvent::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
+    EasyEvent::getInstance().mouseHook = SetWindowsHookEx(WH_MOUSE_LL, GlobalMouseHookCallback, GetModuleHandle(NULL), 0);
 }
 
 void EasyEvent::MsgLoop() {
