@@ -9,6 +9,7 @@
     #include <unistd.h>
     #include <stdio.h>
     #include <ApplicationServices/ApplicationServices.h>
+    #include <CoreGraphics/CoreGraphics.h>
     #include <opencv2/opencv.hpp>
 #endif
 

@@ -284,6 +284,46 @@ void EasyEvent::SendKeyUp(int os, int keyCode) {
     CFRelease(keyEvent);
 }
 
+void EasyEvent::SendLDown(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventLeftMouseDown);
+    CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
+void EasyEvent::SendLUp(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventLeftMouseUp);
+    CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
+void EasyEvent::SendRDown(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventRightMouseDown);
+    CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
+void EasyEvent::SendRUp(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventRightMouseUp);
+    CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
+void EasyEvent::SendMove(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventMouseMoved);
+    CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
 void EasyEvent::StartHook()
 {
     CFMachPortRef &eventTap = EasyEvent::getInstance().eventTap;
