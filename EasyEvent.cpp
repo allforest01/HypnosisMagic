@@ -236,7 +236,14 @@ void EasyEvent::MsgLoop() {
 }
 
 void EasyEvent::Unhook() {
-    // Cleanup code if needed
+    if (eventTap) {
+        CGEventTapEnable(eventTap, false);
+        CFRelease(eventTap);
+    }
+    if (runLoopSource) {
+        CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
+        CFRelease(runLoopSource);
+    }
 }
 
 #endif
