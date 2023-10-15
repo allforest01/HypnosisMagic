@@ -23,14 +23,23 @@
 #endif
 
 class EasySocket {
+
 private:
     void ServClient(SOCKET);
     // void NewThread(SOCKET);
+    void (*Services)(SOCKET, char[], int);
+
 public:
+    static EasySocket& getInstance() {
+        static EasySocket instance;
+        return instance;
+    }
+
     EasySocket();
     ~EasySocket();
     int CreateServer(char*);
     // void FreeServer();
     SOCKET ConnectTo(char*, char*);
     bool SendData(SOCKET, void*, int);
+    void setServices(void (*)(SOCKET, char[], int));
 };

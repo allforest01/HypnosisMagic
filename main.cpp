@@ -1,8 +1,10 @@
-// #include "EasySocket.h"
+#include "EasySocket.h"
 #include "EasyEvent.h"
 #include <stdio.h>
 // #include <opencv2/opencv.hpp>
 #include <iostream>
+
+#define MAX_BYTES 256
 
 #ifdef WINDOWS
     #define sleep(x) Sleep(x * 1000)
@@ -13,13 +15,13 @@
 
 EasyEvent easy_event;
 
-// EasySocket easy_socket;
-// SOCKET ConnectSocket;
+EasySocket easy_socket;
+SOCKET ConnectSocket;
 
 void KeyDownCallback(int keyCode) {
-    // char buff[20];
-    // snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
-    // easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
+    char buff[MAX_BYTES];
+    snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
+    easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
     std::cout << "Down " << keyCode << '\n';
 }
 
@@ -47,21 +49,26 @@ void MoveCallback(int x, int y) {
     std::cout << "Move " << x << ' ' << y << '\n';
 }
 
+void Services(SOCKET id, char data[], int size) {
+    printf("%d (%d): %s", id, size, data);
+}
+
 int main() {
-    // char port[] = "1337";
-    // int input;
-    // printf("input = ");
-    // scanf("%d", &input);
-    // if (input == 1) {
-    //     easy_socket.CreateServer(port);
-    // }
-    // else
+    char port[] = "1337";
+    int input;
+    printf("input = ");
+    scanf("%d", &input);
+    if (input == 1) {
+        easy_socket.setServices(Services);
+        easy_socket.CreateServer(port);
+    }
+    else
     {
-        // char host[256];
-        // printf("host = ");
-        // scanf("%s", host);
-        // ConnectSocket = easy_socket.ConnectTo(host, port);
-        // if (!ConnectSocket) return 0;
+        char host[256];
+        printf("host = ");
+        scanf("%s", host);
+        ConnectSocket = easy_socket.ConnectTo(host, port);
+        if (!ConnectSocket) return 0;
 
         easy_event.setKeyDownCallback(KeyDownCallback);
         easy_event.setKeyUpCallback(KeyUpCallback);
@@ -74,14 +81,6 @@ int main() {
         bool flag = true;
         easy_event.StartHook();
         while (true) {
-            if (flag) {
-                std::cout << "Start!" << '\n';
-                easy_event.SendLDown(500, 500);
-                std::cout << "Send LDown!" << '\n';
-                easy_event.SendLUp(500, 500);
-                std::cout << "Send LUp!" << '\n';
-                flag = false;
-            }
             easy_event.MsgLoop();
         }
         easy_event.Unhook();
