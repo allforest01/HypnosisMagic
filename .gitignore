@@ -4,3 +4,5 @@ main_macos
 *.exe
 .DS_Store
 __test/
+*.o
+*.ini
