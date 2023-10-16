@@ -49,10 +49,10 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
 }
 
 EasyEvent::EasyEvent() {
-    // EasyEvent::getInstance().screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    // EasyEvent::getInstance().screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
-    width = 2560; // GetSystemMetrics(SM_CXVIRTUALSCREEN);
-    height = 1475; //GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    screenx = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    screeny = GetSystemMetrics(SM_YVIRTUALSCREEN);
+    width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 }
 
 cv::Mat captureScreenMat(HWND hwnd)
@@ -63,8 +63,8 @@ cv::Mat captureScreenMat(HWND hwnd)
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
     SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
 
-    // int screenx = EasyEvent::getInstance().screenx;
-    // int screeny = EasyEvent::getInstance().screeny;
+    int screenx = EasyEvent::getInstance().screenx;
+    int screeny = EasyEvent::getInstance().screeny;
     int width = EasyEvent::getInstance().width;
     int height = EasyEvent::getInstance().height;
 
@@ -75,7 +75,7 @@ cv::Mat captureScreenMat(HWND hwnd)
 
     SelectObject(hwindowCompatibleDC, hbwindow);
 
-    // StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
+    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
     GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, src.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
 
     DeleteObject(hbwindow);
@@ -241,8 +241,8 @@ void EasyEvent::Unhook() {
 #else
 
 EasyEvent::EasyEvent() {
-    width = 1440; // CGDisplayPixelsWide(CGMainDisplayID());
-    height = 900; // CGDisplayPixelsHigh(CGMainDisplayID());
+    width = CGDisplayPixelsWide(CGMainDisplayID());
+    height = CGDisplayPixelsHigh(CGMainDisplayID());
 }
 
 cv::Mat EasyEvent::CaptureScreen()
@@ -252,7 +252,7 @@ cv::Mat EasyEvent::CaptureScreen()
 
     cv::Mat im(cv::Size(width,height), CV_8UC4);
     cv::Mat bgrim(cv::Size(width,height), CV_8UC3);
-    cv::Mat resizedim(cv::Size(width,height), CV_8UC3);
+    // cv::Mat resizedim(cv::Size(width,height), CV_8UC3);
 
     CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
     CGContextRef contextRef = CGBitmapContextCreate(im.data, im.cols, im.rows, 8, im.step[0], colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
@@ -265,7 +265,7 @@ cv::Mat EasyEvent::CaptureScreen()
     CGContextRelease(contextRef);
     CGColorSpaceRelease(colorSpace);
 
-    return bgrim;
+    return bgrim; // resizedim;
 }
 
 void EasyEvent::SendKeyDown(int os, int keyCode) {

@@ -14,9 +14,9 @@
 EasySocket::EasySocket() {
 #ifdef WINDOWS
     WSADATA wsaData;
-    int err = 0;
-    if (err = WSAStartup(MAKEWORD(2, 2), &wsaData)) {
-        printf("WSAStartup failed: %d\n", &err);
+    int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (err) {
+        printf("WSAStartup failed: %d\n", err);
         return;
     }
     if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {

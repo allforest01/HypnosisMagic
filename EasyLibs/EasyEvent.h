@@ -37,7 +37,7 @@ public:
 
     EasyEvent();
 
-    // int screenx, screeny;
+    int screenx, screeny;
     int width, height;
 
     cv::Mat CaptureScreen();
