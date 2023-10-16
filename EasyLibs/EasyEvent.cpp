@@ -57,7 +57,7 @@ EasyEvent::EasyEvent() {
 
 cv::Mat captureScreenMat(HWND hwnd)
 {
-    cv::Mat src;
+    cv::Mat img, bgrim;
 
     HDC hwindowDC = GetDC(hwnd);
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
@@ -68,7 +68,8 @@ cv::Mat captureScreenMat(HWND hwnd)
     int width = EasyEvent::getInstance().width;
     int height = EasyEvent::getInstance().height;
 
-    src.create(height, width, CV_8UC4);
+    img.create(height, width, CV_8UC4);
+    bgrim.create(height, width, CV_8UC3);
 
     HBITMAP hbwindow = CreateCompatibleBitmap(hwindowDC, width, height);
     BITMAPINFOHEADER bi = createBitmapHeader(width, height);
@@ -76,13 +77,14 @@ cv::Mat captureScreenMat(HWND hwnd)
     SelectObject(hwindowCompatibleDC, hbwindow);
 
     StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenx, screeny, width, height, SRCCOPY);
-    GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, src.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+    GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, img.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
+    cvtColor(img, bgrim, cv::COLOR_BGRA2BGR);
 
     DeleteObject(hbwindow);
     DeleteDC(hwindowCompatibleDC);
     ReleaseDC(hwnd, hwindowDC);
 
-    return src;
+    return bgrim;
 }
 
 cv::Mat EasyEvent::CaptureScreen() {
