@@ -179,7 +179,7 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
 }
 
 bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int len) {
-    if (server_address == NULL) {
+    if (EasySocket::getInstance().server_address == NULL) {
         return send(ConnectSocket, (char*)data, len, 0);
     }
     return sendto(ConnectSocket, (char*)data, len, 0, EasySocket::getInstance().server_address->ai_addr, EasySocket::getInstance().server_address->ai_addrlen);

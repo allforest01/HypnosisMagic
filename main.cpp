@@ -6,13 +6,13 @@
 #include "EasyLibs/EasyEvent.h"
 #include "EasyLibs/EasyToolkit.h"
 
-#include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_opengl2.h>
+// #include <imgui.h>
+// #include <imgui_impl_sdl2.h>
+// #include <imgui_impl_opengl2.h>
 
-#include <GL/glew.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
+// #include <GL/glew.h>
+// #include <SDL.h>
+// #include <SDL_opengl.h>
 
 #define MAX_BYTES 256
 
@@ -23,81 +23,81 @@
     #define os 1 // macos
 #endif
 
-// EasyEvent easy_event;
-// EasySocket easy_socket;
-// EasyToolkit easy_toolkit;
-// SOCKET ConnectSocket;
+EasyEvent easy_event;
+EasySocket easy_socket;
+EasyToolkit easy_toolkit;
+SOCKET ConnectSocket;
 
-// void KeyDownCallback(int keyCode) {
-//     char buff[MAX_BYTES];
-//     snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
-//     easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
-//     std::cout << "Down " << keyCode << '\n';
-// }
+void KeyDownCallback(int keyCode) {
+    char buff[MAX_BYTES];
+    snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
+    easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
+    std::cout << "Down " << keyCode << '\n';
+}
 
-// void KeyUpCallback(int keyCode) {
-//     std::cout << "Up " << keyCode << '\n';
-// }
+void KeyUpCallback(int keyCode) {
+    std::cout << "Up " << keyCode << '\n';
+}
 
-// void LDownCallback(int x, int y) {
-//     std::cout << "Left Down" << '\n';
-// }
+void LDownCallback(int x, int y) {
+    std::cout << "Left Down" << '\n';
+}
 
-// void LUpCallback(int x, int y) {
-//     std::cout << "Left Up" << '\n';
-// }
+void LUpCallback(int x, int y) {
+    std::cout << "Left Up" << '\n';
+}
 
-// void RDownCallback(int x, int y) {
-//     std::cout << "Right Down" << '\n';
-// }
+void RDownCallback(int x, int y) {
+    std::cout << "Right Down" << '\n';
+}
 
-// void RUpCallback(int x, int y) {
-//     std::cout << "Right Up" << '\n';
-// }
+void RUpCallback(int x, int y) {
+    std::cout << "Right Up" << '\n';
+}
 
-// void MoveCallback(int x, int y) {
-//     std::cout << "Move " << x << ' ' << y << '\n';
-// }
+void MoveCallback(int x, int y) {
+    std::cout << "Move " << x << ' ' << y << '\n';
+}
 
-// void Services(SOCKET id, char data[], int size) {
-//     printf("%lld (%d): %s", id, size, data);
-// }
+void Services(SOCKET id, char data[], int size) {
+    printf("%u (%d): %s", id, size, data);
+}
 
 int main(int, char**)
 {
-    char port[] = "12345";
+    char port[] = "23456";
 
     int input;
     printf("input = ");
     scanf("%d", &input);
 
-    // if (input == 1)
-    // {
-    //     easy_socket.setServices(Services);
-    //     easy_socket.CreateServer(port, "UDP");
-    // }
-    // else
-    // {
-    //     char host[256];
-    //     printf("host = ");
-    //     scanf("%s", host);
-    //     ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
-    //     if (!ConnectSocket) return 0;
+    if (input == 1)
+    {
+        easy_socket.setServices(Services);
+        easy_socket.CreateServer(port, "UDP");
+    }
+    else
+    {
+        char host[256];
+        printf("host = ");
+        scanf("%s", host);
+        ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
+        if (!ConnectSocket) return 0;
 
-    //     easy_event.setKeyDownCallback(KeyDownCallback);
-    //     easy_event.setKeyUpCallback(KeyUpCallback);
-    //     easy_event.setLDownCallback(LDownCallback);
-    //     easy_event.setLUpCallback(LUpCallback);
-    //     easy_event.setRDownCallback(RDownCallback);
-    //     easy_event.setRUpCallback(RUpCallback);
-    //     easy_event.setMoveCallback(MoveCallback);
+        easy_event.setKeyDownCallback(KeyDownCallback);
+        easy_event.setKeyUpCallback(KeyUpCallback);
+        easy_event.setLDownCallback(LDownCallback);
+        easy_event.setLUpCallback(LUpCallback);
+        easy_event.setRDownCallback(RDownCallback);
+        easy_event.setRUpCallback(RUpCallback);
+        easy_event.setMoveCallback(MoveCallback);
 
-    //     easy_event.StartHook();
-    //     while (true) {
-    //         easy_event.MsgLoop();
-    //     }
-    //     easy_event.Unhook();
-    // }
+        easy_event.StartHook();
+        while (true) {
+            easy_event.MsgLoop();
+        }
+        easy_event.Unhook();
+    }
 
     // // Initialize SDL
     // if (SDL_Init(SDL_INIT_VIDEO)) {
