@@ -27,9 +27,10 @@
 class EasySocket {
 
 private:
-    void ServClient(SOCKET);
+    void ServClient(SOCKET, bool);
     // void NewThread(SOCKET);
     void (*Services)(SOCKET, char[], int);
+    struct addrinfo *server_address;
 
 public:
     static EasySocket& getInstance() {
@@ -39,9 +40,9 @@ public:
 
     EasySocket();
     ~EasySocket();
-    int CreateServer(char*);
+    int CreateServer(char*, const char*);
     // void FreeServer();
-    SOCKET ConnectTo(char*, char*);
+    SOCKET ConnectTo(char*, char*, const char*);
     bool SendData(SOCKET, void*, int);
     void setServices(void (*)(SOCKET, char[], int));
 };
