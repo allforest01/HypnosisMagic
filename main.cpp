@@ -65,7 +65,7 @@ void Services(SOCKET id, char data[], int size) {
 
 int main(int, char**)
 {
-    char port[] = "23456";
+    char port[] = "34567";
 
     int input;
     printf("input = ");

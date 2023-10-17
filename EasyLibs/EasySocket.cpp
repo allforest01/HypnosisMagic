@@ -115,11 +115,12 @@ void EasySocket::ServClient(SOCKET socket, bool isTCP) {
         while (true) {
             char buffer[MAX_BYTES];
             struct sockaddr_in client_address;
-            int bytesRead = recvfrom(socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, NULL);
+            int client_address_size = sizeof(client_address);
+            int bytesRead = recvfrom(socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
             char ipv4[INET_ADDRSTRLEN];
             inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
             printf("from address = %s\n", ipv4);
-            if (bytesRead == 0) break;
+            if (bytesRead < 0) break;
             EasySocket::getInstance().Services(socket, buffer, bytesRead);
         }
         printf("Stop services!\n");
