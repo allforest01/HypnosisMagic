@@ -3,7 +3,7 @@
 #include <stdio.h>
 // #include <thread>
 
-#define MAX_BYTES 256
+#define MAX_BYTES 1000000
 
 #ifdef WINDOWS
     #define __closesocket closesocket
@@ -77,54 +77,49 @@ int EasySocket::CreateServer(char* port, const char* type) {
         }
         printf("Listening port %s...\n", port);
         SOCKET ClientSocket;
-        while (true) {
-            ClientSocket = accept(ListenSocket, NULL, NULL);
-            if (ClientSocket == INVALID_SOCKET) {
-                printf("accept failed!\n");
-                __closesocket(ListenSocket);
-                continue;
-            }
-            ServClient(ClientSocket, true);
+        ClientSocket = accept(ListenSocket, NULL, NULL);
+        if (ClientSocket == INVALID_SOCKET) {
+            printf("accept failed!\n");
+            __closesocket(ListenSocket);
+            return 5;
         }
-        __closesocket(ClientSocket);
+        printf("Client connected!\n");
+        EasySocket::getInstance().server_socket = ClientSocket;
     }
     else if (strcmp(type, "UDP") == 0) {
-        ServClient(ListenSocket, false);
-        __closesocket(ListenSocket);
+        printf("UDP Socket is created!\n");
+        EasySocket::getInstance().server_socket = ListenSocket;
     }
     return 0;
 }
 
-// void EasySocket::FreeServer() {
-//
-// }
+void EasySocket::FreeServer() {
+    __closesocket(EasySocket::getInstance().server_socket);
+}
 
-void EasySocket::ServClient(SOCKET socket, bool isTCP) {
-    if (isTCP) {
-        printf("Client connected!\n");
-        while (true) {
-            char buffer[MAX_BYTES];
-            int bytesRead = recv(socket, buffer, MAX_BYTES, 0);
-            if (bytesRead == 0) break;
-            EasySocket::getInstance().Services(socket, buffer, bytesRead);
-        }
-        printf("Serve end!\n");
+void EasySocket::TCPReceive() {
+    SOCKET socket = EasySocket::getInstance().server_socket;
+    char buffer[MAX_BYTES];
+    int bytesRead = recv(socket, buffer, MAX_BYTES, 0);
+    if (bytesRead == 0) {
+        printf("Received 0 bytes!\n");
+        return;
     }
-    else {
-        printf("Start services!\n");
-        while (true) {
-            char buffer[MAX_BYTES];
-            struct sockaddr_in client_address;
-            int client_address_size = sizeof(client_address);
-            int bytesRead = recvfrom(socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
-            char ipv4[INET_ADDRSTRLEN];
-            inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
-            printf("from address = %s\n", ipv4);
-            if (bytesRead < 0) break;
-            EasySocket::getInstance().Services(socket, buffer, bytesRead);
-        }
-        printf("Stop services!\n");
-    }
+    EasySocket::getInstance().Services(socket, buffer, bytesRead);
+    printf("Call Services!\n");
+}
+
+void EasySocket::UDPReceive() {
+    SOCKET socket = EasySocket::getInstance().server_socket;
+    char buffer[MAX_BYTES];
+    struct sockaddr_in client_address;
+    socklen_t client_address_size = sizeof(client_address);
+    int bytesRead = recvfrom(socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
+    char ipv4[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
+    printf("from address = %s\n", ipv4);
+    if (bytesRead < 0) return;
+    EasySocket::getInstance().Services(socket, buffer, bytesRead);
 }
 
 // void EasySocket::NewThread(SOCKET client) {
@@ -179,13 +174,13 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
     return ConnectSocket;
 }
 
-bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int len) {
+bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int size) {
     if (EasySocket::getInstance().server_address == NULL) {
-        return send(ConnectSocket, (char*)data, len, 0);
+        return send(ConnectSocket, (char*)data, size, 0);
     }
-    return sendto(ConnectSocket, (char*)data, len, 0, EasySocket::getInstance().server_address->ai_addr, EasySocket::getInstance().server_address->ai_addrlen);
+    return sendto(ConnectSocket, (char*)data, size, 0, EasySocket::getInstance().server_address->ai_addr, EasySocket::getInstance().server_address->ai_addrlen);
 }
 
-void EasySocket::setServices(void (*Services)(SOCKET, char[], int)) {
+void EasySocket::setServices(std::function<void(SOCKET, char[], int)> Services) {
     EasySocket::getInstance().Services = Services;
 }

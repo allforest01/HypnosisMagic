@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #define WINDOWS
     // #ifndef WIN32_LEAN_AND_MEAN
@@ -27,10 +29,10 @@
 class EasySocket {
 
 private:
-    void ServClient(SOCKET, bool);
     // void NewThread(SOCKET);
-    void (*Services)(SOCKET, char[], int);
+    std::function<void(SOCKET, char[], int)> Services;
     struct addrinfo *server_address;
+    SOCKET server_socket;
 
 public:
     static EasySocket& getInstance() {
@@ -41,8 +43,10 @@ public:
     EasySocket();
     ~EasySocket();
     int CreateServer(char*, const char*);
-    // void FreeServer();
+    void FreeServer();
     SOCKET ConnectTo(char*, char*, const char*);
     bool SendData(SOCKET, void*, int);
-    void setServices(void (*)(SOCKET, char[], int));
+    void setServices(std::function<void(SOCKET, char[], int)>);
+    void TCPReceive();
+    void UDPReceive();
 };

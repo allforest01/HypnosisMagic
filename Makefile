@@ -6,12 +6,12 @@
 #	brew install gcc
 #	brew install qt
 #	brew install opencv
-#   brew install sdl2
+#	brew install sdl2
 # MSYS2:
 #	pacman -S mingw-w64-ucrt-x86_64-toolchain
 #	pacman -S mingw-w64-ucrt-x86_64-qt6-base
 #	pacman -S mingw-w64-ucrt-x86_64-opencv
-#   pacman -S mingw-w64-ucrt-x86_64-SDL2
+#	pacman -S mingw-w64-ucrt-x86_64-SDL2
 #	pacman -S mingw-w64-ucrt-x86_64-glew
 
 #CXX = g++
