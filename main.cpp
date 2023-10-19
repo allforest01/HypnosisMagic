@@ -1,6 +1,10 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <stdio.h>
+#include <string.h>
+#include <vector>
+
+#include "base64/base64.h"
 
 #include "EasyLibs/EasySocket.h"
 #include "EasyLibs/EasyEvent.h"
@@ -59,18 +63,18 @@ SOCKET ConnectSocket;
 //     std::cout << "Move " << x << ' ' << y << '\n';
 // }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
-    char port[] = "15151";
+    char port[] = "33333";
 
-    int input;
-    printf("input = ");
-    scanf("%d", &input);
+    // int input;
+    // printf("input = ");
+    // scanf("%d", &input);
 
-    if (input == 1)
+    if (std::stoi(argv[1]) == 1)
     {
         // easy_socket.setServices(Services);
-        easy_socket.CreateServer(port, "TCP");
+        easy_socket.CreateServer(port, "UDP");
 
         // // Initialize SDL
         // if (SDL_Init(SDL_INIT_VIDEO)) {
@@ -128,14 +132,18 @@ int main(int, char**)
             // ImGui::NewFrame();
 
             // code here
-            char buf[MAX_BYTES];
-            auto Services = [&buf](SOCKET sock, char data[], int size) {
+            // char buf[MAX_BYTES];
+            auto Services = [](SOCKET sock, char data[], int size) {
                 printf("size = %d\n", size);
                 // memcpy(buf, data, size);
-                EImage img; cv::Mat mat;
+                // EImage img; cv::Mat mat;
                 // printf("%lld\n", buf);
-                easy_toolkit.StrToEImage(data, img);
-                easy_toolkit.EImageToMat(img, mat);
+                // easy_toolkit.StrToEImage(data, img);
+                // easy_toolkit.EImageToMat(img, mat);
+                std::string dec = base64_decode(std::string(data));
+                std::vector<uchar> vec(dec.begin(), dec.end());
+                cv::Mat mat = cv::imdecode(cv::Mat(vec), 1);
+                
                 printf("received!\n");
                 if (!mat.empty()) {
                     cv::imshow("screen", mat);
@@ -143,7 +151,7 @@ int main(int, char**)
                 }
             };
             easy_socket.setServices(Services);
-            easy_socket.TCPReceive();
+            easy_socket.UDPReceive();
 
             // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
             // ImGui::SetNextWindowPos(ImVec2(60, 100));
@@ -218,24 +226,30 @@ int main(int, char**)
     char host[256] = "127.0.0.1";
     // printf("host = ");
     // scanf("%s", host);
-    ConnectSocket = easy_socket.ConnectTo(host, port, "TCP");
+    ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
     if (!ConnectSocket) return 0;
 
     while (true)
     {
         cv::Mat mat = easy_event.CaptureScreen();
-        resize(mat, mat, cv::Size(), 0.1, 0.1);
-        EImage img; char* str = NULL;
-        easy_toolkit.MatToEImage(mat, img);
-        int size = easy_toolkit.EImageToStr(img, str);
-        EImage img2;
-        cv::Mat mat2;
+        resize(mat, mat, cv::Size(), 0.01, 0.01);
+        std::vector<uchar> buf;
+        cv::imencode(".jpg", mat, buf);
+        auto *enc_msg = reinterpret_cast<unsigned char*>(buf.data());
+        std::string encoded = base64_encode(enc_msg, buf.size());
+        // std::cout << encoded.size() << '\n';
+        // printf("%s\n", encoded.c_str());
+        // EImage img; char* str = NULL;
+        // easy_toolkit.MatToEImage(mat, img);
+        // int size = easy_toolkit.EImageToStr(img, str);
+        // EImage img2; cv::Mat mat2;
         // easy_toolkit.StrToEImage(str, img2);
         // easy_toolkit.EImageToMat(img2, mat2);
         // cv::imshow("screen", mat2);
         // cv::waitKey(10);
-        easy_socket.SendData(ConnectSocket, (void*)str, size);
-        // sleep(1);
+        // printf("size = %d\n", size);
+        easy_socket.SendData(ConnectSocket, (void*)encoded.c_str(), encoded.size());
+        sleep(1);
     }
 
     // easy_event.setKeyDownCallback(KeyDownCallback);

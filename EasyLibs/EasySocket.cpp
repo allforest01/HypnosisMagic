@@ -12,6 +12,7 @@
 #endif
 
 EasySocket::EasySocket() {
+    server_address = NULL;
 #ifdef WINDOWS
     WSADATA wsaData;
     int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -25,7 +26,6 @@ EasySocket::EasySocket() {
         return;
     }
 #endif
-    server_address = NULL;
 }
 
 EasySocket::~EasySocket() {   
@@ -131,6 +131,7 @@ void EasySocket::UDPReceive() {
 // }
 
 SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
+    printf("!!!server_address = %d\n", server_address);
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -151,7 +152,6 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
         printf("getaddrinfo failed: %d\n", err);
         return 0;
     }
-    EasySocket::getInstance().server_address = result;
     SOCKET ConnectSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ConnectSocket == INVALID_SOCKET) {
         printf("socket failed!\n");
@@ -160,6 +160,10 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
     }
     if (strcmp(type, "TCP") == 0) {
         err = connect(ConnectSocket, result->ai_addr, (int)result->ai_addrlen);
+        char ipv4[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
+        printf("from address = %s\n", ipv4);
+        printf("!!!result->ai_addr = %d\n", result->ai_addr);
         freeaddrinfo(result);
         if (err == SOCKET_ERROR) {
             printf("connect failed: %d\n", err);
@@ -169,16 +173,29 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
         printf("Connect successful!\n");
     }
     else if (strcmp(type, "UDP") == 0) {
+        // printf("!!!result = %d\n", result);
+        // printf("!!!result->ai_addr = %d\n", result->ai_addr);
+        char ipv4[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
+        printf("from address = %s\n", ipv4);
+        EasySocket::getInstance().server_address = result;
         printf("Socket created for UDP communication!\n");
     }
     return ConnectSocket;
 }
 
 bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int size) {
-    if (EasySocket::getInstance().server_address == NULL) {
+    struct addrinfo* server_address = EasySocket::getInstance().server_address;
+    // printf("server_address = %d\n", server_address);    
+    if (server_address == NULL) {
         return send(ConnectSocket, (char*)data, size, 0);
     }
-    return sendto(ConnectSocket, (char*)data, size, 0, EasySocket::getInstance().server_address->ai_addr, EasySocket::getInstance().server_address->ai_addrlen);
+    printf("!server_address->ai_addr = %d\n", server_address->ai_addr);
+    printf("!server_address->ai_addrlen = %d\n", server_address->ai_addrlen);
+    printf("UDP is comming!\n");
+    printf("size = %d\n", size);
+    int bytesSend = sendto(ConnectSocket, (char*)data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
+    printf("bytesSend = %d\n", bytesSend);
 }
 
 void EasySocket::setServices(std::function<void(SOCKET, char[], int)> Services) {

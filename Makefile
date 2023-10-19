@@ -7,6 +7,7 @@
 #	brew install qt
 #	brew install opencv
 #	brew install sdl2
+#	brew install glew
 # MSYS2:
 #	pacman -S mingw-w64-ucrt-x86_64-toolchain
 #	pacman -S mingw-w64-ucrt-x86_64-qt6-base
@@ -20,10 +21,12 @@
 EXE = main
 IMGUI_DIR = imgui/
 EASYLIBS_DIR = EasyLibs/
+BASE64_DIR = base64/
 SOURCES = main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/KeyMapping.cpp $(EASYLIBS_DIR)/EasyToolkit.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
+SOURCES += $(BASE64_DIR)/base64.cpp
 OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
 UNAME_S := $(shell uname -s)
 
@@ -88,6 +91,9 @@ endif
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 %.o:$(EASYLIBS_DIR)/%.cpp
+	$(CXX) $(CXXFLAGS) -c -o $@ $<
+
+%.o:$(BASE64_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)
