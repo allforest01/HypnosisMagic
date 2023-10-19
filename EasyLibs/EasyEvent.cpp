@@ -1,29 +1,29 @@
 #include "EasyEvent.h"
 
-void EasyEvent::setKeyDownCallback(void (*KeyDownCallback)(int)) {
+void EasyEvent::setKeyDownCallback(std::function<void(int)> KeyDownCallback) {
     EasyEvent::getInstance().KeyDownCallback = KeyDownCallback;
 }
 
-void EasyEvent::setKeyUpCallback(void (*KeyUpCallback)(int)) {
+void EasyEvent::setKeyUpCallback(std::function<void(int)> KeyUpCallback) {
     EasyEvent::getInstance().KeyUpCallback = KeyUpCallback;
 }
 
-void EasyEvent::setLDownCallback(void (*LDownCallback)(int, int)) {
+void EasyEvent::setLDownCallback(std::function<void(int, int)> LDownCallback) {
     EasyEvent::getInstance().LDownCallback = LDownCallback;
 }
 
-void EasyEvent::setLUpCallback(void (*LUpCallback)(int, int)) {
+void EasyEvent::setLUpCallback(std::function<void(int, int)> LUpCallback) {
     EasyEvent::getInstance().LUpCallback = LUpCallback;
 }
-void EasyEvent::setRDownCallback(void (*RDownCallback)(int, int)) {
+void EasyEvent::setRDownCallback(std::function<void(int, int)> RDownCallback) {
     EasyEvent::getInstance().RDownCallback = RDownCallback;
 }
 
-void EasyEvent::setRUpCallback(void (*RUpCallback)(int, int)) {
+void EasyEvent::setRUpCallback(std::function<void(int, int)> RUpCallback) {
     EasyEvent::getInstance().RUpCallback = RUpCallback;
 }
 
-void EasyEvent::setMoveCallback(void (*MoveCallback)(int, int)) {
+void EasyEvent::setMoveCallback(std::function<void(int, int)> MoveCallback) {
     EasyEvent::getInstance().MoveCallback = MoveCallback;
 }
 

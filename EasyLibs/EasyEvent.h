@@ -1,5 +1,6 @@
 #pragma once
 #include "KeyMapping.h"
+#include <functional>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #define WINDOWS
@@ -42,13 +43,13 @@ public:
 
     cv::Mat CaptureScreen();
 
-    void (*KeyDownCallback)(int);
-    void (*KeyUpCallback)(int);
-    void (*LDownCallback)(int, int);
-    void (*LUpCallback)(int, int);
-    void (*RDownCallback)(int, int);
-    void (*RUpCallback)(int, int);
-    void (*MoveCallback)(int, int);
+    std::function<void(int)> KeyDownCallback;
+    std::function<void(int)> KeyUpCallback;
+    std::function<void(int, int)> LDownCallback;
+    std::function<void(int, int)> LUpCallback;
+    std::function<void(int, int)> RDownCallback;
+    std::function<void(int, int)> RUpCallback;
+    std::function<void(int, int)> MoveCallback;
 
     void StartHook();
     void MsgLoop();
@@ -62,11 +63,11 @@ public:
     void SendRUp(int, int);
     void SendMove(int, int);
 
-    void setKeyDownCallback(void (*)(int));
-    void setKeyUpCallback(void (*)(int));
-    void setLDownCallback(void (*)(int, int));
-    void setLUpCallback(void (*)(int, int));
-    void setRDownCallback(void (*)(int, int));
-    void setRUpCallback(void (*)(int, int));
-    void setMoveCallback(void (*)(int, int));
+    void setKeyDownCallback(std::function<void(int)>);
+    void setKeyUpCallback(std::function<void(int)>);
+    void setLDownCallback(std::function<void(int, int)>);
+    void setLUpCallback(std::function<void(int, int)>);
+    void setRDownCallback(std::function<void(int, int)>);
+    void setRUpCallback(std::function<void(int, int)>);
+    void setMoveCallback(std::function<void(int, int)>);
 };

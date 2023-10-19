@@ -32,49 +32,18 @@ EasySocket easy_socket;
 EasyToolkit easy_toolkit;
 SOCKET ConnectSocket;
 
-// void KeyDownCallback(int keyCode) {
-//     char buff[MAX_BYTES];
-//     snprintf(buff, sizeof(buff), "Press %d\n", keyCode);
-//     easy_socket.SendData(ConnectSocket, buff, sizeof(buff));
-//     std::cout << "Down " << keyCode << '\n';
-// }
-
-// void KeyUpCallback(int keyCode) {
-//     std::cout << "Up " << keyCode << '\n';
-// }
-
-// void LDownCallback(int x, int y) {
-//     std::cout << "Left Down" << '\n';
-// }
-
-// void LUpCallback(int x, int y) {
-//     std::cout << "Left Up" << '\n';
-// }
-
-// void RDownCallback(int x, int y) {
-//     std::cout << "Right Down" << '\n';
-// }
-
-// void RUpCallback(int x, int y) {
-//     std::cout << "Right Up" << '\n';
-// }
-
-// void MoveCallback(int x, int y) {
-//     std::cout << "Move " << x << ' ' << y << '\n';
-// }
+char port[] = "33333";
 
 int main(int argc, char** argv)
 {
-    char port[] = "33333";
-
-    // int input;
-    // printf("input = ");
-    // scanf("%d", &input);
+    // // int input;
+    // // printf("input = ");
+    // // scanf("%d", &input);
 
     if (std::stoi(argv[1]) == 1)
     {
         // easy_socket.setServices(Services);
-        easy_socket.CreateServer(port, "UDP");
+        easy_socket.CreateServer(port, "TCP");
 
         // // Initialize SDL
         // if (SDL_Init(SDL_INIT_VIDEO)) {
@@ -134,24 +103,25 @@ int main(int argc, char** argv)
             // code here
             // char buf[MAX_BYTES];
             auto Services = [](SOCKET sock, char data[], int size) {
-                printf("size = %d\n", size);
+                printf("data = %s", data);
                 // memcpy(buf, data, size);
                 // EImage img; cv::Mat mat;
                 // printf("%lld\n", buf);
                 // easy_toolkit.StrToEImage(data, img);
                 // easy_toolkit.EImageToMat(img, mat);
-                std::string dec = base64_decode(std::string(data));
-                std::vector<uchar> vec(dec.begin(), dec.end());
-                cv::Mat mat = cv::imdecode(cv::Mat(vec), 1);
                 
-                printf("received!\n");
-                if (!mat.empty()) {
-                    cv::imshow("screen", mat);
-                    cv::waitKey(10);
-                }
+                // std::string dec = base64_decode(std::string(data));
+                // std::vector<uchar> vec(dec.begin(), dec.end());
+                // cv::Mat mat = cv::imdecode(cv::Mat(vec), 1);
+                
+                // printf("received!\n");
+                // if (!mat.empty()) {
+                //     cv::imshow("screen", mat);
+                //     cv::waitKey(10);
+                // }
             };
             easy_socket.setServices(Services);
-            easy_socket.UDPReceive();
+            easy_socket.TCPReceive();
 
             // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
             // ImGui::SetNextWindowPos(ImVec2(60, 100));
@@ -223,48 +193,79 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    char host[256] = "127.0.0.1";
+    char host[256] = "10.37.129.2";
     // printf("host = ");
     // scanf("%s", host);
-    ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
+    ConnectSocket = easy_socket.ConnectTo(host, port, "TCP");
     if (!ConnectSocket) return 0;
 
-    while (true)
-    {
-        cv::Mat mat = easy_event.CaptureScreen();
-        resize(mat, mat, cv::Size(), 0.01, 0.01);
-        std::vector<uchar> buf;
-        cv::imencode(".jpg", mat, buf);
-        auto *enc_msg = reinterpret_cast<unsigned char*>(buf.data());
-        std::string encoded = base64_encode(enc_msg, buf.size());
-        // std::cout << encoded.size() << '\n';
-        // printf("%s\n", encoded.c_str());
-        // EImage img; char* str = NULL;
-        // easy_toolkit.MatToEImage(mat, img);
-        // int size = easy_toolkit.EImageToStr(img, str);
-        // EImage img2; cv::Mat mat2;
-        // easy_toolkit.StrToEImage(str, img2);
-        // easy_toolkit.EImageToMat(img2, mat2);
-        // cv::imshow("screen", mat2);
-        // cv::waitKey(10);
-        // printf("size = %d\n", size);
-        easy_socket.SendData(ConnectSocket, (void*)encoded.c_str(), encoded.size());
-        sleep(1);
+    auto KeyDownCallback = [&](int keyCode) {
+        char buf[MAX_BYTES];
+        snprintf(buf, sizeof(buf), "Press %d\n", keyCode);
+        easy_socket.SendData(ConnectSocket, buf, strlen(buf));
+        // printf("KeyDown %d\n", keyCode);
+    };
+
+    auto KeyUpCallback = [](int keyCode) {
+        // printf("KeyUp %d\n", keyCode);
+    };
+
+    auto LDownCallback = [](int x, int y) {
+        // printf("LDown %d %d\n", x, y);
+    };
+
+    auto LUpCallback = [](int x, int y) {
+        // printf("LUp %d %d\n", x, y);
+    };
+
+    auto RDownCallback = [](int x, int y) {
+        // printf("RDown %d %d\n", x, y);
+    };
+
+    auto RUpCallback = [](int x, int y) {
+        // printf("RUp %d %d\n", x, y);
+    };
+
+    auto MoveCallback = [](int x, int y) {
+        // printf("Move %d %d\n", x, y);
+    };
+
+    easy_event.setKeyDownCallback(KeyDownCallback);
+    easy_event.setKeyUpCallback(KeyUpCallback);
+    easy_event.setLDownCallback(LDownCallback);
+    easy_event.setLUpCallback(LUpCallback);
+    easy_event.setRDownCallback(RDownCallback);
+    easy_event.setRUpCallback(RUpCallback);
+    easy_event.setMoveCallback(MoveCallback);
+
+    easy_event.StartHook();
+    while (true) {
+        easy_event.MsgLoop();
     }
+    easy_event.Unhook();
 
-    // easy_event.setKeyDownCallback(KeyDownCallback);
-    // easy_event.setKeyUpCallback(KeyUpCallback);
-    // easy_event.setLDownCallback(LDownCallback);
-    // easy_event.setLUpCallback(LUpCallback);
-    // easy_event.setRDownCallback(RDownCallback);
-    // easy_event.setRUpCallback(RUpCallback);
-    // easy_event.setMoveCallback(MoveCallback);
-
-    // easy_event.StartHook();
-    // while (true) {
-    //     easy_event.MsgLoop();
+    // while (true)
+    // {
+    //     // cv::Mat mat = easy_event.CaptureScreen();
+    //     // resize(mat, mat, cv::Size(), 0.1, 0.1);
+    //     // std::vector<uchar> buf;
+    //     // cv::imencode(".jpg", mat, buf);
+    //     // auto *enc_msg = reinterpret_cast<unsigned char*>(buf.data());
+    //     // std::string encoded = base64_encode(enc_msg, buf.size());
+    //     // // std::cout << encoded.size() << '\n';
+    //     // // printf("%s\n", encoded.c_str());
+    //     // // EImage img; char* str = NULL;
+    //     // // easy_toolkit.MatToEImage(mat, img);
+    //     // // int size = easy_toolkit.EImageToStr(img, str);
+    //     // // EImage img2; cv::Mat mat2;
+    //     // // easy_toolkit.StrToEImage(str, img2);
+    //     // // easy_toolkit.EImageToMat(img2, mat2);
+    //     // // cv::imshow("screen", mat2);
+    //     // // cv::waitKey(10);
+    //     // // printf("size = %d\n", size);
+    //     // easy_socket.SendData(ConnectSocket, (void*)encoded.c_str(), encoded.size());
+    //     // sleep(1);
     // }
-    // easy_event.Unhook();
 
     return 0;
 }
