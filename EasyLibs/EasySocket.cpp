@@ -106,7 +106,7 @@ void EasySocket::TCPReceive() {
         return;
     }
     EasySocket::getInstance().Services(socket, buffer, bytesRead);
-    printf("Call Services!\n");
+    // printf("Call Services!\n");
 }
 
 void EasySocket::UDPReceive() {
