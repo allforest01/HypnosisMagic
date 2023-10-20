@@ -131,7 +131,6 @@ void EasySocket::UDPReceive() {
 // }
 
 SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
-    printf("!!!server_address = %d\n", server_address);
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -163,7 +162,6 @@ SOCKET EasySocket::ConnectTo(char* host, char* port, const char* type) {
         char ipv4[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
         printf("from address = %s\n", ipv4);
-        printf("!!!result->ai_addr = %d\n", result->ai_addr);
         freeaddrinfo(result);
         if (err == SOCKET_ERROR) {
             printf("connect failed: %d\n", err);
@@ -190,12 +188,10 @@ bool EasySocket::SendData(SOCKET ConnectSocket, void* data, int size) {
     if (server_address == NULL) {
         return send(ConnectSocket, (char*)data, size, 0);
     }
-    printf("!server_address->ai_addr = %d\n", server_address->ai_addr);
-    printf("!server_address->ai_addrlen = %d\n", server_address->ai_addrlen);
-    printf("UDP is comming!\n");
     printf("size = %d\n", size);
     int bytesSend = sendto(ConnectSocket, (char*)data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
     printf("bytesSend = %d\n", bytesSend);
+    return bytesSend;
 }
 
 void EasySocket::setServices(std::function<void(SOCKET, char[], int)> Services) {
