@@ -1,7 +1,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
 #include <stdio.h>
-#include <string.h>
+#include <string>
 #include <vector>
 
 #include "EasyLibs/EasySocket.h"
@@ -11,28 +11,24 @@
 #include <imgui.h>
 #include <imgui_impl_sdl2.h>
 #include <imgui_impl_opengl2.h>
-
 #include <GL/glew.h>
 #include <SDL.h>
 #include <SDL_opengl.h>
 
-#define MAX_BYTES 65536
+#define MAX_BYTES 8192
 
 #ifdef WINDOWS
     #define sleep(x) Sleep(x * 1000)
-    #define os 0 // windows
-#else
-    #define os 1 // macos
 #endif
 
 EasyEvent easy_event;
 EasySocket easy_socket;
-SOCKET ConnectSocket;
 
 char port[] = "44444";
 
 int main(int argc, char** argv)
 {
+    initKeyMapping();
 
     if (std::stoi(argv[1]) == 1)
     {
@@ -200,7 +196,7 @@ int main(int argc, char** argv)
         char host[256] = "127.0.0.1";
         // printf("host = ");
         // scanf("%s", host);
-        ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
+        SOCKET ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
         if (!ConnectSocket) return 0;
 
         // auto KeyDownCallback = [&](int keyCode) {

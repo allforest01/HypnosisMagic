@@ -91,8 +91,8 @@ cv::Mat EasyEvent::CaptureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
-void EasyEvent::SendKeyDown(int os, int keyCode) {
-    if (os != 0) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
+void EasyEvent::SendKeyDown(os keyos, int keyCode) {
+    if (keyos == mac) keyCode = MacKeyToWinKey(keyCode);
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -100,8 +100,8 @@ void EasyEvent::SendKeyDown(int os, int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::SendKeyUp(int os, int keyCode) {
-    if (os != 0) keyCode = KeyMapping::getInstance().convertMacToWindows(keyCode);
+void EasyEvent::SendKeyUp(os keyos, int keyCode) {
+    if (keyos == mac) keyCode = MacKeyToWinKey(keyCode);
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -270,16 +270,16 @@ cv::Mat EasyEvent::CaptureScreen()
     return bgrim; // resizedim;
 }
 
-void EasyEvent::SendKeyDown(int os, int keyCode) {
-    if (os != 1) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
+void EasyEvent::SendKeyDown(os keyos, int keyCode) {
+    if (keyos == win) keyCode = WinKeyToMacKey(keyCode);
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyDown);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void EasyEvent::SendKeyUp(int os, int keyCode) {
-    if (os != 1) keyCode = KeyMapping::getInstance().convertWindowsToMac(keyCode);
+void EasyEvent::SendKeyUp(os keyos, int keyCode) {
+    if (keyos == win) keyCode = WinKeyToMacKey(keyCode);
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);

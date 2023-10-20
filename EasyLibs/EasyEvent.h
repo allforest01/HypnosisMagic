@@ -14,6 +14,8 @@
     #include <opencv2/opencv.hpp>
 #endif
 
+enum os { win, mac };
+
 class EasyEvent {
 
 private:
@@ -55,8 +57,8 @@ public:
     void MsgLoop();
     void Unhook();
 
-    void SendKeyDown(int, int);
-    void SendKeyUp(int, int);
+    void SendKeyDown(os, int);
+    void SendKeyUp(os, int);
     void SendLDown(int, int);
     void SendLUp(int, int);
     void SendRDown(int, int);
