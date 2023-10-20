@@ -7,6 +7,7 @@ struct EImage {
     long long size;
     int width, height;
     char *data;
+    EImage(): size(0), width(0), height(0), data(NULL) {}
 };
 
 class EasyToolkit {

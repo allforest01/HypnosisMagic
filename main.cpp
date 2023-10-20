@@ -35,23 +35,10 @@ char port[] = "44444";
 
 int main(int argc, char** argv)
 {
-    // std::string str = "MaiVanTuanKiet";
-    // std::vector<char> vec(str.begin(), str.end());
-    // PacketBox box, box2;
-    // BufToPacketBox(vec, box, 123, 'I', 10);
-    // for (int i = 0; i < 10; i++) {
-    //     box2.addPacket(box.packets[i]);
-    // }
-    // std::vector<char> buf;
-    // PacketBoxToBuf(box2, buf);
-    // for (auto &i : buf) {
-    //     std::cout << i;
-    // }
-    // std::cout << '\n';
 
     if (std::stoi(argv[1]) == 1)
     {
-        easy_socket.CreateServer(port, "TCP");
+        easy_socket.CreateServer(port, "UDP");
 
         // // Initialize SDL
         // if (SDL_Init(SDL_INIT_VIDEO)) {
@@ -141,7 +128,7 @@ int main(int argc, char** argv)
             };
 
             easy_socket.setServices(Services);
-            easy_socket.TCPReceive();
+            easy_socket.UDPReceive();
 
             // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
             // ImGui::SetNextWindowPos(ImVec2(60, 100));
@@ -217,7 +204,7 @@ int main(int argc, char** argv)
         char host[256] = "127.0.0.1";
         // printf("host = ");
         // scanf("%s", host);
-        ConnectSocket = easy_socket.ConnectTo(host, port, "TCP");
+        ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
         if (!ConnectSocket) return 0;
 
         // auto KeyDownCallback = [&](int keyCode) {
@@ -270,7 +257,7 @@ int main(int argc, char** argv)
         while (true)
         {
             cv::Mat mat = easy_event.CaptureScreen();
-            resize(mat, mat, cv::Size(), 0.5, 0.5);
+            resize(mat, mat, cv::Size(), 0.25, 0.25);
 
             EImage img;
             easy_toolkit.MatToEImage(mat, img);
