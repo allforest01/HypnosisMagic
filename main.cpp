@@ -6,7 +6,6 @@
 
 #include "EasyLibs/EasySocket.h"
 #include "EasyLibs/EasyEvent.h"
-#include "EasyLibs/EasyToolkit.h"
 #include "EasyLibs/EasyDataMan.h"
 
 #include <imgui.h>
@@ -28,7 +27,6 @@
 
 EasyEvent easy_event;
 EasySocket easy_socket;
-EasyToolkit easy_toolkit;
 SOCKET ConnectSocket;
 
 char port[] = "44444";
@@ -104,21 +102,19 @@ int main(int argc, char** argv)
             {
                 // printf("received!\n");
 
-                std::vector<char> buf(data, data + size);
+                std::vector<uchar> buf(data, data + size);
                 boxman.addPacketToBox(buf);
                 // printf("id = %d\n", *(int*)buf.data());
                 bool *isComplete = (bool*)buf.data() + 5;
 
                 if (*isComplete) {
                     printf("OKE!\n");
-                    std::vector<char> tmp;
-                    PacketBoxToBuf(boxman.boxs.back(), tmp);
-
-                    EImage img;
-                    easy_toolkit.StrToEImage((char*)tmp.data(), img);
+                    std::vector<uchar> buff;
+                    PacketBoxToBuf(boxman.boxs.back(), buff);
 
                     cv::Mat mat;
-                    easy_toolkit.EImageToMat(img, mat);
+                    decompressImage(buff, mat);
+                    resize(mat, mat, cv::Size(), 2, 2);
 
                     if (!mat.empty()) {
                         cv::imshow("screen", mat);
@@ -257,22 +253,16 @@ int main(int argc, char** argv)
         while (true)
         {
             cv::Mat mat = easy_event.CaptureScreen();
-            resize(mat, mat, cv::Size(), 0.25, 0.25);
-
-            EImage img;
-            easy_toolkit.MatToEImage(mat, img);
-
-            char* str = NULL;
-            int size = easy_toolkit.EImageToStr(img, str);
-
-            std::vector<char> tmp(str, str + size);
+            // resize(mat, mat, cv::Size(), 0.5, 0.5);
+            std::vector<uchar> buff;
+            compressImage(mat, buff);
 
             PacketBox box;
-            BufToPacketBox(tmp, box, ++idCnt, 'I', 25);
+            BufToPacketBox(buff, box, ++idCnt, 'I', 100);
 
             for (int i = 0; i < box.packets.size(); i++) {
                 easy_socket.SendData(ConnectSocket, (void*)box.packets[i].data(), box.packets[i].size());
-                cv::waitKey(5);
+                // cv::waitKey(1);
             }
             printf("send done!\n");
             // sleep(10);
