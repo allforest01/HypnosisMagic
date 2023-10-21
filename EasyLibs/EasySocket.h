@@ -1,15 +1,15 @@
 #pragma once
 
+#include <stdio.h>
+#include <string>
 #include <functional>
+
+#define MAX_BYTES 8192
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #define WINDOWS
-    // #ifndef WIN32_LEAN_AND_MEAN
-    // #define WIN32_LEAN_AND_MEAN
-    // #endif
     #include <winsock2.h>
     #include <ws2tcpip.h>
-    // #pragma comment(lib, "ws2_32.lib")
 #else
     #include <sys/types.h>
     #include <sys/socket.h>
@@ -17,36 +17,35 @@
     #include <arpa/inet.h>
     #include <netinet/in.h>
     #include <unistd.h>
-    #if 1
-    typedef uint	SOCKET;
-    #else
-    typedef int		SOCKET;
-    #endif
+    typedef uint SOCKET;
     #define INVALID_SOCKET	(SOCKET)(~0)
     #define SOCKET_ERROR	(-1)
+    #define closesocket close
 #endif
 
-class EasySocket {
+void initEasySocket();
+void cleanEasySocket();
 
+class EasyServer {
 private:
-    // void NewThread(SOCKET);
-    std::function<void(SOCKET, char[], int)> Services;
-    struct addrinfo *server_address;
-    SOCKET server_socket;
-
+    SOCKET listen_socket;
+    std::function<void(SOCKET, char[], int)> services;
 public:
-    static EasySocket& getInstance() {
-        static EasySocket instance;
-        return instance;
-    }
-
-    EasySocket();
-    ~EasySocket();
-    int CreateServer(char*, const char*);
-    void FreeServer();
-    SOCKET ConnectTo(char*, char*, const char*);
-    bool SendData(SOCKET, void*, int);
+    EasyServer(): listen_socket(0), services(nullptr) {}
+    EasyServer(char*, const char*);
+    ~EasyServer();
     void setServices(std::function<void(SOCKET, char[], int)>);
     void TCPReceive();
     void UDPReceive();
+};
+
+class EasyClient {
+private:
+    SOCKET connect_socket;
+    struct addrinfo *server_address;
+public:
+    EasyClient(): server_address(nullptr) {}
+    EasyClient(char*, char*, const char*);
+    ~EasyClient();
+    bool sendData(char*, int);
 };

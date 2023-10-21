@@ -11,6 +11,7 @@ struct KeyCodeMapping {
 };
 
 void initKeyMapping();
+void cleanKeyMapping();
 
 int MacKeyToWinKey(int);
 int WinKeyToMacKey(int);

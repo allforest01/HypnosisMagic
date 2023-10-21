@@ -1,15 +1,4 @@
-#include "EasyDataMan.h"
-
-void compressImage(const cv::Mat& mat, std::vector<uchar>& buffer, int quality) {
-    std::vector<int> compression_params;
-    compression_params.push_back(cv::IMWRITE_JPEG_QUALITY);
-    compression_params.push_back(quality);
-    cv::imencode(".jpg", mat, buffer, compression_params);
-}
-
-void decompressImage(const std::vector<uchar>& buffer, cv::Mat& mat) {
-    mat = cv::imdecode(buffer, cv::IMREAD_COLOR);
-}
+#include "EasyData.h"
 
 void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int num) {
     num = std::min(num, (int) buf.size());

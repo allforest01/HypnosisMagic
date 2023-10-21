@@ -99,6 +99,10 @@ void initKeyMapping() {
     keyMapping["rbKeyNumEqual"] = KeyCodeMapping(81, -1);
 }
 
+void cleanKeyMapping() {
+    keyMapping.clear();
+}
+
 int MacKeyToWinKey(int macKey) {
     for (const auto& pair : keyMapping) {
         if (pair.second.macKey == macKey) {
