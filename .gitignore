@@ -1,5 +1,7 @@
-.vscode/
 .DS_Store
+.vscode/
+build_mac/
+build_win/
 main
 *.exe
 *.o

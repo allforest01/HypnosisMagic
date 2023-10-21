@@ -21,15 +21,20 @@
 EXE = main
 IMGUI_DIR = imgui/
 EASYLIBS_DIR = EasyLibs/
+
 SOURCES = main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/KeyMapping.cpp $(EASYLIBS_DIR)/EasyImage.cpp $(EASYLIBS_DIR)/EasyData.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-OBJS = $(addsuffix .o, $(basename $(notdir $(SOURCES))))
+
+BUILD_DIR_MAC = build_mac/
+BUILD_DIR_WIN = build_win/
+
 UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 CXXFLAGS += -g -Wall -Wformat
+
 LIBS =
 
 ##---------------------------------------------------------------------
@@ -38,6 +43,8 @@ LIBS =
 
 ifeq ($(UNAME_S), Darwin) #APPLE
 	ECHO_MESSAGE = "Mac OS X"
+
+	BUILD_DIR = $(BUILD_DIR_MAC)
 
 	LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo `sdl2-config --libs`
 	LIBS += -framework ApplicationServices -framework Carbon
@@ -62,6 +69,8 @@ endif
 ifeq ($(OS), Windows_NT)
 	ECHO_MESSAGE = "MinGW"
 
+	BUILD_DIR = $(BUILD_DIR_WIN)
+
 	LIBS += -LC:\msys64\ucrt64\lib
 
 	LIBS += -lgdi32 -lopengl32 -limm32 `pkg-config --static --libs sdl2`
@@ -75,20 +84,24 @@ ifeq ($(OS), Windows_NT)
 	CFLAGS = $(CXXFLAGS)
 endif
 
+OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
+
 ##---------------------------------------------------------------------
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-%.o:%.cpp
+$(shell mkdir -p $(BUILD_DIR))
+
+$(BUILD_DIR)/%.o:%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(IMGUI_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(IMGUI_DIR)/backends/%.cpp
+$(BUILD_DIR)/%.o:$(IMGUI_DIR)/backends/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-%.o:$(EASYLIBS_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(EASYLIBS_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)

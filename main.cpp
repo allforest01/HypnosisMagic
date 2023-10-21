@@ -116,12 +116,12 @@ int main(int argc, char** argv)
 
             server.UDPReceive();
 
-            ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
+            // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
             ImGui::SetNextWindowPos(ImVec2(60, 100));
 
             ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
 
-            ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
+            // ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
 
             if (ImGui::IsItemClicked(0)) {
                 // Get the mouse position relative to the top-left corner of the window
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
 
             // Create a separate ImGui window for the text
             ImGui::SetNextWindowSize(ImVec2(300, 50)); // Adjust the size as needed
-            ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); // Position next to the image window
+            // ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); // Position next to the image window
             ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
 
             // Display the stored mouse position
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
     }
     else
     {
-        char host[256] = "127.0.0.1";
+        char host[256] = "10.37.129.2";
         // printf("host = ");
         // scanf("%s", host);
         EasyClient client(host, port, "UDP");
@@ -229,9 +229,10 @@ int main(int argc, char** argv)
             PacketBox box;
             BufToPacketBox(buff, box, ++id, 0, 100);
 
-            for (int i = 0; i < box.packets.size(); i++) {
+            for (int i = 0; i < (int) box.packets.size(); i++) {
                 client.sendData((char*)box.packets[i].data(), box.packets[i].size());
             }
+            cv::waitKey(1000);
         }
     }
 

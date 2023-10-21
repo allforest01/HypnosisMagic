@@ -17,7 +17,7 @@ void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, 
 
 void PacketBoxToBuf(PacketBox &box, std::vector<uchar> &buf) {
     buf.clear();
-    for (int i = 0; i < box.packets.size(); i++) {
+    for (int i = 0; i < (int) box.packets.size(); i++) {
         buf.insert(buf.end(), box.packets[i].begin() + 6, box.packets[i].end());
     }
 }
