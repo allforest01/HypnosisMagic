@@ -1,1 +1,1 @@
-g++ -o main main.cpp EasyLibs/EasyEvent.cpp EasyLibs/EasySocket.cpp EasyLibs/KeyMapping.cpp -IC:/msys64/ucrt64/include/opencv4 -LC:\msys64\ucrt64\lib -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_videoio -lgdi32 -lws2_32
+g++ -o main main.cpp EasyLibs/EasyEvent.cpp EasyLibs/EasySocket.cpp EasyLibs/KeyMapping.cpp EasyLibs/EasyDataMan.cpp -IC:/msys64/ucrt64/include/opencv4 -LC:\msys64\ucrt64\lib -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_videoio -lgdi32 -lws2_32

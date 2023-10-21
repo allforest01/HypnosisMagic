@@ -35,18 +35,22 @@ void PacketBoxToBuf(PacketBox &box, std::vector<uchar> &buf) {
 
 void PacketBox::addPacket(std::vector<uchar> &packet) {
     this->packets.push_back(packet);
-    char *type = (char*)&packet + 4;
-    bool *isComplete = (bool*)&packet + 5;
-    this->type = *type;
-    this->isComplete = *isComplete;
+    this->type = *((char*)packet.data() + 4);
+    this->isComplete = *((char*)packet.data() + 5);
 }
 
 void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
-    int *id = (int*)packet.data();
-    if (!this->memId.count(*id)) {
-        this->memId[*id] = this->boxs.size();
-        this->boxs.push_back(PacketBox());
+    int id = *((int*)packet.data());
+    if (!this->boxs.count(id)) {
+        this->boxs[id] = PacketBox();
     }
-    int sid = this->memId[*id];
-    this->boxs[sid].addPacket(packet);
+    this->boxs[id].addPacket(packet);
+    if (this->boxs[id].isComplete) {
+        this->completeCallback(this->boxs[id]);
+        this->boxs.erase(id);
+    }
+}
+
+void BoxManager::setCompleteCallback(std::function<void(PacketBox&)> completeCallback) {
+    this->completeCallback = completeCallback;
 }

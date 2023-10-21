@@ -8,12 +8,13 @@
 #include "EasyLibs/EasyEvent.h"
 #include "EasyLibs/EasyDataMan.h"
 
-#include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_opengl2.h>
-#include <GL/glew.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
+// #include <imgui.h>
+// #include <imgui_impl_sdl2.h>
+// #include <imgui_impl_opengl2.h>
+
+// #include <GL/glew.h>
+// #include <SDL.h>
+// #include <SDL_opengl.h>
 
 #define MAX_BYTES 8192
 
@@ -77,6 +78,28 @@ int main(int argc, char** argv)
 
         BoxManager boxman;
 
+        auto completeCallback = [](PacketBox& box) {
+            std::vector<uchar> buf;
+            PacketBoxToBuf(box, buf);
+            cv::Mat mat;
+            decompressImage(buf, mat);
+            // resize(mat, mat, cv::Size(), 2, 2);
+            if (!mat.empty()) {
+                cv::imshow("screen", mat);
+                cv::waitKey(10);
+            }
+        };
+
+        boxman.setCompleteCallback(completeCallback);
+
+        auto Services = [&boxman](SOCKET sock, char data[], int size)
+        {
+            std::vector<uchar> buf(data, data + size);
+            boxman.addPacketToBox(buf);
+        };
+
+        easy_socket.setServices(Services);
+
         while (!quit)
         {
             // SDL_Event event;
@@ -93,33 +116,6 @@ int main(int argc, char** argv)
             // ImGui::NewFrame();
 
             // code here
-
-            auto Services = [&boxman](SOCKET sock, char data[], int size)
-            {
-                // printf("received!\n");
-
-                std::vector<uchar> buf(data, data + size);
-                boxman.addPacketToBox(buf);
-                // printf("id = %d\n", *(int*)buf.data());
-                bool *isComplete = (bool*)buf.data() + 5;
-
-                if (*isComplete) {
-                    printf("OKE!\n");
-                    std::vector<uchar> buff;
-                    PacketBoxToBuf(boxman.boxs.back(), buff);
-
-                    cv::Mat mat;
-                    decompressImage(buff, mat);
-                    resize(mat, mat, cv::Size(), 2, 2);
-
-                    if (!mat.empty()) {
-                        cv::imshow("screen", mat);
-                        cv::waitKey(10);
-                    }
-                }
-            };
-
-            easy_socket.setServices(Services);
             easy_socket.UDPReceive();
 
             // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
@@ -194,8 +190,8 @@ int main(int argc, char** argv)
     else
     {
         char host[256] = "127.0.0.1";
-        // printf("host = ");
-        // scanf("%s", host);
+        printf("host = ");
+        scanf("%s", host);
         SOCKET ConnectSocket = easy_socket.ConnectTo(host, port, "UDP");
         if (!ConnectSocket) return 0;
 
@@ -251,17 +247,14 @@ int main(int argc, char** argv)
             cv::Mat mat = easy_event.CaptureScreen();
             // resize(mat, mat, cv::Size(), 0.5, 0.5);
             std::vector<uchar> buff;
-            compressImage(mat, buff);
+            compressImage(mat, buff, 50);
 
             PacketBox box;
-            BufToPacketBox(buff, box, ++idCnt, 'I', 100);
+            BufToPacketBox(buff, box, ++idCnt, 0, 50);
 
             for (int i = 0; i < box.packets.size(); i++) {
                 easy_socket.SendData(ConnectSocket, (void*)box.packets[i].data(), box.packets[i].size());
-                // cv::waitKey(1);
             }
-            printf("send done!\n");
-            // sleep(10);
         }
     }
 

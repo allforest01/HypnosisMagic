@@ -9,7 +9,7 @@ typedef unsigned char uchar;
 
 class PacketBox {
 public:
-    int id; char type; bool isComplete;
+    int id; char type; char isComplete;
     std::vector<std::vector<uchar>> packets;
     PacketBox(): id(-1), type(-1), isComplete(false) {}
     void addPacket(std::vector<uchar>&);
@@ -17,10 +17,10 @@ public:
 
 class BoxManager {
 public:
-    std::map<int, int> memId;
-    std::vector<PacketBox> boxs;
-    // to-do: change vector to map and clear when complete
+    std::map<int, PacketBox> boxs;
+    std::function<void(PacketBox&)> completeCallback;
     void addPacketToBox(std::vector<uchar>&);
+    void setCompleteCallback(std::function<void(PacketBox&)>);
 };
 
 void BufToPacketBox(std::vector<uchar>&, PacketBox&, int, char, int);
