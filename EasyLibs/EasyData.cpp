@@ -9,8 +9,8 @@ void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, 
         auto end = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
         box.packets[i].clear();
         box.packets[i].assign((char*)&id, (char*)&id + 4);
-        box.packets[i].insert(box.packets[i].end(), (char*)&type, (char*)&type + 1);
-        box.packets[i].push_back(char(i + 1 == num));
+        box.packets[i].push_back(type);
+        box.packets[i].push_back(i + 1 == num);
         box.packets[i].insert(box.packets[i].end(), start, end);
     }
 }

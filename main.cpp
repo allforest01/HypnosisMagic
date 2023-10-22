@@ -24,13 +24,10 @@ int main(int argc, char** argv)
             boxman.addPacketToBox(buf);
         });
 
+        cv::Mat image;
+
         // initEasyImgui();
 
-        cv::Mat image;
-        // GLuint image_texture;
-        // ImVec2 clickPosition, imagePos, mousePosRelativeToImage;
-
-        // Main loop
         bool quit = false;
         while (!quit)
         {
@@ -48,13 +45,10 @@ int main(int argc, char** argv)
             // ImGui_ImplSDL2_NewFrame(window);
             // ImGui::NewFrame();
 
-            /* !!! CODE HERE !!! */
             void (*onMouse)(int, int, int, int, void *) = [](int event, int x, int y, int flags, void* userdata) {
                 if (event == cv::EVENT_LBUTTONDOWN) {
-                    // Left mouse button click
                     std::cout << "Left mouse button clicked at (" << x << ", " << y << ")" << std::endl;
                 } else if (event == cv::EVENT_MOUSEMOVE) {
-                    // Mouse movement
                     std::cout << "Mouse position: (" << x << ", " << y << ")" << std::endl;
                 }
             };
@@ -62,36 +56,19 @@ int main(int argc, char** argv)
             boxman.setCompleteCallback([&image, &onMouse](PacketBox& box) {
                 std::vector<uchar> buf;
                 PacketBoxToBuf(box, buf);
-                decompressImage(buf, image);
-                cv::namedWindow("Client Screen");
-                cv::setMouseCallback("Client Screen", onMouse);
-                cv::imshow("Client Screen", image);
-                cv::waitKey(10);
+                if (box.type == 'I') {
+                    decompressImage(buf, image);
+                    cv::namedWindow("Client Screen");
+                    cv::setMouseCallback("Client Screen", onMouse);
+                    cv::imshow("Client Screen", image);
+                    cv::waitKey(10);
+                }
+                else if (box.type == 'L') {
+                    // printf("L: %s\n", buf.data());
+                }
             });
 
             server.UDPReceive();
-
-            // // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
-            // ImGui::SetNextWindowPos(ImVec2(60, 100));
-            // ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
-            // ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
-            // if (ImGui::IsItemClicked(0)) {
-            //     // Get the mouse position relative to the top-left corner of the window
-            //     clickPosition = ImGui::GetMousePos();
-
-            //     // You can also get the mouse position relative to the image if needed
-            //     imagePos = ImGui::GetItemRectMin();
-            //     mousePosRelativeToImage = clickPosition - imagePos;
-            // }
-            // ImGui::End();
-
-            // // Create a separate ImGui window for the text
-            // ImGui::SetNextWindowSize(ImVec2(300, 50)); // Adjust the size as needed
-            // // ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); // Position next to the image window
-            // ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
-            // // Display the stored mouse position
-            // ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
-            // ImGui::End();
 
             // // Rendering
             // glViewport(0, 0, windowWidth, windowHeight);
@@ -109,8 +86,8 @@ int main(int argc, char** argv)
     else
     {
         // char host[256] = "10.211.55.23";
-        char host[256] = "10.37.129.2";
-        // char host[256] = "127.0.0.1";
+        // char host[256] = "10.37.129.2";
+        char host[256] = "127.0.0.1";
         // printf("host = ");
         // scanf("%s", host);
         EasyClient client(host, port, "UDP");
@@ -121,17 +98,23 @@ int main(int argc, char** argv)
         {
             cv::Mat mat = easy_event.captureScreen();
             resize(mat, mat, cv::Size(), 0.5, 0.5);
-            // cv::imshow("Test", mat);
-            std::vector<uchar> buff;
-            compressImage(mat, buff, 90);
+            std::vector<uchar> buf;
+            compressImage(mat, buf, 90);
 
             PacketBox box;
-            BufToPacketBox(buff, box, ++id, 0, 1000);
+            BufToPacketBox(buf, box, ++id, 'I', 1000);
 
             for (int i = 0; i < (int) box.packets.size(); i++) {
                 client.sendData((char*)box.packets[i].data(), box.packets[i].size());
             }
-            cv::waitKey(10);
+            cv::waitKey(30);
+
+            std::string str = "Magic number: " + std::to_string(rand());
+            std::vector<uchar> buf2(str.begin(), str.end());
+            PacketBox box2;
+            BufToPacketBox(buf2, box2, ++id, 'L', 1);
+            client.sendData((char*)box2.packets[0].data(), box2.packets[0].size());
+            cv::waitKey(30);
         }
     }
 
