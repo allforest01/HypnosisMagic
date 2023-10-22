@@ -24,7 +24,7 @@ EASYLIBS_DIR = EasyLibs/
 
 SOURCES = main.cpp
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
-SOURCES += $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/KeyMapping.cpp $(EASYLIBS_DIR)/EasyImage.cpp $(EASYLIBS_DIR)/EasyData.cpp
+SOURCES += $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/KeyMapping.cpp $(EASYLIBS_DIR)/EasyImage.cpp $(EASYLIBS_DIR)/EasyData.cpp $(EASYLIBS_DIR)/EasyImgui.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
 
 BUILD_DIR_MAC = build_mac/

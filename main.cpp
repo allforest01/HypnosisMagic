@@ -1,30 +1,14 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 
-#include <stdio.h>
-#include <string>
-#include <vector>
-
 #include "EasyLibs/EasySocket.h"
 #include "EasyLibs/EasyEvent.h"
 #include "EasyLibs/EasyImage.h"
 #include "EasyLibs/EasyData.h"
-
-#include <imgui.h>
-#include <imgui_impl_sdl2.h>
-#include <imgui_impl_opengl2.h>
-
-#include <GL/glew.h>
-#include <SDL.h>
-#include <SDL_opengl.h>
-
-#ifdef WINDOWS
-    #define sleep(x) Sleep(x * 1000)
-#endif
-
+#include "EasyLibs/EasyImgui.h"
 
 int main(int argc, char** argv)
 {
-    char port[] = "4444";
+    char port[] = "3402";
     EasyEvent easy_event;
 
     initKeyMapping();
@@ -34,60 +18,23 @@ int main(int argc, char** argv)
     {
         EasyServer server(port, "UDP");
         BoxManager boxman;
-        cv::Mat image;
-        GLuint image_texture;
 
-        auto services = [&boxman](SOCKET sock, char data[], int size)
-        {
+        server.setServices([&boxman](SOCKET sock, char data[], int size) {
             std::vector<uchar> buf(data, data + size);
             boxman.addPacketToBox(buf);
-        };
+        });
 
-        server.setServices(services);
+        initEasyImgui();
 
-        // Initialize SDL
-        if (SDL_Init(SDL_INIT_VIDEO)) {
-            printf("Error: %s\n", SDL_GetError());
-            return -1;
-        }
-
-        const int windowWidth = 1100;
-        const int windowHeight = 700;
-
-        SDL_Window* window = SDL_CreateWindow(
-            "ImGui with SDL 2 and OpenGL 2",
-            SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-            windowWidth, windowHeight, SDL_WINDOW_OPENGL
-        );
-
-        if (window == NULL) {
-            printf("Error: %s\n", SDL_GetError());
-            return -1;
-        }
-
-        // Create an OpenGL context
-        SDL_GLContext glContext = SDL_GL_CreateContext(window);
-
-        // Set up ImGui
-        IMGUI_CHECKVERSION();
-        ImGui::CreateContext();
-        ImGuiIO& io = ImGui::GetIO();
-        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-        // io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-        // Init ImGui for SDL
-        ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-
-        // Init ImGui for OpenGL
-        ImGui_ImplOpenGL2_Init();
-
-        // Main loop
+        cv::Mat image;
+        GLuint image_texture;
         ImVec2 clickPosition, imagePos, mousePosRelativeToImage;
 
+        // Main loop
         bool quit = false;
-
         while (!quit)
         {
+            // SDL poll event
             SDL_Event event;
             while (SDL_PollEvent(&event)) {
                 ImGui_ImplSDL2_ProcessEvent(&event);
@@ -102,27 +49,20 @@ int main(int argc, char** argv)
             ImGui::NewFrame();
 
             /* !!! CODE HERE !!! */
-
-            auto completeCallback = [&image, &image_texture](PacketBox& box)
-            {
+            boxman.setCompleteCallback([&image, &image_texture](PacketBox& box) {
                 std::vector<uchar> buf;
                 PacketBoxToBuf(box, buf);
                 decompressImage(buf, image);
                 // resize(image, image, cv::Size(), 2, 2);
                 image_texture = MatToTexture(image);
-            };
-
-            boxman.setCompleteCallback(completeCallback);
+            });
 
             server.UDPReceive();
 
             // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
             ImGui::SetNextWindowPos(ImVec2(60, 100));
-
             ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
-
-            // ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
-
+            ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
             if (ImGui::IsItemClicked(0)) {
                 // Get the mouse position relative to the top-left corner of the window
                 clickPosition = ImGui::GetMousePos();
@@ -131,17 +71,14 @@ int main(int argc, char** argv)
                 imagePos = ImGui::GetItemRectMin();
                 mousePosRelativeToImage = clickPosition - imagePos;
             }
-
             ImGui::End();
 
             // Create a separate ImGui window for the text
             ImGui::SetNextWindowSize(ImVec2(300, 50)); // Adjust the size as needed
             // ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); // Position next to the image window
             ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
-
             // Display the stored mouse position
             ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
-
             ImGui::End();
 
             // Rendering
@@ -155,18 +92,13 @@ int main(int argc, char** argv)
             SDL_GL_SwapWindow(window);
         }
 
-        // Cleanup and shutdown
-        ImGui_ImplOpenGL2_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
-        ImGui::DestroyContext();
-
-        SDL_GL_DeleteContext(glContext);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
+        cleanEasyImgui();
     }
     else
     {
-        char host[256] = "10.37.129.2";
+        // char host[256] = "10.211.55.23";
+        // char host[256] = "10.37.129.2";
+        char host[256] = "127.0.0.1";
         // printf("host = ");
         // scanf("%s", host);
         EasyClient client(host, port, "UDP");
@@ -232,7 +164,6 @@ int main(int argc, char** argv)
             for (int i = 0; i < (int) box.packets.size(); i++) {
                 client.sendData((char*)box.packets[i].data(), box.packets[i].size());
             }
-            cv::waitKey(1000);
         }
     }
 
