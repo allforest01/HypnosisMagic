@@ -4,10 +4,9 @@
 #include <string>
 #include <functional>
 
-#define MAX_BYTES 8192
-
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #define WINDOWS
+    #define WIN32_LEAN_AND_MEAN
     #include <winsock2.h>
     #include <ws2tcpip.h>
 #else
@@ -22,6 +21,8 @@
     #define SOCKET_ERROR	(-1)
     #define closesocket close
 #endif
+
+#define MAX_BYTES 1024
 
 void initEasySocket();
 void cleanEasySocket();

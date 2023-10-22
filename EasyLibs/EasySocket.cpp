@@ -78,6 +78,21 @@ EasyServer::EasyServer(char* port, const char* type) {
         printf("UDP Socket is created!\n");
         this->listen_socket = ListenSocket;
     }
+    #ifdef WINDOWS
+        int timeout = 500; // 500 miliseconds
+        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+            printf("setsockopt failed!\n");
+            return;
+        }
+    #else
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000; // 500 miliseconds
+        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+            printf("setsockopt failed!\n");
+            return;
+        }
+    #endif
 }
 
 EasyServer::~EasyServer() {
@@ -92,7 +107,7 @@ void EasyServer::setServices(std::function<void(SOCKET, char[], int)> services) 
 void EasyServer::TCPReceive() {
     SOCKET listen_socket = this->listen_socket;
     char buffer[MAX_BYTES];
-    int bytesRead = recv(listen_socket, buffer, MAX_BYTES, 0);
+    int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
     printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
     this->services(listen_socket, buffer, bytesRead);
@@ -168,8 +183,12 @@ EasyClient::~EasyClient() {
 bool EasyClient::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
-    if (server_address == NULL) return send(connect_socket, data, size, 0);
+    if (server_address == NULL) {
+        int bytesSend = send(connect_socket, data, size, 0);
+        printf("TCP bytesSend = %d\n", bytesSend);
+        return bytesSend;
+    }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    printf("bytesSend = %d\n", bytesSend);
+    printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }
