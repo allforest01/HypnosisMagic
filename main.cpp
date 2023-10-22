@@ -27,8 +27,8 @@ int main(int argc, char** argv)
         // initEasyImgui();
 
         cv::Mat image;
-        GLuint image_texture;
-        ImVec2 clickPosition, imagePos, mousePosRelativeToImage;
+        // GLuint image_texture;
+        // ImVec2 clickPosition, imagePos, mousePosRelativeToImage;
 
         // Main loop
         bool quit = false;
@@ -49,12 +49,23 @@ int main(int argc, char** argv)
             // ImGui::NewFrame();
 
             /* !!! CODE HERE !!! */
-            boxman.setCompleteCallback([&image, &image_texture](PacketBox& box) {
+            void (*onMouse)(int, int, int, int, void *) = [](int event, int x, int y, int flags, void* userdata) {
+                if (event == cv::EVENT_LBUTTONDOWN) {
+                    // Left mouse button click
+                    std::cout << "Left mouse button clicked at (" << x << ", " << y << ")" << std::endl;
+                } else if (event == cv::EVENT_MOUSEMOVE) {
+                    // Mouse movement
+                    std::cout << "Mouse position: (" << x << ", " << y << ")" << std::endl;
+                }
+            };
+
+            boxman.setCompleteCallback([&image, &onMouse](PacketBox& box) {
                 std::vector<uchar> buf;
                 PacketBoxToBuf(box, buf);
                 decompressImage(buf, image);
-                // resize(image, image, cv::Size(), 2, 2);;
-                cv::imshow("test", image);
+                cv::namedWindow("Client Screen");
+                cv::setMouseCallback("Client Screen", onMouse);
+                cv::imshow("Client Screen", image);
                 cv::waitKey(10);
             });
 
@@ -97,57 +108,12 @@ int main(int argc, char** argv)
     }
     else
     {
-        char host[256] = "10.211.55.23";
-        // char host[256] = "10.37.129.2";
+        // char host[256] = "10.211.55.23";
+        char host[256] = "10.37.129.2";
         // char host[256] = "127.0.0.1";
         // printf("host = ");
         // scanf("%s", host);
         EasyClient client(host, port, "UDP");
-
-        // auto KeyDownCallback = [&](int keyCode) {
-        //     char buf[MAX_BYTES];
-        //     snprintf(buf, sizeof(buf), "Press %d\n", keyCode);
-        //     easy_socket.SendData(ConnectSocket, buf, strlen(buf));
-        //     // printf("KeyDown %d\n", keyCode);
-        // };
-
-        // auto KeyUpCallback = [](int keyCode) {
-        //     // printf("KeyUp %d\n", keyCode);
-        // };
-
-        // auto LDownCallback = [](int x, int y) {
-        //     // printf("LDown %d %d\n", x, y);
-        // };
-
-        // auto LUpCallback = [](int x, int y) {
-        //     // printf("LUp %d %d\n", x, y);
-        // };
-
-        // auto RDownCallback = [](int x, int y) {
-        //     // printf("RDown %d %d\n", x, y);
-        // };
-
-        // auto RUpCallback = [](int x, int y) {
-        //     // printf("RUp %d %d\n", x, y);
-        // };
-
-        // auto MoveCallback = [](int x, int y) {
-        //     // printf("Move %d %d\n", x, y);
-        // };
-
-        // easy_event.setKeyDownCallback(KeyDownCallback);
-        // easy_event.setKeyUpCallback(KeyUpCallback);
-        // easy_event.setLDownCallback(LDownCallback);
-        // easy_event.setLUpCallback(LUpCallback);
-        // easy_event.setRDownCallback(RDownCallback);
-        // easy_event.setRUpCallback(RUpCallback);
-        // easy_event.setMoveCallback(MoveCallback);
-
-        // easy_event.StartHook();
-        // while (true) {
-        //     easy_event.MsgLoop();
-        // }
-        // easy_event.Unhook();
 
         int id = 0;
 
@@ -155,7 +121,7 @@ int main(int argc, char** argv)
         {
             cv::Mat mat = easy_event.captureScreen();
             resize(mat, mat, cv::Size(), 0.5, 0.5);
-
+            // cv::imshow("Test", mat);
             std::vector<uchar> buff;
             compressImage(mat, buff, 90);
 

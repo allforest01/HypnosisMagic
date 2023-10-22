@@ -87,7 +87,7 @@ cv::Mat captureScreenMat(HWND hwnd)
     return bgrim;
 }
 
-cv::Mat EasyEvent::CaptureScreen() {
+cv::Mat EasyEvent::captureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
@@ -187,10 +187,10 @@ LRESULT CALLBACK EasyEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARA
     if (nCode >= 0) {
         KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
         if (wParam == WM_KEYDOWN) {
-            EasyEvent::getInstance().KeyDownCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().onKeyDown(kbdStruct->vkCode);
         }
         else if (wParam == WM_KEYUP) {
-            EasyEvent::getInstance().KeyUpCallback(kbdStruct->vkCode);
+            EasyEvent::getInstance().onKeyUp(kbdStruct->vkCode);
         }
     }
     return CallNextHookEx(NULL, nCode, wParam, lParam);

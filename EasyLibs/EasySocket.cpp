@@ -108,7 +108,7 @@ void EasyServer::TCPReceive() {
     SOCKET listen_socket = this->listen_socket;
     char buffer[MAX_BYTES];
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
-    printf("bytesRead = %d\n", bytesRead);
+    // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
     this->services(listen_socket, buffer, bytesRead);
 }
@@ -121,7 +121,7 @@ void EasyServer::UDPReceive() {
     int bytesRead = recvfrom(listen_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
     // char ipv4[INET_ADDRSTRLEN];
     // inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
-    printf("bytesRead = %d\n", bytesRead);
+    // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
     this->services(listen_socket, buffer, bytesRead);
 }

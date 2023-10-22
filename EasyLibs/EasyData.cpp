@@ -1,9 +1,9 @@
 #include "EasyData.h"
 
 void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int num) {
-    num = std::min(num, (int) buf.size());
     box.packets.resize(num);
-    int packetSize = buf.size() / num + ((buf.size() % num) != 1);
+    int packetSize = buf.size() / num + ((buf.size() % num) != 0);
+    num = std::min(num, (int) buf.size() / packetSize + ((int) buf.size() % packetSize != 0));
     for (int i = 0; i < num; i++) {
         auto start = buf.begin() + i * packetSize;
         auto end = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
