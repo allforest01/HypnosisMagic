@@ -26,7 +26,7 @@ private:
     static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
     LRESULT CALLBACK MouseHookCallback(int, WPARAM, LPARAM);
     static LRESULT CALLBACK GlobalMouseHookCallback(int, WPARAM, LPARAM);
-    void toScrCoor(int&, int&);
+    void toScreenCoord(int&, int&);
 #else
     static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
     CFMachPortRef eventTap;
@@ -41,30 +41,30 @@ public:
 
     EasyEvent();
 
-    int screenx, screeny;
+    int screenX, screenY;
     int width, height;
 
-    cv::Mat CaptureScreen();
+    cv::Mat captureScreen();
 
-    std::function<void(int)> KeyDownCallback;
-    std::function<void(int)> KeyUpCallback;
-    std::function<void(int, int)> LDownCallback;
-    std::function<void(int, int)> LUpCallback;
-    std::function<void(int, int)> RDownCallback;
-    std::function<void(int, int)> RUpCallback;
-    std::function<void(int, int)> MoveCallback;
+    std::function<void(int)> onKeyDown;
+    std::function<void(int)> onKeyUp;
+    std::function<void(int, int)> onLDown;
+    std::function<void(int, int)> onLUp;
+    std::function<void(int, int)> onRDown;
+    std::function<void(int, int)> onRUp;
+    std::function<void(int, int)> onMove;
 
-    void StartHook();
-    void MsgLoop();
-    void Unhook();
+    void startHook();
+    void msgLoop();
+    void stopHook();
 
-    void SendKeyDown(os, int);
-    void SendKeyUp(os, int);
-    void SendLDown(int, int);
-    void SendLUp(int, int);
-    void SendRDown(int, int);
-    void SendRUp(int, int);
-    void SendMove(int, int);
+    void sendKeyDown(os, int);
+    void sendKeyUp(os, int);
+    void sendLDown(int, int);
+    void sendLUp(int, int);
+    void sendRDown(int, int);
+    void sendRUp(int, int);
+    void sendMove(int, int);
 
     void setKeyDownCallback(std::function<void(int)>);
     void setKeyUpCallback(std::function<void(int)>);

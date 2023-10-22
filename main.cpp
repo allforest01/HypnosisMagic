@@ -153,7 +153,7 @@ int main(int argc, char** argv)
 
         while (true)
         {
-            cv::Mat mat = easy_event.CaptureScreen();
+            cv::Mat mat = easy_event.captureScreen();
             resize(mat, mat, cv::Size(), 0.5, 0.5);
 
             std::vector<uchar> buff;
