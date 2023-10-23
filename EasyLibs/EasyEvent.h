@@ -21,16 +21,16 @@ class EasyEvent {
 
 private:
 #ifdef WINDOWS
-    HHOOK keyboardHook, mouseHook; MSG msg;
-    LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
-    static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
-    LRESULT CALLBACK MouseHookCallback(int, WPARAM, LPARAM);
-    static LRESULT CALLBACK GlobalMouseHookCallback(int, WPARAM, LPARAM);
+//     HHOOK keyboardHook, mouseHook; MSG msg;
+//     LRESULT CALLBACK KeyboardHookCallback(int, WPARAM, LPARAM);
+//     static LRESULT CALLBACK GlobalKeyboardHookCallback(int, WPARAM, LPARAM);
+//     LRESULT CALLBACK MouseHookCallback(int, WPARAM, LPARAM);
+//     static LRESULT CALLBACK GlobalMouseHookCallback(int, WPARAM, LPARAM);
     void toScreenCoord(int&, int&);
 #else
-    static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
-    CFMachPortRef eventTap;
-    CFRunLoopSourceRef runLoopSource;
+//     static CGEventRef MyCGEventCallback(CGEventTapProxy, CGEventType, CGEventRef, void*);
+//     CFMachPortRef eventTap;
+//     CFRunLoopSourceRef runLoopSource;
 #endif
 
 public:
@@ -54,9 +54,9 @@ public:
     std::function<void(int, int)> onRUp;
     std::function<void(int, int)> onMove;
 
-    void startHook();
-    void msgLoop();
-    void stopHook();
+    // void startHook();
+    // void msgLoop();
+    // void stopHook();
 
     void sendKeyDown(os, int);
     void sendKeyUp(os, int);
@@ -66,11 +66,11 @@ public:
     void sendRUp(int, int);
     void sendMove(int, int);
 
-    void setKeyDownCallback(std::function<void(int)>);
-    void setKeyUpCallback(std::function<void(int)>);
-    void setLDownCallback(std::function<void(int, int)>);
-    void setLUpCallback(std::function<void(int, int)>);
-    void setRDownCallback(std::function<void(int, int)>);
-    void setRUpCallback(std::function<void(int, int)>);
-    void setMoveCallback(std::function<void(int, int)>);
+    // void setKeyDownCallback(std::function<void(int)>);
+    // void setKeyUpCallback(std::function<void(int)>);
+    // void setLDownCallback(std::function<void(int, int)>);
+    // void setLUpCallback(std::function<void(int, int)>);
+    // void setRDownCallback(std::function<void(int, int)>);
+    // void setRUpCallback(std::function<void(int, int)>);
+    // void setMoveCallback(std::function<void(int, int)>);
 };

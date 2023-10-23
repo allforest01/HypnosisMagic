@@ -4,3 +4,4 @@ build_mac/
 build_win/
 main
 main.exe
+*.ini

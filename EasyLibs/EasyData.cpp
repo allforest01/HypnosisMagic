@@ -2,19 +2,19 @@
 
 void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packetSize) {
     packetSize -= 6;
-    int num =(int) buf.size() / packetSize + (((int) buf.size() % packetSize) != 0);
+    int num = (int) buf.size() / packetSize + (((int) buf.size() % packetSize) != 0);
     box.packets.clear();
     box.id = id;
     box.type = type;
     box.isComplete = true;
     box.packets.resize(num);
     for (int i = 0; i < num; i++) {
-        auto segbeg = buf.begin() + i * packetSize;
-        auto segend = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
+        auto segBeg = buf.begin() + i * packetSize;
+        auto segEnd = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
         box.packets[i].assign((char*)&id, (char*)&id + 4);
         box.packets[i].push_back(type);
         box.packets[i].push_back(i + 1 == num);
-        box.packets[i].insert(box.packets[i].end(), segbeg, segend);
+        box.packets[i].insert(box.packets[i].end(), segBeg, segEnd);
     }
 }
 
@@ -38,8 +38,12 @@ void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
     }
     this->boxs[id].addPacket(packet);
     if (this->boxs[id].isComplete) {
+        // printf("size = %d\n", this->boxs[id].packets.size());
         this->onComplete(this->boxs[id]);
-        this->boxs.erase(id);
+        if (this->boxs.count(id)) {
+            // printf("count = %d\n", this->boxs.count(id));
+            this->boxs.erase(id);
+        }
     }
 }
 
