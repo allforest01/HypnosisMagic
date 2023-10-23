@@ -1,17 +1,20 @@
 #include "EasyData.h"
 
-void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int num) {
+void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packetSize) {
+    packetSize -= 6;
+    int num =(int) buf.size() / packetSize + (((int) buf.size() % packetSize) != 0);
+    box.packets.clear();
+    box.id = id;
+    box.type = type;
+    box.isComplete = true;
     box.packets.resize(num);
-    int packetSize = buf.size() / num + ((buf.size() % num) != 0);
-    num = std::min(num, (int) buf.size() / packetSize + ((int) buf.size() % packetSize != 0));
     for (int i = 0; i < num; i++) {
-        auto start = buf.begin() + i * packetSize;
-        auto end = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
-        box.packets[i].clear();
+        auto segbeg = buf.begin() + i * packetSize;
+        auto segend = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
         box.packets[i].assign((char*)&id, (char*)&id + 4);
         box.packets[i].push_back(type);
         box.packets[i].push_back(i + 1 == num);
-        box.packets[i].insert(box.packets[i].end(), start, end);
+        box.packets[i].insert(box.packets[i].end(), segbeg, segend);
     }
 }
 
@@ -35,11 +38,11 @@ void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
     }
     this->boxs[id].addPacket(packet);
     if (this->boxs[id].isComplete) {
-        this->completeCallback(this->boxs[id]);
+        this->onComplete(this->boxs[id]);
         this->boxs.erase(id);
     }
 }
 
-void BoxManager::setCompleteCallback(std::function<void(PacketBox&)> completeCallback) {
-    this->completeCallback = completeCallback;
+void BoxManager::setCompleteCallback(std::function<void(PacketBox&)> onComplete) {
+    this->onComplete = onComplete;
 }

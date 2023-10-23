@@ -97,11 +97,11 @@ EasyServer::EasyServer(char* port, const char* type) {
 
 EasyServer::~EasyServer() {
     closesocket(this->listen_socket);
-    this->services = nullptr;
+    this->service = nullptr;
 }
 
-void EasyServer::setServices(std::function<void(SOCKET, char[], int)> services) {
-    this->services = services;
+void EasyServer::setService(std::function<void(SOCKET, char[], int)> service) {
+    this->service = service;
 }
 
 void EasyServer::TCPReceive() {
@@ -110,7 +110,7 @@ void EasyServer::TCPReceive() {
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
     // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
-    this->services(listen_socket, buffer, bytesRead);
+    this->service(listen_socket, buffer, bytesRead);
 }
 
 void EasyServer::UDPReceive() {
@@ -123,7 +123,7 @@ void EasyServer::UDPReceive() {
     // inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
     // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
-    this->services(listen_socket, buffer, bytesRead);
+    this->service(listen_socket, buffer, bytesRead);
 }
 
 EasyClient::EasyClient(char* host, char* port, const char* type) {

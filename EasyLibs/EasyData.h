@@ -18,7 +18,7 @@ public:
 class BoxManager {
 public:
     std::map<int, PacketBox> boxs;
-    std::function<void(PacketBox&)> completeCallback;
+    std::function<void(PacketBox&)> onComplete;
     void addPacketToBox(std::vector<uchar>&);
     void setCompleteCallback(std::function<void(PacketBox&)>);
 };
