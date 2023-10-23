@@ -2,7 +2,6 @@
 #include "EasyLibs/EasyEvent.h"
 #include "EasyLibs/EasyImage.h"
 #include "EasyLibs/EasyData.h"
-// #include "EasyLibs/EasyImgui.h"
 
 int main(int argc, char** argv)
 {
@@ -54,68 +53,6 @@ int main(int argc, char** argv)
         while (!quit) {
             server.UDPReceive();
         }
-
-        // initEasyImgui();
-
-        // ImVec2 clickPosition, imagePos, mousePosRelativeToImage;
-
-        // while (!quit) {
-        //     // SDL poll event
-        //     SDL_Event event;
-        //     while (SDL_PollEvent(&event)) {
-        //         ImGui_ImplSDL2_ProcessEvent(&event);
-        //         if (event.type == SDL_QUIT) {
-        //             quit = true;
-        //         }
-        //     }
-
-        //     // Start a new ImGui frame
-        //     ImGui_ImplOpenGL2_NewFrame();
-        //     ImGui_ImplSDL2_NewFrame(window);
-        //     ImGui::NewFrame();
-
-        //     GLuint image_texture = MatToTexture(image);
-
-        //     ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40)); // Adjust the height to accommodate the text
-        //     ImGui::SetNextWindowPos(ImVec2(60, 100));
-
-        //     ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
-
-        //     ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
-
-        //     if (ImGui::IsItemClicked(0)) {
-        //         // Get the mouse position relative to the top-left corner of the window
-        //         clickPosition = ImGui::GetMousePos();
-
-        //         // You can also get the mouse position relative to the image if needed
-        //         imagePos = ImGui::GetItemRectMin();
-        //         mousePosRelativeToImage = clickPosition - imagePos;
-        //     }
-
-        //     ImGui::End();
-
-        //     // Create a separate ImGui window for the text
-        //     ImGui::SetNextWindowSize(ImVec2(300, 50)); // Adjust the size as needed
-        //     ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); // Position next to the image window
-        //     ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
-
-        //     // Display the stored mouse position
-        //     ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
-
-        //     ImGui::End();
-
-        //     // Rendering
-        //     glViewport(0, 0, windowWidth, windowHeight);
-        //     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
-        //     glClear(GL_COLOR_BUFFER_BIT);
-        //     ImGui::Render();
-        //     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-
-        //     // Swap buffers
-        //     SDL_GL_SwapWindow(window);
-        // }
-
-        // cleanEasyImgui();
     }
     else
     {
