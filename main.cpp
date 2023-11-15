@@ -32,9 +32,8 @@ int main(int argc, char** argv)
                 std::vector<uchar> buf;
                 PacketBoxToBuf(box, buf);
                 if (box.type == 'I') {
-                    std::unique_lock<std::mutex> lock(mtx);
+                    std::lock_guard<std::mutex> lock(mtx);
                     decompressImage(buf, image);
-                    lock.unlock();
                     if (image.rows > 0 && image.cols > 0)
                     {
                         printf("Image received!\n");
@@ -55,7 +54,9 @@ int main(int argc, char** argv)
 
         std::thread socketThread([&server, &quit](){
             while (!quit) {
+                // std::cout << "START" << '\n';
                 server.UDPReceive();
+                // std::cout << "END" << '\n';
             }
         });
 
@@ -82,12 +83,13 @@ int main(int argc, char** argv)
             ImGui::NewFrame();
 
             // Code here !!
-            std::unique_lock<std::mutex> lock(mtx);
+            std::lock_guard<std::mutex> lock(mtx);
+            GLuint oldTexture = image_texture;
             image_texture = MatToTexture(image);
-            lock.unlock();
+            glDeleteTextures(1, &oldTexture);
 
             ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40));
-            ImGui::SetNextWindowPos(ImVec2(60, 100));
+            ImGui::SetNextWindowPos(ImVec2(60, 90));
             ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
             ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
             if (ImGui::IsItemClicked(0)) {
@@ -96,7 +98,7 @@ int main(int argc, char** argv)
             ImGui::End();
 
             ImGui::SetNextWindowSize(ImVec2(300, 50));
-            ImGui::SetNextWindowPos(ImVec2(image.size().width + 100, 100)); 
+            ImGui::SetNextWindowPos(ImVec2(60, 30)); 
             ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
             ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
             ImGui::End();
@@ -133,10 +135,11 @@ int main(int argc, char** argv)
         while (true)
         {
             cv::Mat mat = easy_event.captureScreen();
-            resize(mat, mat, cv::Size(), 1, 1);
+            resize(mat, mat, cv::Size(), 0.7, 0.7);
+            printf("size = %d\n", mat.rows * mat.cols * 3);
 
             std::vector<uchar> buf;
-            compressImage(mat, buf, 100);
+            compressImage(mat, buf, 70);
 
             PacketBox box;
             BufToPacketBox(buf, box, ++id, 'I', 128);
@@ -144,7 +147,7 @@ int main(int argc, char** argv)
             for (int i = 0; i < (int) box.packets.size(); i++) {
                 client.sendData((char*)box.packets[i].data(), box.packets[i].size());
             }
-            cv::waitKey(30);
+            cv::waitKey(20);
         }
     }
 

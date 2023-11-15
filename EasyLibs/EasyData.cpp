@@ -25,6 +25,10 @@ void PacketBoxToBuf(PacketBox &box, std::vector<uchar> &buf) {
     }
 }
 
+PacketBox::~PacketBox() {
+   this->packets.clear(); 
+}
+
 void PacketBox::addPacket(std::vector<uchar> &packet) {
     this->packets.push_back(packet);
     this->type = *((char*)packet.data() + 4);
@@ -36,13 +40,17 @@ void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
     if (!this->boxs.count(id)) {
         this->boxs[id] = PacketBox();
     }
+    // printf("Hehe!");
     this->boxs[id].addPacket(packet);
     if (this->boxs[id].isComplete) {
         // printf("size = %d\n", this->boxs[id].packets.size());
         this->onComplete(this->boxs[id]);
         if (this->boxs.count(id)) {
             // printf("count = %d\n", this->boxs.count(id));
+            // this->boxs[id].packets.clear();
             this->boxs.erase(id);
+            printf("cleared %d\n", id);
+            printf("this->boxs.size() = %lu\n", this->boxs.size());
         }
     }
 }
