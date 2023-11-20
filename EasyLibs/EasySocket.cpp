@@ -189,6 +189,6 @@ bool EasyClient::sendData(char* data, int size) {
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    printf("UDP bytesSend = %d\n", bytesSend);
+    // printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }

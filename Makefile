@@ -4,14 +4,16 @@
 #
 # Mac OS X:
 #	brew install gcc
-#	brew install qt6
+#	brew install make
 #	brew install opencv
-#	brew install raylib
+#	brew install sdl2
+#	brew install glew
 # MSYS2:
 #	pacman -S mingw-w64-ucrt-x86_64-toolchain
-#	pacman -S mingw-w64-ucrt-x86_64-qt6-base
+#	pacman -S mingw-w64-ucrt-x86_64-make
 #	pacman -S mingw-w64-ucrt-x86_64-opencv
-#	pacman -S mingw-w64-ucrt-x86_64-raylib
+#	pacman -S mingw-w64-ucrt-x86_64-SDL2
+#	pacman -S mingw-w64-ucrt-x86_64-glew
 
 # CXX = g++
 # CXX = clang++

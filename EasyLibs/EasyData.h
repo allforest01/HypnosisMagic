@@ -12,6 +12,7 @@ public:
     int id; char type; char isComplete;
     std::vector<std::vector<uchar>> packets;
     PacketBox(): id(-1), type(-1), isComplete(false) {}
+    ~PacketBox();
     void addPacket(std::vector<uchar>&);
 };
 
