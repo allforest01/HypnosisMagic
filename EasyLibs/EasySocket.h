@@ -30,12 +30,12 @@ void cleanEasySocket();
 class EasyServer {
 private:
     SOCKET listen_socket;
-    std::function<void(SOCKET, char[], int)> service;
+    std::function<void(SOCKET, char[], int, char[])> service;
 public:
     EasyServer(): listen_socket(0), service(nullptr) {}
-    EasyServer(char*, const char*);
-    ~EasyServer();
-    void setService(std::function<void(SOCKET, char[], int)>);
+    void connect(char*, const char*);
+    void disconnect();
+    void setService(std::function<void(SOCKET, char[], int, char[])>);
     void TCPReceive();
     void UDPReceive();
 };

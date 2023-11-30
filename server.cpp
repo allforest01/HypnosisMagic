@@ -15,56 +15,60 @@ int main(int argc, char** argv)
     initKeyMapping();
     initEasySocket();
 
-    char port[] = "3402";
-    EasyEvent easy_event;
+    windowTitle = (char*)"Server";
 
-    EasyServer server(port, "UDP");
-    BoxManager boxman;
-    cv::Mat image;
-    GLuint image_texture;
+    // char port1[] = "3402";
+    // char port2[] = "3403";
+    // EasyEvent easy_event;
 
-    int loopCount = 0;
+    // EasyServer server(port1, "UDP");
+    // // EasyServer client(host, port2, "TCP");
+    // BoxManager boxman;
+    // cv::Mat image;
+    // GLuint image_texture;
 
-    boxman.setCompleteCallback(
-        [&image, &loopCount](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'I') {
-                std::lock_guard<std::mutex> lock(mtx);
-                decompressImage(buf, image);
-                if (image.rows > 0 && image.cols > 0)
-                {
-                    printf("Image received!\n");
-                    printf("loopCount = %d\n", loopCount);
-                }
-            }
-        }
-    );
+    // int loopCount = 0;
 
-    server.setService(
-        [&boxman](SOCKET sock, char data[], int size) {
-            std::vector<uchar> buf(data, data + size);
-            boxman.addPacketToBox(buf);
-        }
-    );
+    // boxman.setCompleteCallback(
+    //     [&image, &loopCount](PacketBox& box) {
+    //         std::vector<uchar> buf;
+    //         PacketBoxToBuf(box, buf);
+    //         if (box.type == 'I') {
+    //             std::lock_guard<std::mutex> lock(mtx);
+    //             decompressImage(buf, image);
+    //             if (image.rows > 0 && image.cols > 0)
+    //             {
+    //                 printf("Image received!\n");
+    //                 printf("loopCount = %d\n", loopCount);
+    //             }
+    //         }
+    //     }
+    // );
 
-    bool quit = false;
+    // server.setService(
+    //     [&boxman](SOCKET sock, char data[], int size) {
+    //         std::vector<uchar> buf(data, data + size);
+    //         boxman.addPacketToBox(buf);
+    //     }
+    // );
 
-    std::thread socketThread([&server, &quit](){
-        while (!quit) {
-            // std::cout << "START" << '\n';
-            server.UDPReceive();
-            // std::cout << "END" << '\n';
-        }
-    });
+    // std::thread socketThread([&server, &quit](){
+    //     while (!quit) {
+    //         // std::cout << "START" << '\n';
+    //         server.UDPReceive();
+    //         // std::cout << "END" << '\n';
+    //     }
+    // });
 
     initEasyImgui();
 
-    ImVec2 mousePosRelativeToImage;
+    // ImVec2 mousePosRelativeToImage;
+
+    bool quit = false;
 
     while (!quit)
     {
-        loopCount++;
+        // loopCount++;
 
         // SDL poll event
         SDL_Event event;
@@ -80,26 +84,27 @@ int main(int argc, char** argv)
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
 
-        // Code here !!
-        std::lock_guard<std::mutex> lock(mtx);
-        GLuint oldTexture = image_texture;
-        image_texture = MatToTexture(image);
-        glDeleteTextures(1, &oldTexture);
+        // Code goes here
+        
+            // std::lock_guard<std::mutex> lock(mtx);
+            // GLuint oldTexture = image_texture;
+            // image_texture = MatToTexture(image);
+            // glDeleteTextures(1, &oldTexture);
 
-        ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40));
-        ImGui::SetNextWindowPos(ImVec2(60, 90));
-        ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
-        ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
-        if (ImGui::IsItemClicked(0)) {
-            mousePosRelativeToImage = ImGui::GetMousePos() - ImGui::GetItemRectMin();
-        }
-        ImGui::End();
+            // ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40));
+            // ImGui::SetNextWindowPos(ImVec2(60, 90));
+            // ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
+            // ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
+            // if (ImGui::IsItemClicked(0)) {
+            //     mousePosRelativeToImage = ImGui::GetMousePos() - ImGui::GetItemRectMin();
+            // }
+            // ImGui::End();
 
-        ImGui::SetNextWindowSize(ImVec2(300, 50));
-        ImGui::SetNextWindowPos(ImVec2(60, 30)); 
-        ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
-        ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
-        ImGui::End();
+            // ImGui::SetNextWindowSize(ImVec2(300, 50));
+            // ImGui::SetNextWindowPos(ImVec2(60, 30)); 
+            // ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
+            // ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
+            // ImGui::End();
 
         // Rendering
         glViewport(0, 0, windowWidth, windowHeight);
@@ -114,7 +119,7 @@ int main(int argc, char** argv)
 
     cleanEasyImgui();
 
-    socketThread.join();
+    // socketThread.join();
 
     cleanEasySocket();
     cleanKeyMapping();

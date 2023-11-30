@@ -22,7 +22,7 @@ void cleanEasySocket() {
     #endif
 }
 
-EasyServer::EasyServer(char* port, const char* type) {
+void EasyServer::connect(char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -95,12 +95,12 @@ EasyServer::EasyServer(char* port, const char* type) {
     #endif
 }
 
-EasyServer::~EasyServer() {
+void EasyServer::disconnect() {
     closesocket(this->listen_socket);
     this->service = nullptr;
 }
 
-void EasyServer::setService(std::function<void(SOCKET, char[], int)> service) {
+void EasyServer::setService(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
@@ -110,7 +110,7 @@ void EasyServer::TCPReceive() {
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
     // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
-    this->service(listen_socket, buffer, bytesRead);
+    this->service(listen_socket, buffer, bytesRead, NULL);
 }
 
 void EasyServer::UDPReceive() {
@@ -119,11 +119,11 @@ void EasyServer::UDPReceive() {
     struct sockaddr_in client_address;
     socklen_t client_address_size = sizeof(client_address);
     int bytesRead = recvfrom(listen_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
-    // char ipv4[INET_ADDRSTRLEN];
-    // inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
-    // printf("bytesRead = %d\n", bytesRead);
+    char ipv4[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
+    // printf("ipv4 = %s\n", ipv4);
     if (bytesRead <= 0) return;
-    this->service(listen_socket, buffer, bytesRead);
+    this->service(listen_socket, buffer, bytesRead, ipv4);
 }
 
 EasyClient::EasyClient(char* host, char* port, const char* type) {

@@ -11,6 +11,7 @@
 
 extern SDL_Window* window;
 extern SDL_GLContext glContext;
+extern char* windowTitle;
 extern int windowWidth;
 extern int windowHeight;
 

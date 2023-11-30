@@ -2,6 +2,7 @@
 
 SDL_Window* window;
 SDL_GLContext glContext;
+char* windowTitle = "ImGui with SDL 2 and OpenGL 2";
 int windowWidth = 1100;
 int windowHeight = 700;
 
@@ -13,7 +14,7 @@ void initEasyImgui() {
     }
 
     window = SDL_CreateWindow(
-        "ImGui with SDL 2 and OpenGL 2",
+        windowTitle,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         windowWidth, windowHeight, SDL_WINDOW_OPENGL
     );
