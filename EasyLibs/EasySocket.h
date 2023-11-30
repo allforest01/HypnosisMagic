@@ -33,8 +33,8 @@ private:
     std::function<void(SOCKET, char[], int, char[])> service;
 public:
     EasyServer(): listen_socket(0), service(nullptr) {}
-    void connect(char*, const char*);
-    void disconnect();
+    void elisten(char*, const char*);
+    void eclose();
     void setService(std::function<void(SOCKET, char[], int, char[])>);
     void TCPReceive();
     void UDPReceive();
@@ -46,7 +46,7 @@ private:
     struct addrinfo *server_address;
 public:
     EasyClient(): server_address(nullptr) {}
-    EasyClient(char*, char*, const char*);
-    ~EasyClient();
+    void econnect(char*, char*, const char*);
+    void eclose();
     bool sendData(char*, int);
 };

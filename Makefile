@@ -17,12 +17,13 @@
 IMGUI_DIR = imgui/
 EASYLIBS_DIR = EasyLibs/
 
+EXE = main
 SOURCES = main.cpp
 
 ifeq ($(BUILD_TYPE), server)
 	EXE = server
 	SOURCES = server.cpp
-else
+else ifeq ($(BUILD_TYPE), client)
 	EXE = client
 	SOURCES = client.cpp
 endif

@@ -22,7 +22,7 @@ void cleanEasySocket() {
     #endif
 }
 
-void EasyServer::connect(char* port, const char* type) {
+void EasyServer::elisten(char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -95,7 +95,7 @@ void EasyServer::connect(char* port, const char* type) {
     #endif
 }
 
-void EasyServer::disconnect() {
+void EasyServer::eclose() {
     closesocket(this->listen_socket);
     this->service = nullptr;
 }
@@ -126,7 +126,7 @@ void EasyServer::UDPReceive() {
     this->service(listen_socket, buffer, bytesRead, ipv4);
 }
 
-EasyClient::EasyClient(char* host, char* port, const char* type) {
+void EasyClient::econnect(char* host, char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -175,7 +175,7 @@ EasyClient::EasyClient(char* host, char* port, const char* type) {
     this->connect_socket = connect_socket;
 }
 
-EasyClient::~EasyClient() {
+void EasyClient::eclose() {
     closesocket(this->connect_socket);
     freeaddrinfo(this->server_address);
 }
@@ -189,6 +189,6 @@ bool EasyClient::sendData(char* data, int size) {
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    // printf("UDP bytesSend = %d\n", bytesSend);
+    printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }

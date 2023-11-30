@@ -6,4 +6,6 @@ server
 server.exe
 client
 client.exe
+main
+main.exe
 *.ini
