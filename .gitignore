@@ -2,6 +2,8 @@
 .vscode/
 build_mac/
 build_win/
-main
-main.exe
+server
+server.exe
+client
+client.exe
 *.ini

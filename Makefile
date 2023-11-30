@@ -1,4 +1,3 @@
-#
 # Cross Platform Makefile
 # Compatible with MSYS2/MINGW and Mac OS X
 #
@@ -15,14 +14,19 @@
 #	pacman -S mingw-w64-ucrt-x86_64-SDL2
 #	pacman -S mingw-w64-ucrt-x86_64-glew
 
-# CXX = g++
-# CXX = clang++
-
-EXE = main
 IMGUI_DIR = imgui/
 EASYLIBS_DIR = EasyLibs/
 
 SOURCES = main.cpp
+
+ifeq ($(BUILD_TYPE), server)
+	EXE = server
+	SOURCES = server.cpp
+else
+	EXE = client
+	SOURCES = client.cpp
+endif
+
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
 SOURCES += $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/KeyMapping.cpp $(EASYLIBS_DIR)/EasyImage.cpp $(EASYLIBS_DIR)/EasyData.cpp $(EASYLIBS_DIR)/EasyImgui.cpp
