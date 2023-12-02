@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <chrono>
 #include <thread>
 #include <mutex>
 #include <random>
@@ -9,11 +10,18 @@
 #include "EasyLibs/EasyData.h"
 #include "EasyLibs/EasyImgui.h"
 
+#ifdef WINDOWS
+    #define cur_os win
+#else
+    #define cur_os mac
+#endif
+
 std::mutex mtx;
 
 int main(int argc, char** argv)
 {
     windowTitle = (char*)"Client";
+
     windowWidth  = 310;
     windowHeight = 120;
 
@@ -22,13 +30,19 @@ int main(int argc, char** argv)
     initEasyImgui();
 
     EasyServer server;
+    EasyClient client;
+    EasyEvent easy_event;
+
     char code[5] = "0000";
     char port[6] = "3402";
+    char port2[] = "3403";
     char host[16] = "127.0.0.1";
 
-    srand(time(NULL));
-
     std::thread socketThread;
+    std::thread socketThread2;
+    BoxManager boxman;
+
+    srand(time(NULL));
 
     bool quit = false;
     bool wait = false;
@@ -66,24 +80,27 @@ int main(int argc, char** argv)
             if (ImGui::Button("Start")) {
                 // Wait for a connection
                 server.elisten(port, "UDP");
+
                 server.setService(
                     [&host, &wait, &conn, &code](SOCKET sock, char data[], int size, char ipv4[]) {
-                        // printf("ipv4 = %s", ipv4);
-                        if (!strcmp(data, code)) {
+                        if (!strcmp(data, code) || !strcmp(data, "0000")) {
                             strcpy(host, ipv4);
                             wait = false;
                             conn = 1;
                         }
                     }
                 );
+
                 socketThread = std::thread([&server, &quit, &wait](){
                     while (!quit && wait) {
                         server.UDPReceive();
                     }
                 });
+
                 for (int i = 0; i < 4; i++) {
                     code[i] = rand() % 10 + '0';
                 }
+
                 wait = true;
             }
         }
@@ -109,34 +126,89 @@ int main(int argc, char** argv)
                 server.eclose();
                 socketThread.join();
 
-                socketThread = std::thread([&host, &quit](){
+                boxman.setCompleteCallback(
+                    [&easy_event](PacketBox& box) {
+                        std::vector<uchar> buf;
+                        PacketBoxToBuf(box, buf);
+                        if (box.type == 'K') {
+                            std::lock_guard<std::mutex> lock(mtx);
+                            KeyboardEvent *ke = (KeyboardEvent*)buf.data();
+                            printf("Keyboard Event %d\n", ke->keyCode);
+                            // if (ke->type == KeyDown) {
+                            //     easy_event.sendKeyDown(ke->keyos, ke->keyCode);
+                            // }
+                            // else if (ke->type == KeyUp) {
+                            //     easy_event.sendKeyUp(ke->keyos, ke->keyCode);
+                            // }
+                        }
+                        else if (box.type == 'M') {
+                            std::lock_guard<std::mutex> lock(mtx);
+                            MouseEvent *me = (MouseEvent*)buf.data();
+                            printf("Mouse move %f %f\n", me->x, me->y);
+                            // int x = me->x ...
+                            // int y = me->y ...
+                            // if (me->type == LDown) {
+                            //     easy_event.sendLDown(me->x, me->y);
+                            // }
+                            // else if (me->type == LUp) {
+                            //     easy_event.sendLUp(me->x, me->y);
+                            // }
+                            // else if (me->type == RDown) {
+                            //     easy_event.sendRDown(me->x, me->y);
+                            // }
+                            // else if (me->type == RUp) {
+                            //     easy_event.sendRUp(me->x, me->y);
+                            // }
+                            // else if (me->type == MouseMove) {
+                            //     easy_event.sendMove(me->x, me->y);
+                            // }
+                        }
+                    }
+                );
 
-                    char port2[] = "3403";
-                    EasyEvent easy_event;
+                server.setService(
+                    [&boxman](SOCKET sock, char data[], int size, char host[]) {
+                        std::vector<uchar> buf(data, data + size);
+                        boxman.addPacketToBox(buf);
+                    }
+                );
 
-                    EasyClient client;
-                    client.econnect(host, port2, "UDP");
+                // server.elisten(port, "UDP");
+
+                socketThread2 = std::thread([&server, &quit](){
+                    while (!quit) {
+                        server.UDPReceive();
+                    }
+                });
+
+                client.econnect(host, port2, "TCP");
+
+                socketThread = std::thread([&quit, &easy_event, &client]() {
 
                     int id = 0;
 
                     while (!quit)
                     {
                         cv::Mat mat = easy_event.captureScreen();
-                        resize(mat, mat, cv::Size(), 0.7, 0.7);
-                        printf("size = %d\n", mat.rows * mat.cols * 3);
+                        resize(mat, mat, cv::Size(), 1, 1);
+                        // printf("size = %d\n", mat.rows * mat.cols * 3);
 
                         std::vector<uchar> buf;
                         compressImage(mat, buf, 70);
+                        FILE *out = fopen("image_client.jpg", "wb");
+                        fwrite(buf.data(), buf.size(), 1, out);
 
                         PacketBox box;
-                        BufToPacketBox(buf, box, ++id, 'I', 256);
+                        BufToPacketBox(buf, box, ++id, 'I', MAX_BYTES);
 
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
                         }
-                        cv::waitKey(20);
+                        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+                        // exit(0);
                     }
-        
+
                 });
 
             }
@@ -158,6 +230,7 @@ int main(int argc, char** argv)
     }
 
     socketThread.join();
+    socketThread2.join();
 
     cleanEasyImgui();
     cleanEasySocket();

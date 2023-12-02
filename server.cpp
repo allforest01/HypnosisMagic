@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <chrono>
 #include <thread>
 #include <mutex>
+#include <random>
 
 #include "EasyLibs/EasySocket.h"
 #include "EasyLibs/EasyEvent.h"
@@ -8,65 +10,75 @@
 #include "EasyLibs/EasyData.h"
 #include "EasyLibs/EasyImgui.h"
 
+#ifdef WINDOWS
+    #define cur_os win
+#else
+    #define cur_os mac
+#endif
+
 std::mutex mtx;
 
 int main(int argc, char** argv)
 {
     windowTitle = (char*)"Server";
+
     windowWidth = 1200;
-    windowHeight = 650;
+    windowHeight = 640;
 
     initKeyMapping();
     initEasySocket();
     initEasyImgui();
 
     EasyClient client;
+    EasyServer server;
+    EasyEvent easy_event;
+    
     char code[5] = "0000";
     char port[6] = "3402";
+    char port2[] = "3403";
     char host[16] = "127.0.0.1";
 
-    char port2[] = "3403";
-    EasyEvent easy_event;
-
-    EasyServer server;
+    std::thread socketThread;
     BoxManager boxman;
     cv::Mat image;
     GLuint image_texture;
+    bool imageChanged = false;
+    int loopCount = 0, id = 0;
 
-    int loopCount = 0;
+    easy_event.setKeyDownCallback([&client, &id](int keyCode) {
+        printf("Keyboard send %d!\n", keyCode);
 
-    boxman.setCompleteCallback(
-        [&image, &loopCount](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'I') {
-                std::lock_guard<std::mutex> lock(mtx);
-                decompressImage(buf, image);
-                if (image.rows > 0 && image.cols > 0)
-                {
-                    printf("Image received!\n");
-                    printf("loopCount = %d\n", loopCount);
-                }
-            }
+        KeyboardEvent ke(cur_os, KeyDown, keyCode);
+
+        std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
+        PacketBox box;
+        BufToPacketBox(buf, box, ++id, 'K', 256);
+
+        for (int i = 0; i < (int) box.packets.size(); i++) {
+            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
         }
-    );
+    });
 
-    server.setService(
-        [&boxman](SOCKET sock, char data[], int size, char host[]) {
-            std::vector<uchar> buf(data, data + size);
-            boxman.addPacketToBox(buf);
+    easy_event.setKeyUpCallback([&client, &id](int keyCode) {
+        printf("Keyboard send %d!\n", keyCode);
+
+        KeyboardEvent ke(cur_os, KeyUp, keyCode);
+
+        std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
+        PacketBox box;
+        BufToPacketBox(buf, box, ++id, 'K', 256);
+
+        for (int i = 0; i < (int) box.packets.size(); i++) {
+            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
         }
-    );
+    });
 
-    std::thread socketThread;
-    ImVec2 mousePosRelativeToImage;
+    // easy_event.startHook();
 
     bool quit = false;
 
     while (!quit)
     {
-        loopCount++;
-
         // SDL poll event
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -82,7 +94,9 @@ int main(int argc, char** argv)
         ImGui::NewFrame();
 
         // Code goes here
-        ImGui::SetNextWindowPos(ImVec2(930, 20));
+        loopCount++;
+
+        ImGui::SetNextWindowPos(ImVec2(940, 30));
         ImGui::SetNextWindowSize(ImVec2(255, 100));
         ImGui::Begin("Connect to client");
 
@@ -105,41 +119,134 @@ int main(int argc, char** argv)
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
-        if (ImGui::Button("Connect")) {
+        if (ImGui::Button("Connect"))
+        {
             client.econnect(host, port, "UDP");
             client.sendData(code, 5);
             client.eclose();
-            server.elisten(port2, "UDP");
+
+            boxman.setCompleteCallback(
+                [&image, &imageChanged, &loopCount](PacketBox& box) {
+                    std::vector<uchar> buf;
+                    PacketBoxToBuf(box, buf);
+                    if (box.type == 'I')
+                    {
+                        // std::lock_guard<std::mutex> lock(mtx);
+                        // FILE *out = fopen("image_server.jpg", "wb");
+                        // fwrite(buf.data(), buf.size(), 1, out);
+                        decompressImage(buf, image);
+                        imageChanged = !image.empty();
+
+                        // exit(0);
+                    }
+                }
+            );
+
+            server.setService(
+                [&boxman](SOCKET sock, char data[], int size, char host[]) {
+                    std::vector<uchar> buf(data, data + size);
+                    boxman.addPacketToBox(buf);
+                }
+            );
+
+            server.elisten(port2, "TCP");
+
             socketThread = std::thread([&server, &quit](){
                 while (!quit) {
-                    server.UDPReceive();
+                    server.TCPReceive();
                 }
             });
+
+            // client.econnect(host, port, "UDP");
         }
 
         ImGui::End();
 
-        if (true) {
-            std::lock_guard<std::mutex> lock(mtx);
-            GLuint oldTexture = image_texture;
-            image_texture = MatToTexture(image);
-            glDeleteTextures(1, &oldTexture);
-
-            ImGui::SetNextWindowPos(ImVec2(20, 20));
-            ImGui::SetNextWindowSize(ImVec2(image.size().width + 10, image.size().height + 40));
-            ImGui::Begin("OpenCV Image", NULL, ImGuiWindowFlags_NoMove);
-            ImGui::Image((void*)(intptr_t)image_texture, ImVec2(image.size().width, image.size().height));
-            if (ImGui::IsItemClicked(0)) {
-                mousePosRelativeToImage = ImGui::GetMousePos() - ImGui::GetItemRectMin();
+        // GUI when connect to client
+        if (imageChanged) {
+            imageChanged = false;
+            // std::lock_guard<std::mutex> lock(mtx);
+            GLuint old_texture = image_texture;
+            glGenTextures(1, &image_texture);
+            bool exception_caught = false;
+            try {
+                MatToTexture(image, image_texture);
             }
-            ImGui::End();
-
-            ImGui::SetNextWindowPos(ImVec2(930, 125));
-            ImGui::SetNextWindowSize(ImVec2(255, 50)); 
-            ImGui::Begin("Text Window", NULL, ImGuiWindowFlags_NoMove);
-            ImGui::Text("Mouse Click Position: (%.2f, %.2f)", mousePosRelativeToImage.x, mousePosRelativeToImage.y);
-            ImGui::End();
+            catch (...) {
+                glDeleteTextures(1, &image_texture);
+                image_texture = old_texture;
+                exception_caught = true;
+            }
+            if (!exception_caught) {
+                glDeleteTextures(1, &old_texture);
+            }
         }
+        // if (image.rows) {
+        //     cv::imshow("image", image);
+        //     cv::waitKey(1);
+        // }
+
+        ImGui::SetNextWindowPos(ImVec2(10, 30));
+        ImGui::SetNextWindowSize(ImVec2(922, 600));
+
+        ImGui::Begin("Screen");
+
+        ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
+        float window_aspect = window_avail_size.x / window_avail_size.y;
+        float image_aspect = image.size().width / (float)image.size().height;
+
+        float scale;
+        if (window_aspect > image_aspect) {
+            // Window is wider than the image
+            scale = window_avail_size.y / image.size().height;
+        } else {
+            // Window is narrower than the image
+            scale = window_avail_size.x / image.size().width;
+        }
+
+        float scaled_width = image.size().width * scale;
+        float scaled_height = image.size().height * scale;
+
+        ImGui::ImageButton((void*)(intptr_t)image_texture, ImVec2(scaled_width, scaled_height));
+
+        bool isHovered = ImGui::IsItemHovered();
+        bool isFocused = ImGui::IsItemFocused();
+        bool leftClicked = ImGui::IsMouseDown(ImGuiMouseButton_Left);
+        ImVec2 mousePositionAbsolute = ImGui::GetMousePos();
+        ImVec2 screenPositionAbsolute = ImGui::GetItemRectMin();
+        ImVec2 mousePositionRelative = mousePositionAbsolute - screenPositionAbsolute;
+
+        ImGui::End();
+
+        ImGui::SetNextWindowPos(ImVec2(940, 140));
+        ImGui::SetNextWindowSize(ImVec2(255, 100));
+
+        ImGui::Begin("Mouse Info", NULL, ImGuiWindowFlags_NoMove);
+
+        ImGui::Text("Is mouse over screen? %s", isHovered ? "Yes" : "No");
+        ImGui::Text("Is screen focused? %s", isFocused ? "Yes" : "No");
+        ImGui::Text("Mouse Position: (%.2f, %.2f)", mousePositionRelative.x, mousePositionRelative.y);
+        ImGui::Text("Mouse clicked: %s", leftClicked ? "Yes" : "No");
+
+        ImGui::End();
+
+        // // Event processing
+        // if (isFocused)
+        // {
+        //     easy_event.msgLoop();
+
+        //     printf("Mouse send! %f %f\n", mousePositionRelative.x, mousePositionRelative.y);
+
+        //     MouseEvent me(MouseMove, mousePositionRelative.x, mousePositionRelative.y);
+
+        //     std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
+        //     PacketBox box;
+        //     BufToPacketBox(buf, box, ++id, 'M', 256);
+
+        //     for (int i = 0; i < (int) box.packets.size(); i++) {
+        //         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+        //     }
+        // }
 
         // Rendering
         glViewport(0, 0, windowWidth, windowHeight);
@@ -151,6 +258,8 @@ int main(int argc, char** argv)
         // Swap buffers
         SDL_GL_SwapWindow(window);
     }
+
+    // easy_event.stopHook();
 
     socketThread.join();
 

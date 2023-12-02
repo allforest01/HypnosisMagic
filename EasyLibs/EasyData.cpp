@@ -49,8 +49,8 @@ void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
             // printf("count = %d\n", this->boxs.count(id));
             // this->boxs[id].packets.clear();
             this->boxs.erase(id);
-            printf("cleared %d\n", id);
-            printf("this->boxs.size() = %lu\n", this->boxs.size());
+            // printf("cleared %d\n", id);
+            // printf("this->boxs.size() = %lu\n", this->boxs.size());
         }
     }
 }

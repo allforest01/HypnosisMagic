@@ -15,6 +15,7 @@
     #include <netdb.h>
     #include <arpa/inet.h>
     #include <netinet/in.h>
+    #include <netinet/tcp.h>
     #include <unistd.h>
     typedef uint SOCKET;
     #define INVALID_SOCKET	(SOCKET)(~0)
@@ -22,7 +23,7 @@
     #define closesocket close
 #endif
 
-#define MAX_BYTES 1024
+#define MAX_BYTES 1460
 
 void initEasySocket();
 void cleanEasySocket();
@@ -45,7 +46,7 @@ private:
     SOCKET connect_socket;
     struct addrinfo *server_address;
 public:
-    EasyClient(): server_address(nullptr) {}
+    EasyClient(): connect_socket(0), server_address(nullptr) {}
     void econnect(char*, char*, const char*);
     void eclose();
     bool sendData(char*, int);

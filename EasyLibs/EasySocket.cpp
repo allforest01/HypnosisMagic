@@ -80,23 +80,29 @@ void EasyServer::elisten(char* port, const char* type) {
     }
     #ifdef WINDOWS
         int timeout = 500; // 500 miliseconds
-        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-            printf("setsockopt failed!\n");
-            return;
-        }
     #else
         struct timeval timeout;
         timeout.tv_sec = 0;
         timeout.tv_usec = 500000; // 500 miliseconds
-        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) < 0) {
+    #endif
+    if (strcmp(type, "TCP") == 0) {
+        int flag = 1;
+        if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
             printf("setsockopt failed!\n");
             return;
         }
-    #endif
+    }
+    else if (strcmp(type, "UDP") == 0) {
+        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+            printf("setsockopt failed!\n");
+            return;
+        }
+    }
 }
 
 void EasyServer::eclose() {
     closesocket(this->listen_socket);
+    listen_socket = 0;
     this->service = nullptr;
 }
 
@@ -108,8 +114,8 @@ void EasyServer::TCPReceive() {
     SOCKET listen_socket = this->listen_socket;
     char buffer[MAX_BYTES];
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
-    // printf("bytesRead = %d\n", bytesRead);
     if (bytesRead <= 0) return;
+    printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, NULL);
 }
 
@@ -178,6 +184,8 @@ void EasyClient::econnect(char* host, char* port, const char* type) {
 void EasyClient::eclose() {
     closesocket(this->connect_socket);
     freeaddrinfo(this->server_address);
+    connect_socket = 0;
+    this->server_address = nullptr;
 }
 
 bool EasyClient::sendData(char* data, int size) {
@@ -189,6 +197,6 @@ bool EasyClient::sendData(char* data, int size) {
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    printf("UDP bytesSend = %d\n", bytesSend);
+    // printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }

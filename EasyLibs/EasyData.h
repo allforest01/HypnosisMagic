@@ -26,6 +26,3 @@ public:
 
 void BufToPacketBox(std::vector<uchar>&, PacketBox&, int, char, int);
 void PacketBoxToBuf(PacketBox&, std::vector<uchar>&);
-
-void compressImage(const cv::Mat&, std::vector<uchar>&, int quality = 90);
-void decompressImage(const std::vector<uchar>&, cv::Mat&);
