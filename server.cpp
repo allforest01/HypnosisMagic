@@ -40,11 +40,10 @@ int main(int argc, char** argv)
 
     std::thread socketThread;
     BoxManager boxman;
-    cv::Mat image;
     GLuint image_texture;
     std::vector<uchar> buf;
-    bool imageChanged = false;
-    int loopCount = 0, id = 0;
+    std::queue<std::vector<uchar>> bufs;
+    int id = 0;
     int width, height, channels;
 
     easy_event.setKeyDownCallback([&client, &id](int keyCode) {
@@ -96,8 +95,6 @@ int main(int argc, char** argv)
         ImGui::NewFrame();
 
         // Code goes here
-        loopCount++;
-
         bool about_popup = false;
 
         // Menu bar
@@ -152,17 +149,26 @@ int main(int argc, char** argv)
             client.eclose();
 
             boxman.setCompleteCallback(
-                [&image, &imageChanged, &loopCount, &buf](PacketBox& box) {
+                [&buf, &bufs](PacketBox& box) {
                     PacketBoxToBuf(box, buf);
+                    // while (bufs.size()) bufs.pop();
+                    if (bufs.empty()) {
+                        std::lock_guard<std::mutex> lock(mtx);
+                        bufs.push(buf);
+                        printf("pushed!\n");
+                    }
                     if (box.type == 'I')
                     {
                         // std::lock_guard<std::mutex> lock(mtx);
-                        // FILE *out = fopen("image_server.jpg", "wb");
-                        // fwrite(buf.data(), buf.size(), 1, out);
+
+                        FILE *out = fopen("image_server.jpg", "wb");
+                        fwrite(buf.data(), buf.size(), 1, out);
+                        fclose(out);
+
                         // imageChanged = false;
                         // decompressImage(buf, image);
                         // imageChanged = !image.empty();
-                        imageChanged = true;
+                        // imageChanged = true;
 
                         // exit(0);
                     }
@@ -176,11 +182,11 @@ int main(int argc, char** argv)
                 }
             );
 
-            server.elisten(port2, "UDP");
+            server.elisten(port2, "TCP");
 
             socketThread = std::thread([&server, &quit](){
                 while (!quit) {
-                    server.UDPReceive();
+                    server.TCPReceive();
                 }
             });
 
@@ -190,15 +196,18 @@ int main(int argc, char** argv)
         ImGui::End();
 
         // GUI when connect to client
-        if (imageChanged) {
-            imageChanged = false;
-            // std::lock_guard<std::mutex> lock(mtx);
+        // std::lock_guard<std::mutex> lock(mtx);
+        if (bufs.size()) {
+            printf("bufs.size() = %d\n", bufs.size());
             GLuint old_texture = image_texture;
             glGenTextures(1, &image_texture);
             bool exception_caught = false;
             try {
                 // MatToTexture(image, image_texture);
-                BufToTexture(buf, image_texture, width, height, channels);
+                // while (bufs.size() > 1) bufs.pop();
+                std::lock_guard<std::mutex> lock(mtx);
+                auto cur_buf = bufs.front(); bufs.pop();
+                BufToTexture(cur_buf, image_texture, width, height, channels);
                 // FILE *out = fopen("image_server.jpg", "wb");
                 // fwrite(buf.data(), buf.size(), 1, out);
                 // fclose(out);
