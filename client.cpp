@@ -196,9 +196,9 @@ int main(int argc, char** argv)
                         std::vector<uchar> buf;
                         compressImage(mat, buf, 70);
 
-                        FILE *out = fopen("image_client.jpg", "wb");
-                        fwrite(buf.data(), buf.size(), 1, out);
-                        fclose(out);
+                        // FILE *out = fopen("image_client.jpg", "wb");
+                        // fwrite(buf.data(), buf.size(), 1, out);
+                        // fclose(out);
 
                         PacketBox box;
                         BufToPacketBox(buf, box, ++id, 'I', MAX_BYTES);

@@ -152,8 +152,8 @@ int main(int argc, char** argv)
                 [&buf, &bufs](PacketBox& box) {
                     PacketBoxToBuf(box, buf);
                     // while (bufs.size()) bufs.pop();
-                    if (bufs.empty()) {
-                        std::lock_guard<std::mutex> lock(mtx);
+                    if (bufs.size() <= 2) {
+                        // std::lock_guard<std::mutex> lock(mtx);
                         bufs.push(buf);
                         printf("pushed!\n");
                     }
@@ -161,9 +161,9 @@ int main(int argc, char** argv)
                     {
                         // std::lock_guard<std::mutex> lock(mtx);
 
-                        FILE *out = fopen("image_server.jpg", "wb");
-                        fwrite(buf.data(), buf.size(), 1, out);
-                        fclose(out);
+                        // FILE *out = fopen("image_server.jpg", "wb");
+                        // fwrite(buf.data(), buf.size(), 1, out);
+                        // fclose(out);
 
                         // imageChanged = false;
                         // decompressImage(buf, image);
@@ -199,27 +199,14 @@ int main(int argc, char** argv)
         // std::lock_guard<std::mutex> lock(mtx);
         if (bufs.size()) {
             printf("bufs.size() = %d\n", bufs.size());
-            GLuint old_texture = image_texture;
-            glGenTextures(1, &image_texture);
-            bool exception_caught = false;
-            try {
-                // MatToTexture(image, image_texture);
-                // while (bufs.size() > 1) bufs.pop();
-                std::lock_guard<std::mutex> lock(mtx);
-                auto cur_buf = bufs.front(); bufs.pop();
-                BufToTexture(cur_buf, image_texture, width, height, channels);
-                // FILE *out = fopen("image_server.jpg", "wb");
-                // fwrite(buf.data(), buf.size(), 1, out);
-                // fclose(out);
-            }
-            catch (...) {
-                glDeleteTextures(1, &image_texture);
-                image_texture = old_texture;
-                exception_caught = true;
-            }
-            if (!exception_caught) {
-                glDeleteTextures(1, &old_texture);
-            }
+            // MatToTexture(image, image_texture);
+            // while (bufs.size() > 1) bufs.pop();
+            // std::lock_guard<std::mutex> lock(mtx);
+            auto cur_buf = bufs.front(); bufs.pop();
+            BufToTexture(cur_buf, image_texture, width, height, channels);
+            // FILE *out = fopen("image_server.jpg", "wb");
+            // fwrite(buf.data(), buf.size(), 1, out);
+            // fclose(out);
         }
         // if (image.rows) {
         //     cv::imshow("image", image);
@@ -297,6 +284,8 @@ int main(int argc, char** argv)
 
         // Swap buffers
         SDL_GL_SwapWindow(window);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     // easy_event.stopHook();
