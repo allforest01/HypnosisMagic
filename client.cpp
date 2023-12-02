@@ -181,7 +181,7 @@ int main(int argc, char** argv)
                     }
                 });
 
-                client.econnect(host, port2, "TCP");
+                client.econnect(host, port2, "UDP");
 
                 socketThread = std::thread([&quit, &easy_event, &client]() {
 
@@ -195,8 +195,8 @@ int main(int argc, char** argv)
 
                         std::vector<uchar> buf;
                         compressImage(mat, buf, 70);
-                        FILE *out = fopen("image_client.jpg", "wb");
-                        fwrite(buf.data(), buf.size(), 1, out);
+                        // FILE *out = fopen("image_client.jpg", "wb");
+                        // fwrite(buf.data(), buf.size(), 1, out);
 
                         PacketBox box;
                         BufToPacketBox(buf, box, ++id, 'I', MAX_BYTES);
@@ -204,7 +204,7 @@ int main(int argc, char** argv)
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
                         }
-                        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+                        // std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
                         // exit(0);
                     }

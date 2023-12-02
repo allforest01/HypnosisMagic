@@ -42,8 +42,10 @@ int main(int argc, char** argv)
     BoxManager boxman;
     cv::Mat image;
     GLuint image_texture;
+    std::vector<uchar> buf;
     bool imageChanged = false;
     int loopCount = 0, id = 0;
+    int width, height, channels;
 
     easy_event.setKeyDownCallback([&client, &id](int keyCode) {
         printf("Keyboard send %d!\n", keyCode);
@@ -52,7 +54,7 @@ int main(int argc, char** argv)
 
         std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
         PacketBox box;
-        BufToPacketBox(buf, box, ++id, 'K', 256);
+        BufToPacketBox(buf, box, ++id, 'K', MAX_BYTES);
 
         for (int i = 0; i < (int) box.packets.size(); i++) {
             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -66,7 +68,7 @@ int main(int argc, char** argv)
 
         std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
         PacketBox box;
-        BufToPacketBox(buf, box, ++id, 'K', 256);
+        BufToPacketBox(buf, box, ++id, 'K', MAX_BYTES);
 
         for (int i = 0; i < (int) box.packets.size(); i++) {
             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -95,6 +97,30 @@ int main(int argc, char** argv)
 
         // Code goes here
         loopCount++;
+
+        bool about_popup = false;
+
+        // Menu bar
+        if (ImGui::BeginMainMenuBar()) {
+            if (ImGui::MenuItem("About")) {
+                about_popup = true;
+            }
+            if (ImGui::MenuItem("Exit")) {
+                quit = true;
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        // About popup
+        if (about_popup) {
+            ImGui::OpenPopup("About");
+        }
+        if (ImGui::BeginPopup("About", ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text("Simple cross-platform remote desktop tool in LAN");
+            ImGui::Separator();
+            ImGui::Text("Made by: allforest01");
+            ImGui::EndPopup();
+        }
 
         ImGui::SetNextWindowPos(ImVec2(940, 30));
         ImGui::SetNextWindowSize(ImVec2(255, 100));
@@ -126,16 +152,17 @@ int main(int argc, char** argv)
             client.eclose();
 
             boxman.setCompleteCallback(
-                [&image, &imageChanged, &loopCount](PacketBox& box) {
-                    std::vector<uchar> buf;
+                [&image, &imageChanged, &loopCount, &buf](PacketBox& box) {
                     PacketBoxToBuf(box, buf);
                     if (box.type == 'I')
                     {
                         // std::lock_guard<std::mutex> lock(mtx);
                         // FILE *out = fopen("image_server.jpg", "wb");
                         // fwrite(buf.data(), buf.size(), 1, out);
-                        decompressImage(buf, image);
-                        imageChanged = !image.empty();
+                        // imageChanged = false;
+                        // decompressImage(buf, image);
+                        // imageChanged = !image.empty();
+                        imageChanged = true;
 
                         // exit(0);
                     }
@@ -149,11 +176,11 @@ int main(int argc, char** argv)
                 }
             );
 
-            server.elisten(port2, "TCP");
+            server.elisten(port2, "UDP");
 
             socketThread = std::thread([&server, &quit](){
                 while (!quit) {
-                    server.TCPReceive();
+                    server.UDPReceive();
                 }
             });
 
@@ -170,7 +197,11 @@ int main(int argc, char** argv)
             glGenTextures(1, &image_texture);
             bool exception_caught = false;
             try {
-                MatToTexture(image, image_texture);
+                // MatToTexture(image, image_texture);
+                BufToTexture(buf, image_texture, width, height, channels);
+                // FILE *out = fopen("image_server.jpg", "wb");
+                // fwrite(buf.data(), buf.size(), 1, out);
+                // fclose(out);
             }
             catch (...) {
                 glDeleteTextures(1, &image_texture);
@@ -193,19 +224,19 @@ int main(int argc, char** argv)
 
         ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
         float window_aspect = window_avail_size.x / window_avail_size.y;
-        float image_aspect = image.size().width / (float)image.size().height;
+        float image_aspect = width / (float)height;
 
         float scale;
         if (window_aspect > image_aspect) {
             // Window is wider than the image
-            scale = window_avail_size.y / image.size().height;
+            scale = window_avail_size.y / height;
         } else {
             // Window is narrower than the image
-            scale = window_avail_size.x / image.size().width;
+            scale = window_avail_size.x / width;
         }
 
-        float scaled_width = image.size().width * scale;
-        float scaled_height = image.size().height * scale;
+        float scaled_width = width * scale;
+        float scaled_height = height * scale;
 
         ImGui::ImageButton((void*)(intptr_t)image_texture, ImVec2(scaled_width, scaled_height));
 
@@ -221,7 +252,7 @@ int main(int argc, char** argv)
         ImGui::SetNextWindowPos(ImVec2(940, 140));
         ImGui::SetNextWindowSize(ImVec2(255, 100));
 
-        ImGui::Begin("Mouse Info", NULL, ImGuiWindowFlags_NoMove);
+        ImGui::Begin("Mouse event info", NULL, ImGuiWindowFlags_NoMove);
 
         ImGui::Text("Is mouse over screen? %s", isHovered ? "Yes" : "No");
         ImGui::Text("Is screen focused? %s", isFocused ? "Yes" : "No");

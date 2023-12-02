@@ -115,7 +115,7 @@ void EasyServer::TCPReceive() {
     char buffer[MAX_BYTES];
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
     if (bytesRead <= 0) return;
-    printf("bytesRead = %d\n", bytesRead);
+    // printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, NULL);
 }
 
@@ -193,7 +193,7 @@ bool EasyClient::sendData(char* data, int size) {
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
         int bytesSend = send(connect_socket, data, size, 0);
-        printf("TCP bytesSend = %d\n", bytesSend);
+        // printf("TCP bytesSend = %d\n", bytesSend);
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);

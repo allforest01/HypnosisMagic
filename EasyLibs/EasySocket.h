@@ -23,7 +23,7 @@
     #define closesocket close
 #endif
 
-#define MAX_BYTES 1460
+#define MAX_BYTES 128
 
 void initEasySocket();
 void cleanEasySocket();

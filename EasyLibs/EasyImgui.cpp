@@ -2,7 +2,7 @@
 
 SDL_Window* window;
 SDL_GLContext glContext;
-char* windowTitle = "ImGui with SDL 2 and OpenGL 2";
+char* windowTitle = (char*)"ImGui with SDL 2 and OpenGL 2";
 int windowWidth = 1100;
 int windowHeight = 700;
 
