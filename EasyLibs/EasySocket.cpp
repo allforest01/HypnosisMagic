@@ -110,27 +110,35 @@ void EasyServer::setService(std::function<void(SOCKET, char[], int, char[])> ser
     this->service = service;
 }
 
-void EasyServer::TCPReceive() {
+void EasyServer::TCPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
-    char buffer[TCP_MAX_BYTES];
-    int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
-    if (bytesRead <= 0) return;
-    // printf("bytesRead = %d\n", bytesRead);
+    char* buffer = new char[max_bytes];
+    int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
+    if (bytesRead <= 0) {
+        delete[] buffer;
+        return;
+    }
+    printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, NULL);
+    delete[] buffer;
 }
 
-void EasyServer::UDPReceive() {
+void EasyServer::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
-    char buffer[UDP_MAX_BYTES];
+    char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
     socklen_t client_address_size = sizeof(client_address);
-    int bytesRead = recvfrom(listen_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
+    int bytesRead = recvfrom(listen_socket, buffer, max_bytes, 0, (sockaddr*)&client_address, &client_address_size);
     char ipv4[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
     // printf("ipv4 = %s\n", ipv4);
-    if (bytesRead <= 0) return;
-    // printf("bytesRead = %d\n", bytesRead);
+    if (bytesRead <= 0) {
+        delete[] buffer;
+        return;
+    }
+    printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, ipv4);
+    delete[] buffer;
 }
 
 bool EasyClient::econnect(char* host, char* port, const char* type) {
@@ -195,10 +203,10 @@ bool EasyClient::sendData(char* data, int size) {
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
         int bytesSend = send(connect_socket, data, size, 0);
-        // printf("TCP bytesSend = %d\n", bytesSend);
+        printf("TCP bytesSend = %d\n", bytesSend);
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    // printf("UDP bytesSend = %d\n", bytesSend);
+    printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }

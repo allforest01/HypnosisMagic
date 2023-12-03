@@ -36,6 +36,7 @@ int main(int argc, char** argv)
     std::vector<uchar> buf;
     int width, height, channels, id = 0;
     std::queue<std::vector<uchar>> bufs;
+    auto lastMove = std::chrono::system_clock::now();
 
     glGenTextures(1, &image_texture);
 
@@ -51,8 +52,10 @@ int main(int argc, char** argv)
             if (event.type == SDL_QUIT) {
                 quit = true;
             }
-            else if (connected) {
-                if (event.type == SDL_KEYDOWN) {
+            else if (connected)
+            {
+                if (event.type == SDL_KEYDOWN)
+                {
                     // Handle key press events
                     std::cout << "Key pressed: " << SDL_GetKeyName(event.key.keysym.sym) << " (Code: " << static_cast<int>(event.key.keysym.sym) << ")" << std::endl;
 
@@ -61,13 +64,15 @@ int main(int argc, char** argv)
 
                     std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
                     PacketBox box;
-                    BufToPacketBox(buf, box, ++id, 'K', UDP_MAX_BYTES);
+                    BufToPacketBox(buf, box, ++id, 'K', 64);
 
                     for (int i = 0; i < (int) box.packets.size(); i++) {
                         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
                     }
 
-                } else if (event.type == SDL_KEYUP) {
+                }
+                else if (event.type == SDL_KEYUP)
+                {
                     // Handle key release events
                     std::cout << "Key released: " << SDL_GetKeyName(event.key.keysym.sym) << " (Code: " << static_cast<int>(event.key.keysym.sym) << ")" << std::endl;
 
@@ -76,11 +81,74 @@ int main(int argc, char** argv)
 
                     std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
                     PacketBox box;
-                    BufToPacketBox(buf, box, ++id, 'K', UDP_MAX_BYTES);
+                    BufToPacketBox(buf, box, ++id, 'K', 64);
 
                     for (int i = 0; i < (int) box.packets.size(); i++) {
                         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
                     }
+                }
+                else if (event.type == SDL_MOUSEBUTTONDOWN)
+                {
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                    {
+                        double x = (double) (event.button.x - 20) / width;
+                        double y = (double) (event.button.y - 60) / height;
+
+                        printf("Mouse left down! %lf %lf\n", x, y);
+
+                        MouseEvent me(LDown, x, y);
+
+                        std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
+                        PacketBox box;
+                        BufToPacketBox(buf, box, ++id, 'M', 64);
+
+                        for (int i = 0; i < (int) box.packets.size(); i++) {
+                            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                        }
+                    }
+                }
+                else if (event.type == SDL_MOUSEBUTTONUP)
+                {
+                    if (event.button.button == SDL_BUTTON_LEFT)
+                    {
+                        double x = (double) (event.button.x - 20) / width;
+                        double y = (double) (event.button.y - 60) / height;
+
+                        printf("Mouse left up! %lf %lf\n", x, y);
+
+                        MouseEvent me(LUp, x, y);
+
+                        std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
+                        PacketBox box;
+                        BufToPacketBox(buf, box, ++id, 'M', 64);
+
+                        for (int i = 0; i < (int) box.packets.size(); i++) {
+                            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                        }
+                    }
+                }
+                else if (event.type == SDL_MOUSEMOTION)
+                {
+                    // auto passedTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - lastMove).count();
+                    // if (passedTime < 100) continue;
+                    // printf("%d\n", passedTime);
+
+                    double x = (double) (event.button.x - 20) / width;
+                    double y = (double) (event.button.y - 60) / height;
+
+                    printf("Mouse move! %lf %lf\n", x, y);
+
+                    MouseEvent me(MouseMove, x, y);
+
+                    std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
+                    PacketBox box;
+                    BufToPacketBox(buf, box, ++id, 'M', 64);
+
+                    for (int i = 0; i < (int) box.packets.size(); i++) {
+                        client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    }
+
+                    // lastMove = std::chrono::system_clock::now();
                 }
             }
         }
@@ -169,11 +237,11 @@ int main(int argc, char** argv)
                 server.elisten(port2, "TCP");
 
                 while (!quit) {
-                    server.TCPReceive();
+                    server.TCPReceive(1440);
                 }
             });
 
-            while (!client.econnect(host, port1, "UDP"));
+            while (!client.econnect(host, port1, "TCP"));
 
             connected = true;
         }
@@ -230,25 +298,6 @@ int main(int argc, char** argv)
         ImGui::Text("Mouse clicked: %s", leftClicked ? "Yes" : "No");
 
         ImGui::End();
-
-        // // Event processing
-        // if (isHovered && isFocused)
-        // {
-        //     double x = mousePositionRelative.x / width;
-        //     double y = mousePositionRelative.y / height;
-
-        //     printf("Mouse send! %lf %lf\n", x, y);
-
-        //     MouseEvent me(MouseMove, x, y);
-
-        //     std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
-        //     PacketBox box;
-        //     BufToPacketBox(buf, box, ++id, 'M', UDP_MAX_BYTES);
-
-        //     for (int i = 0; i < (int) box.packets.size(); i++) {
-        //         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
-        //     }
-        // }
 
         // Rendering
         glViewport(0, 0, windowWidth, windowHeight);

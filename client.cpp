@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 
                 socketThread1 = std::thread([&server, &quit, &wait](){
                     while (!quit && wait) {
-                        server.UDPReceive();
+                        server.UDPReceive(5);
                     }
                 });
 
@@ -128,7 +128,6 @@ int main(int argc, char** argv)
                         PacketBoxToBuf(box, buf);
                         if (box.type == 'K') {
                             KeyboardEvent *ke = (KeyboardEvent*)buf.data();
-                            sprintf(debug, "Keyboard Event %d\n", SDLKeycodeToOSKeyCode(ke->keyCode));
                             if (ke->type == KeyDown) {
                                 easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke->keyCode));
                             }
@@ -136,31 +135,30 @@ int main(int argc, char** argv)
                                 easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke->keyCode));
                             }
                         }
-                        // else
-                        // if (box.type == 'M') {
-                        //     MouseEvent *me = (MouseEvent*)buf.data();
+                        else if (box.type == 'M') {
+                            MouseEvent *me = (MouseEvent*)buf.data();
 
-                        //     printf("Mouse move %lf %lf\n", me->x, me->y);
+                            int x = round(me->x * easy_event.width);
+                            int y = round(me->y * easy_event.height);
 
-                        //     int x = me->x * easy_event.width;
-                        //     int y = me->y * easy_event.height;
+                            sprintf(debug, "Send Mouse %d %d\n", x, y);
                             
-                        //     if (me->type == LDown) {
-                        //         easy_event.sendLDown(x, y);
-                        //     }
-                        //     else if (me->type == LUp) {
-                        //         easy_event.sendLUp(x, y);
-                        //     }
-                        //     // else if (me->type == RDown) {
-                        //     //     easy_event.sendRDown(x, y);
-                        //     // }
-                        //     // else if (me->type == RUp) {
-                        //     //     easy_event.sendRUp(x, y);
-                        //     // }
-                        //     // else if (me->type == MouseMove) {
-                        //     //     easy_event.sendMove(x, y);
-                        //     // }
-                        // }
+                            if (me->type == LDown) {
+                                easy_event.sendLDown(x, y);
+                            }
+                            else if (me->type == LUp) {
+                                easy_event.sendLUp(x, y);
+                            }
+                            else if (me->type == RDown) {
+                                easy_event.sendRDown(x, y);
+                            }
+                            else if (me->type == RUp) {
+                                easy_event.sendRUp(x, y);
+                            }
+                            else if (me->type == MouseMove) {
+                                easy_event.sendMove(x, y);
+                            }
+                        }
                     }
                 );
 
@@ -172,10 +170,10 @@ int main(int argc, char** argv)
                 );
 
                 socketThread2 = std::thread([&server, &port1, &quit](){
-                    server.elisten(port1, "UDP");
+                    server.elisten(port1, "TCP");
 
                     while (!quit) {
-                        server.UDPReceive();
+                        server.TCPReceive(64);
                     }
                 });
 
@@ -197,7 +195,7 @@ int main(int argc, char** argv)
                         // fclose(out);
 
                         PacketBox box;
-                        BufToPacketBox(buf, box, ++id, 'I', TCP_MAX_BYTES);
+                        BufToPacketBox(buf, box, ++id, 'I', 1440);
 
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());

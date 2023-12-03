@@ -23,9 +23,6 @@
     #define closesocket close
 #endif
 
-#define TCP_MAX_BYTES 1024
-#define UDP_MAX_BYTES 128
-
 void initEasySocket();
 void cleanEasySocket();
 
@@ -38,8 +35,8 @@ public:
     void elisten(char*, const char*);
     void eclose();
     void setService(std::function<void(SOCKET, char[], int, char[])>);
-    void TCPReceive();
-    void UDPReceive();
+    void TCPReceive(int max_bytes);
+    void UDPReceive(int max_bytes);
 };
 
 class EasyClient {

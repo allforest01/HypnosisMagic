@@ -108,8 +108,8 @@ void EasyEvent::sendKeyUp(int keyCode) {
 }
 
 void EasyEvent::toScreenCoord(int &x, int &y) {
-    x = (x * 65536) / EasyEvent::getInstance().width;
-    y = (y * 65536) / EasyEvent::getInstance().height;
+    x = (long long)(x * 65536) / EasyEvent::getInstance().width;
+    y = (long long)(y * 65536) / EasyEvent::getInstance().height;
 }
 
 void EasyEvent::sendLDown(int x, int y) {
