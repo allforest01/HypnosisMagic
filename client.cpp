@@ -9,14 +9,7 @@
 #include "EasyLibs/EasyImage.h"
 #include "EasyLibs/EasyData.h"
 #include "EasyLibs/EasyImgui.h"
-
-#ifdef WINDOWS
-    #define cur_os win
-#else
-    #define cur_os mac
-#endif
-
-std::mutex mtx;
+#include "EasyLibs/EasyKeyCode.h"
 
 int main(int argc, char** argv)
 {
@@ -25,7 +18,6 @@ int main(int argc, char** argv)
     windowWidth  = 310;
     windowHeight = 120;
 
-    initKeyMapping();
     initEasySocket();
     initEasyImgui();
 
@@ -33,12 +25,12 @@ int main(int argc, char** argv)
     EasyClient client;
     EasyEvent easy_event;
 
-    char code[5] = "0000";
-    char port[6] = "3402";
-    char port2[] = "3403";
+    char passcode[5] = "0000";
+    char port1[6] = "3402";
+    char port2[6] = "3403";
     char host[16] = "127.0.0.1";
 
-    std::thread socketThread;
+    std::thread socketThread1;
     std::thread socketThread2;
     BoxManager boxman;
 
@@ -46,7 +38,9 @@ int main(int argc, char** argv)
 
     bool quit = false;
     bool wait = false;
-    int conn = 0;
+    int connection_phase = 0;
+
+    char debug[256] = "Debug message";
 
     while (!quit)
     {
@@ -69,36 +63,36 @@ int main(int argc, char** argv)
         ImGui::SetNextWindowSize(ImVec2(270, 80));
         ImGui::Begin("Port");
 
-        if (!wait && !conn) {
+        if (!wait && !connection_phase) {
             // Open UDP socket to wait for connect from server
-            ImGui::Text("Open a port to wait for a connection");
+            ImGui::Text("Open a port1 to wait for a connection");
             ImGui::PushItemWidth(200);
-            ImGui::InputText("##port", (char*)port, 6);
+            ImGui::InputText("##port1", (char*)port1, 6);
             ImGui::PopItemWidth();
 
             ImGui::SameLine();
             if (ImGui::Button("Start")) {
                 // Wait for a connection
-                server.elisten(port, "UDP");
+                server.elisten(port1, "UDP");
 
                 server.setService(
-                    [&host, &wait, &conn, &code](SOCKET sock, char data[], int size, char ipv4[]) {
-                        if (!strcmp(data, code) || !strcmp(data, "0000")) {
+                    [&host, &wait, &connection_phase, &passcode](SOCKET sock, char data[], int size, char ipv4[]) {
+                        if (!strcmp(data, passcode) || !strcmp(data, "0000")) {
                             strcpy(host, ipv4);
                             wait = false;
-                            conn = 1;
+                            connection_phase = 1;
                         }
                     }
                 );
 
-                socketThread = std::thread([&server, &quit, &wait](){
+                socketThread1 = std::thread([&server, &quit, &wait](){
                     while (!quit && wait) {
                         server.UDPReceive();
                     }
                 });
 
                 for (int i = 0; i < 4; i++) {
-                    code[i] = rand() % 10 + '0';
+                    passcode[i] = rand() % 10 + '0';
                 }
 
                 wait = true;
@@ -111,58 +105,62 @@ int main(int argc, char** argv)
             ImGui::PopItemWidth();
 
             ImGui::SetCursorPos(ImVec2(9, 53));
-            ImGui::Text("Code: %s", code);
+            ImGui::Text("Code: %s", passcode);
             ImGui::SetCursorPos(ImVec2(211, 50));
 
             if (ImGui::Button("Cancel")) {
                 wait = false;
                 server.eclose();
-                socketThread.join();
+                socketThread1.join();
             }
         }
-        else if (conn) {
+        else if (connection_phase) {
             // When client is connected from server
-            if (conn == 1) {
+            if (connection_phase == 1) {
                 server.eclose();
-                socketThread.join();
+                socketThread1.join();
+
+                while (!client.econnect(host, port2, "TCP"));
 
                 boxman.setCompleteCallback(
-                    [&easy_event](PacketBox& box) {
+                    [&easy_event, &debug](PacketBox& box) {
                         std::vector<uchar> buf;
                         PacketBoxToBuf(box, buf);
                         if (box.type == 'K') {
-                            std::lock_guard<std::mutex> lock(mtx);
                             KeyboardEvent *ke = (KeyboardEvent*)buf.data();
-                            printf("Keyboard Event %d\n", ke->keyCode);
-                            // if (ke->type == KeyDown) {
-                            //     easy_event.sendKeyDown(ke->keyos, ke->keyCode);
-                            // }
-                            // else if (ke->type == KeyUp) {
-                            //     easy_event.sendKeyUp(ke->keyos, ke->keyCode);
-                            // }
+                            sprintf(debug, "Keyboard Event %d\n", SDLKeycodeToOSKeyCode(ke->keyCode));
+                            if (ke->type == KeyDown) {
+                                easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke->keyCode));
+                            }
+                            else if (ke->type == KeyUp) {
+                                easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke->keyCode));
+                            }
                         }
-                        else if (box.type == 'M') {
-                            std::lock_guard<std::mutex> lock(mtx);
-                            MouseEvent *me = (MouseEvent*)buf.data();
-                            printf("Mouse move %f %f\n", me->x, me->y);
-                            // int x = me->x ...
-                            // int y = me->y ...
-                            // if (me->type == LDown) {
-                            //     easy_event.sendLDown(me->x, me->y);
-                            // }
-                            // else if (me->type == LUp) {
-                            //     easy_event.sendLUp(me->x, me->y);
-                            // }
-                            // else if (me->type == RDown) {
-                            //     easy_event.sendRDown(me->x, me->y);
-                            // }
-                            // else if (me->type == RUp) {
-                            //     easy_event.sendRUp(me->x, me->y);
-                            // }
-                            // else if (me->type == MouseMove) {
-                            //     easy_event.sendMove(me->x, me->y);
-                            // }
-                        }
+                        // else
+                        // if (box.type == 'M') {
+                        //     MouseEvent *me = (MouseEvent*)buf.data();
+
+                        //     printf("Mouse move %lf %lf\n", me->x, me->y);
+
+                        //     int x = me->x * easy_event.width;
+                        //     int y = me->y * easy_event.height;
+                            
+                        //     if (me->type == LDown) {
+                        //         easy_event.sendLDown(x, y);
+                        //     }
+                        //     else if (me->type == LUp) {
+                        //         easy_event.sendLUp(x, y);
+                        //     }
+                        //     // else if (me->type == RDown) {
+                        //     //     easy_event.sendRDown(x, y);
+                        //     // }
+                        //     // else if (me->type == RUp) {
+                        //     //     easy_event.sendRUp(x, y);
+                        //     // }
+                        //     // else if (me->type == MouseMove) {
+                        //     //     easy_event.sendMove(x, y);
+                        //     // }
+                        // }
                     }
                 );
 
@@ -173,24 +171,22 @@ int main(int argc, char** argv)
                     }
                 );
 
-                // server.elisten(port, "UDP");
+                socketThread2 = std::thread([&server, &port1, &quit](){
+                    server.elisten(port1, "UDP");
 
-                socketThread2 = std::thread([&server, &quit](){
                     while (!quit) {
                         server.UDPReceive();
                     }
                 });
 
-                client.econnect(host, port2, "TCP");
-
-                socketThread = std::thread([&quit, &easy_event, &client]() {
+                socketThread1 = std::thread([&quit, &easy_event, &client]() {
 
                     int id = 0;
 
                     while (!quit)
                     {
                         cv::Mat mat = easy_event.captureScreen();
-                        resize(mat, mat, cv::Size(), 1, 1);
+                        resize(mat, mat, cv::Size(), 0.7, 0.7);
                         // printf("size = %d\n", mat.rows * mat.cols * 3);
 
                         std::vector<uchar> buf;
@@ -201,7 +197,7 @@ int main(int argc, char** argv)
                         // fclose(out);
 
                         PacketBox box;
-                        BufToPacketBox(buf, box, ++id, 'I', MAX_BYTES);
+                        BufToPacketBox(buf, box, ++id, 'I', TCP_MAX_BYTES);
 
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -214,8 +210,8 @@ int main(int argc, char** argv)
                 });
 
             }
-            conn = 2;
-            ImGui::Text("%s", host);
+            connection_phase = 2;
+            ImGui::Text("%s", debug);
         }
 
         ImGui::End();
@@ -231,12 +227,11 @@ int main(int argc, char** argv)
         SDL_GL_SwapWindow(window);
     }
 
-    socketThread.join();
+    socketThread1.join();
     socketThread2.join();
 
     cleanEasyImgui();
     cleanEasySocket();
-    cleanKeyMapping();
 
     return 0;
 }

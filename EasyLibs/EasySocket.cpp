@@ -112,7 +112,7 @@ void EasyServer::setService(std::function<void(SOCKET, char[], int, char[])> ser
 
 void EasyServer::TCPReceive() {
     SOCKET listen_socket = this->listen_socket;
-    char buffer[MAX_BYTES];
+    char buffer[TCP_MAX_BYTES];
     int bytesRead = recv(listen_socket, buffer, sizeof(buffer), 0);
     if (bytesRead <= 0) return;
     // printf("bytesRead = %d\n", bytesRead);
@@ -121,7 +121,7 @@ void EasyServer::TCPReceive() {
 
 void EasyServer::UDPReceive() {
     SOCKET listen_socket = this->listen_socket;
-    char buffer[MAX_BYTES];
+    char buffer[UDP_MAX_BYTES];
     struct sockaddr_in client_address;
     socklen_t client_address_size = sizeof(client_address);
     int bytesRead = recvfrom(listen_socket, buffer, sizeof(buffer), 0, (sockaddr*)&client_address, &client_address_size);
@@ -133,7 +133,7 @@ void EasyServer::UDPReceive() {
     this->service(listen_socket, buffer, bytesRead, ipv4);
 }
 
-void EasyClient::econnect(char* host, char* port, const char* type) {
+bool EasyClient::econnect(char* host, char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -147,18 +147,18 @@ void EasyClient::econnect(char* host, char* port, const char* type) {
     }
     else {
         printf("type error!\n");
-        return;
+        return false;
     }
     int err = getaddrinfo(host, port, &hints, &result);
     if (err) {
         printf("getaddrinfo failed: %d\n", err);
-        return;
+        return false;
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (connect_socket == INVALID_SOCKET) {
         printf("socket failed!\n");
         freeaddrinfo(result);
-        return;
+        return false;
     }
     if (strcmp(type, "TCP") == 0) {
         err = connect(connect_socket, result->ai_addr, (int)result->ai_addrlen);
@@ -169,7 +169,7 @@ void EasyClient::econnect(char* host, char* port, const char* type) {
         if (err == SOCKET_ERROR) {
             printf("connect failed: %d\n", err);
             closesocket(connect_socket);
-            return;
+            return false;
         }
         printf("Connect successful!\n");
     }
@@ -180,6 +180,7 @@ void EasyClient::econnect(char* host, char* port, const char* type) {
         printf("Socket created for UDP communication!\n");
     }
     this->connect_socket = connect_socket;
+    return true;
 }
 
 void EasyClient::eclose() {

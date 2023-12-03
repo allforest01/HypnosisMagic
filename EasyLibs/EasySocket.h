@@ -23,7 +23,8 @@
     #define closesocket close
 #endif
 
-#define MAX_BYTES 1440
+#define TCP_MAX_BYTES 1024
+#define UDP_MAX_BYTES 128
 
 void initEasySocket();
 void cleanEasySocket();
@@ -47,7 +48,7 @@ private:
     struct addrinfo *server_address;
 public:
     EasyClient(): connect_socket(0), server_address(nullptr) {}
-    void econnect(char*, char*, const char*);
+    bool econnect(char*, char*, const char*);
     void eclose();
     bool sendData(char*, int);
 };

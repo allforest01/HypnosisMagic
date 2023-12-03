@@ -10,12 +10,6 @@
 #include "EasyLibs/EasyData.h"
 #include "EasyLibs/EasyImgui.h"
 
-#ifdef WINDOWS
-    #define cur_os win
-#else
-    #define cur_os mac
-#endif
-
 std::mutex mtx;
 
 int main(int argc, char** argv)
@@ -25,57 +19,27 @@ int main(int argc, char** argv)
     windowWidth = 1200;
     windowHeight = 640;
 
-    initKeyMapping();
     initEasySocket();
     initEasyImgui();
 
     EasyClient client;
     EasyServer server;
-    EasyEvent easy_event;
     
-    char code[5] = "0000";
-    char port[6] = "3402";
-    char port2[] = "3403";
+    char passcode[5] = "0000";
+    char port1[6] = "3402";
+    char port2[6] = "3403";
     char host[16] = "127.0.0.1";
 
-    std::thread socketThread;
+    std::thread socketThread1;
     BoxManager boxman;
     GLuint image_texture;
     std::vector<uchar> buf;
+    int width, height, channels, id = 0;
     std::queue<std::vector<uchar>> bufs;
-    int id = 0;
-    int width, height, channels;
 
-    easy_event.setKeyDownCallback([&client, &id](int keyCode) {
-        printf("Keyboard send %d!\n", keyCode);
+    glGenTextures(1, &image_texture);
 
-        KeyboardEvent ke(cur_os, KeyDown, keyCode);
-
-        std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
-        PacketBox box;
-        BufToPacketBox(buf, box, ++id, 'K', MAX_BYTES);
-
-        for (int i = 0; i < (int) box.packets.size(); i++) {
-            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
-        }
-    });
-
-    easy_event.setKeyUpCallback([&client, &id](int keyCode) {
-        printf("Keyboard send %d!\n", keyCode);
-
-        KeyboardEvent ke(cur_os, KeyUp, keyCode);
-
-        std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
-        PacketBox box;
-        BufToPacketBox(buf, box, ++id, 'K', MAX_BYTES);
-
-        for (int i = 0; i < (int) box.packets.size(); i++) {
-            client.sendData((char*)box.packets[i].data(), box.packets[i].size());
-        }
-    });
-
-    // easy_event.startHook();
-
+    bool connected = false;
     bool quit = false;
 
     while (!quit)
@@ -86,6 +50,38 @@ int main(int argc, char** argv)
             ImGui_ImplSDL2_ProcessEvent(&event);
             if (event.type == SDL_QUIT) {
                 quit = true;
+            }
+            else if (connected) {
+                if (event.type == SDL_KEYDOWN) {
+                    // Handle key press events
+                    std::cout << "Key pressed: " << SDL_GetKeyName(event.key.keysym.sym) << " (Code: " << static_cast<int>(event.key.keysym.sym) << ")" << std::endl;
+
+                    int keyCode = static_cast<int>(event.key.keysym.sym);
+                    KeyboardEvent ke(KeyDown, keyCode);
+
+                    std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
+                    PacketBox box;
+                    BufToPacketBox(buf, box, ++id, 'K', UDP_MAX_BYTES);
+
+                    for (int i = 0; i < (int) box.packets.size(); i++) {
+                        client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    }
+
+                } else if (event.type == SDL_KEYUP) {
+                    // Handle key release events
+                    std::cout << "Key released: " << SDL_GetKeyName(event.key.keysym.sym) << " (Code: " << static_cast<int>(event.key.keysym.sym) << ")" << std::endl;
+
+                    int keyCode = static_cast<int>(event.key.keysym.sym);
+                    KeyboardEvent ke(KeyUp, keyCode);
+
+                    std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
+                    PacketBox box;
+                    BufToPacketBox(buf, box, ++id, 'K', UDP_MAX_BYTES);
+
+                    for (int i = 0; i < (int) box.packets.size(); i++) {
+                        client.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    }
+                }
             }
         }
 
@@ -132,45 +128,32 @@ int main(int argc, char** argv)
         ImGui::Text("Port");
         ImGui::SameLine();
         ImGui::PushItemWidth(200);
-        ImGui::InputText("##port", (char*)port, 6);
+        ImGui::InputText("##port1", (char*)port1, 6);
         ImGui::PopItemWidth();
 
         ImGui::Text("Code");
         ImGui::SameLine();
         ImGui::PushItemWidth(135);
-        ImGui::InputText("##code", (char*)code, 5);
+        ImGui::InputText("##passcode", (char*)passcode, 5);
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
         if (ImGui::Button("Connect"))
         {
-            client.econnect(host, port, "UDP");
-            client.sendData(code, 5);
+            client.econnect(host, port1, "UDP");
+            client.sendData(passcode, 5);
             client.eclose();
 
             boxman.setCompleteCallback(
                 [&buf, &bufs](PacketBox& box) {
                     PacketBoxToBuf(box, buf);
-                    // while (bufs.size()) bufs.pop();
-                    if (bufs.size() <= 2) {
-                        // std::lock_guard<std::mutex> lock(mtx);
-                        bufs.push(buf);
-                        printf("pushed!\n");
-                    }
                     if (box.type == 'I')
                     {
-                        // std::lock_guard<std::mutex> lock(mtx);
-
-                        // FILE *out = fopen("image_server.jpg", "wb");
-                        // fwrite(buf.data(), buf.size(), 1, out);
-                        // fclose(out);
-
-                        // imageChanged = false;
-                        // decompressImage(buf, image);
-                        // imageChanged = !image.empty();
-                        // imageChanged = true;
-
-                        // exit(0);
+                        // while (bufs.size()) bufs.pop();
+                        if (bufs.size() <= 2) {
+                            // std::lock_guard<std::mutex> lock(mtx);
+                            bufs.push(buf);
+                        }
                     }
                 }
             );
@@ -182,36 +165,27 @@ int main(int argc, char** argv)
                 }
             );
 
-            server.elisten(port2, "TCP");
+            socketThread1 = std::thread([&server, &port2, &quit](){
+                server.elisten(port2, "TCP");
 
-            socketThread = std::thread([&server, &quit](){
                 while (!quit) {
                     server.TCPReceive();
                 }
             });
 
-            // client.econnect(host, port, "UDP");
+            while (!client.econnect(host, port1, "UDP"));
+
+            connected = true;
         }
 
         ImGui::End();
 
         // GUI when connect to client
-        // std::lock_guard<std::mutex> lock(mtx);
         if (bufs.size()) {
-            printf("bufs.size() = %d\n", bufs.size());
-            // MatToTexture(image, image_texture);
-            // while (bufs.size() > 1) bufs.pop();
             // std::lock_guard<std::mutex> lock(mtx);
             auto cur_buf = bufs.front(); bufs.pop();
             BufToTexture(cur_buf, image_texture, width, height, channels);
-            // FILE *out = fopen("image_server.jpg", "wb");
-            // fwrite(buf.data(), buf.size(), 1, out);
-            // fclose(out);
         }
-        // if (image.rows) {
-        //     cv::imshow("image", image);
-        //     cv::waitKey(1);
-        // }
 
         ImGui::SetNextWindowPos(ImVec2(10, 30));
         ImGui::SetNextWindowSize(ImVec2(922, 600));
@@ -258,17 +232,18 @@ int main(int argc, char** argv)
         ImGui::End();
 
         // // Event processing
-        // if (isFocused)
+        // if (isHovered && isFocused)
         // {
-        //     easy_event.msgLoop();
+        //     double x = mousePositionRelative.x / width;
+        //     double y = mousePositionRelative.y / height;
 
-        //     printf("Mouse send! %f %f\n", mousePositionRelative.x, mousePositionRelative.y);
+        //     printf("Mouse send! %lf %lf\n", x, y);
 
-        //     MouseEvent me(MouseMove, mousePositionRelative.x, mousePositionRelative.y);
+        //     MouseEvent me(MouseMove, x, y);
 
         //     std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
         //     PacketBox box;
-        //     BufToPacketBox(buf, box, ++id, 'M', 256);
+        //     BufToPacketBox(buf, box, ++id, 'M', UDP_MAX_BYTES);
 
         //     for (int i = 0; i < (int) box.packets.size(); i++) {
         //         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -288,13 +263,10 @@ int main(int argc, char** argv)
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
-    // easy_event.stopHook();
-
-    socketThread.join();
+    socketThread1.join();
 
     cleanEasyImgui();
     cleanEasySocket();
-    cleanKeyMapping();
 
     return 0;
 }

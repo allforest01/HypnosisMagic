@@ -11,3 +11,5 @@ main.exe
 *.ini
 image_client.jpg
 image_server.jpg
+test
+test.cpp
