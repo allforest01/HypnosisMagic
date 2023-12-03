@@ -173,7 +173,7 @@ int main(int argc, char** argv)
                     server.elisten(port1, "TCP");
 
                     while (!quit) {
-                        server.TCPReceive(64);
+                        server.TCPReceive(24);
                     }
                 });
 

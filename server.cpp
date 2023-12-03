@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 
                     std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
                     PacketBox box;
-                    BufToPacketBox(buf, box, ++id, 'K', 64);
+                    BufToPacketBox(buf, box, ++id, 'K', 24);
 
                     for (int i = 0; i < (int) box.packets.size(); i++) {
                         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -81,7 +81,7 @@ int main(int argc, char** argv)
 
                     std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
                     PacketBox box;
-                    BufToPacketBox(buf, box, ++id, 'K', 64);
+                    BufToPacketBox(buf, box, ++id, 'K', 24);
 
                     for (int i = 0; i < (int) box.packets.size(); i++) {
                         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -100,7 +100,7 @@ int main(int argc, char** argv)
 
                         std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
                         PacketBox box;
-                        BufToPacketBox(buf, box, ++id, 'M', 64);
+                        BufToPacketBox(buf, box, ++id, 'M', 24);
 
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 
                         std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
                         PacketBox box;
-                        BufToPacketBox(buf, box, ++id, 'M', 64);
+                        BufToPacketBox(buf, box, ++id, 'M', 24);
 
                         for (int i = 0; i < (int) box.packets.size(); i++) {
                             client.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -142,7 +142,7 @@ int main(int argc, char** argv)
 
                     std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
                     PacketBox box;
-                    BufToPacketBox(buf, box, ++id, 'M', 64);
+                    BufToPacketBox(buf, box, ++id, 'M', 24);
 
                     for (int i = 0; i < (int) box.packets.size(); i++) {
                         client.sendData((char*)box.packets[i].data(), box.packets[i].size());
