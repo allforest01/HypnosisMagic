@@ -1,4 +1,5 @@
 #define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_RESIZE2_IMPLEMENTATION
 #include "EasyImage.h"
 
 // Texture2D MatToTexture(const cv::Mat& rgbImage) {
@@ -25,8 +26,7 @@ void MatToTexture(const cv::Mat& bgrImage, GLuint& textureID) {
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 
-void BufToTexture(std::vector<uchar>& buf, GLuint& textureID, int& width, int& height, int& channels) {
-    unsigned char* imageData = stbi_load_from_memory(buf.data(), buf.size(), &width, &height, &channels, 3);
+void ImageToTexture(unsigned char* imageData, GLuint& textureID, int& width, int& height, int& channels) {
 
     glBindTexture(GL_TEXTURE_2D, textureID);
 
@@ -36,8 +36,6 @@ void BufToTexture(std::vector<uchar>& buf, GLuint& textureID, int& width, int& h
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, imageData);
-
-    stbi_image_free(imageData);
 
     glBindTexture(GL_TEXTURE_2D, 0);
 }

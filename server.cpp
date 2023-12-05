@@ -41,8 +41,15 @@ GLuint image_texture;
 std::vector<uchar> buf;
 int width, height, channels;
 std::queue<std::vector<uchar>> bufs;
+int scaled_width, scaled_height;
+int startX, startY;
+
+// std::mutex mtx1, mtx2;
 
 void HandleEvents() {
+    // std::lock_guard<std::mutex> lock1(mtx1);
+    // std::lock_guard<std::mutex> lock2(mtx2);
+
     // SDL poll event
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -56,15 +63,15 @@ void HandleEvents() {
             else if (event.type == SDL_KEYUP) keyboard_events.push(KeyboardEvent(KeyUp, event.key.keysym.sym));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LDown, event.button.x - 20,  event.button.y - 60));
-                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RDown, event.button.x - 20,  event.button.y - 60));
+                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LDown, event.button.x - startX,  event.button.y - startY));
+                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RDown, event.button.x - startX,  event.button.y - startY));
             }
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LUp, event.button.x - 20,  event.button.y - 60));
-                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RUp, event.button.x - 20,  event.button.y - 60));
+                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LUp, event.button.x - startX,  event.button.y - startY));
+                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RUp, event.button.x - startX,  event.button.y - startY));
             }
-            else if (event.type == SDL_MOUSEMOTION) mouse_events.push(MouseEvent(MouseMove, event.button.x - 20,  event.button.y - 60));
+            else if (event.type == SDL_MOUSEMOTION) mouse_events.push(MouseEvent(MouseMove, event.button.x - startX,  event.button.y - startY));
         }
     }
 }
@@ -111,6 +118,8 @@ void ConnectButtonHandle() {
     
                 me.x /= width;
                 me.y /= height;
+
+                if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
 
                 printf("Mouse event %lf %lf\n", me.x, me.y);
 
@@ -214,41 +223,76 @@ void ConnectToClientWindow() {
     ImGui::End();
 }
 
-void ConvertImage() {
-    if (bufs.size()) {
-        auto cur_buf = bufs.front(); bufs.pop();
-        BufToTexture(cur_buf, image_texture, width, height, channels);
-    }
-}
-
 void ScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
     ImGui::SetNextWindowSize(ImVec2(922, 600));
 
     ImGui::Begin("Screen");
 
-    ConvertImage();
+    if (bufs.size()) {
+        auto cur_buf = bufs.front(); bufs.pop();
 
-    ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
-    float window_aspect = window_avail_size.x / window_avail_size.y;
-    float image_aspect = width / (float)height;
+        unsigned char* imageData = stbi_load_from_memory(cur_buf.data(), cur_buf.size(), &width, &height, &channels, 3);
 
-    float scale;
-    if (window_aspect > image_aspect) {
-        // Window is wider than the image
-        scale = window_avail_size.y / height;
-    } else {
-        // Window is narrower than the image
-        scale = window_avail_size.x / width;
+        ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
+        float window_aspect = window_avail_size.x / window_avail_size.y;
+        float image_aspect = (float) width / height;
+
+        float scale;
+        if (window_aspect > image_aspect) {
+            // Window is wider than the image
+            scale = window_avail_size.y / height;
+        } else {
+            // Window is narrower than the image
+            scale = window_avail_size.x / width;
+        }
+
+        scaled_width = width * scale;
+        scaled_height = height * scale;
+
+        // unsigned char* scaledImage = new unsigned char[scaled_width * scaled_height * channels];
+
+        // stbir_resize_uint8_linear(imageData, width, height, 0, scaledImage, scaled_width, scaled_height, 0, STBIR_BGR);
+
+        ImageToTexture(imageData, image_texture, width, height, channels);
+
+        stbi_image_free(imageData);
+
+        // delete[] scaledImage;
     }
-
-    float scaled_width = width * scale;
-    float scaled_height = height * scale;
 
     ImGui::ImageButton((void*)(intptr_t)image_texture, ImVec2(scaled_width, scaled_height));
 
     isHovered = ImGui::IsItemHovered();
     isFocused = ImGui::IsItemFocused();
+
+    startX = ImGui::GetItemRectMin().x;
+    startY = ImGui::GetItemRectMin().y;
+
+    if (!isHovered || !isFocused) {
+        std::queue<MouseEvent>().swap(mouse_events);
+        std::queue<KeyboardEvent>().swap(keyboard_events);
+    }
+
+    // std::thread pushMouseEvent([](){
+    //     std::lock_guard<std::mutex> lock(mtx1);
+    //     while (mouse_events_tmp.size()) {
+    //         if (isHovered) mouse_events.push(mouse_events_tmp.front());
+    //         mouse_events_tmp.pop();
+    //     }
+    // });
+
+    // pushMouseEvent.detach();
+
+    // std::thread pushKeyboardEvent([](){
+    //     std::lock_guard<std::mutex> lock(mtx2);
+    //     while (keyboard_events_tmp.size()) {
+    //         if (isHovered) keyboard_events.push(keyboard_events_tmp.front());
+    //         keyboard_events_tmp.pop();
+    //     }
+    // });
+
+    // pushKeyboardEvent.detach();
 
     ImGui::End();
 }
