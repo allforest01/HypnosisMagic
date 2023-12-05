@@ -23,14 +23,17 @@ EasyServer server_passcode, server_mouse, server_keyboard;
 EasyClient client_screen;
 
 std::thread thread_passcode, thread_screen, thread_mouse, thread_keyboard;
+std::thread thread_mouse_events, thread_keyboard_events;
 
-BoxManager boxman;
+BoxManager boxman_mouse, boxman_keyboard;
 
 bool quit = false, waiting = false;
 
 EasyEvent easy_event;
 int connection_phase = 0;
 char debug[256] = "Debug message";
+std::queue<KeyboardEvent> keyboard_events;
+std::queue<MouseEvent> mouse_events;
 
 void HandleEvents() {
     // SDL poll event
@@ -134,63 +137,9 @@ void ConnectedWindow() {
         server_passcode.eclose();
         thread_passcode.join();
 
-        while (!client_screen.econnect(host, port_screen, "TCP"));
-
-        thread_mouse = std::thread([]()
-        {
-            boxman.setCompleteCallback([](PacketBox& box) {
-                std::vector<uchar> buf;
-                PacketBoxToBuf(box, buf);
-                if (box.type == 'K')
-                {
-                    KeyboardEvent *ke = (KeyboardEvent*)buf.data();
-                    if (ke->type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke->keyCode));
-                    else if (ke->type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke->keyCode));
-                }
-                else if (box.type == 'M')
-                {
-                    MouseEvent *me = (MouseEvent*)buf.data();
-
-                    int x = round(me->x * easy_event.width);
-                    int y = round(me->y * easy_event.height);
-
-                    sprintf(debug, "Send Mouse %d %d\n", x, y);
-
-                    if (me->type == LDown) easy_event.sendLDown(x, y);
-                    else if (me->type == LUp) easy_event.sendLUp(x, y);
-                    else if (me->type == RDown) easy_event.sendRDown(x, y);
-                    else if (me->type == RUp) easy_event.sendRUp(x, y);
-                    else if (me->type == MouseMove) easy_event.sendMove(x, y);
-                }
-            });
-
-            server_mouse.setService(
-                [](SOCKET sock, char data[], int size, char host[]) {
-                    std::vector<uchar> buf(data, data + size);
-                    boxman.addPacketToBox(buf);
-                }
-            );
-
-            server_mouse.elisten(port_mouse, "TCP");
-
-            while (!quit) server_mouse.TCPReceive(24);
-        });
-
-        thread_keyboard = std::thread([]()
-        {
-            server_keyboard.setService(
-                [](SOCKET sock, char data[], int size, char host[]) {
-                    std::vector<uchar> buf(data, data + size);
-                    boxman.addPacketToBox(buf);
-                }
-            );
-
-            server_keyboard.elisten(port_keyboard, "TCP");
-
-            while (!quit) server_keyboard.TCPReceive(24);
-        });
-
         thread_screen = std::thread([]() {
+
+            while (!client_screen.econnect(host, port_screen, "TCP"));
 
             int id = 0;
 
@@ -211,6 +160,81 @@ void ConnectedWindow() {
                 std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
 
+        });
+
+        thread_mouse = std::thread([]()
+        {
+            boxman_mouse.setCompleteCallback([](PacketBox& box) {
+                std::vector<uchar> buf;
+                PacketBoxToBuf(box, buf);
+                if (box.type == 'M')
+                {
+                    mouse_events.push(*(MouseEvent*)buf.data());
+                }
+            });
+
+            server_mouse.setService(
+                [](SOCKET sock, char data[], int size, char host[]) {
+                    std::vector<uchar> buf(data, data + size);
+                    boxman_mouse.addPacketToBox(buf);
+                }
+            );
+
+            server_mouse.elisten(port_mouse, "TCP");
+
+            while (!quit) server_mouse.TCPReceive(26);
+        });
+
+        thread_keyboard = std::thread([]()
+        {
+            boxman_keyboard.setCompleteCallback([](PacketBox& box) {
+                std::vector<uchar> buf;
+                PacketBoxToBuf(box, buf);
+                if (box.type == 'K')
+                {
+                    keyboard_events.push(*(KeyboardEvent*)buf.data());
+                }
+            });
+
+            server_keyboard.setService(
+                [](SOCKET sock, char data[], int size, char host[]) {
+                    std::vector<uchar> buf(data, data + size);
+                    boxman_keyboard.addPacketToBox(buf);
+                }
+            );
+
+            server_keyboard.elisten(port_keyboard, "TCP");
+
+            while (!quit) server_keyboard.TCPReceive(14);
+        });
+
+        thread_mouse_events = std::thread([]() {
+            while (!quit) {
+                if (mouse_events.size()) {
+                    MouseEvent me = mouse_events.front(); mouse_events.pop();
+
+                    int x = round(me.x * easy_event.width);
+                    int y = round(me.y * easy_event.height);
+
+                    sprintf(debug, "Send Mouse %d %d\n", x, y);
+
+                    if (me.type == LDown) easy_event.sendLDown(x, y);
+                    else if (me.type == LUp) easy_event.sendLUp(x, y);
+                    else if (me.type == RDown) easy_event.sendRDown(x, y);
+                    else if (me.type == RUp) easy_event.sendRUp(x, y);
+                    else if (me.type == MouseMove) easy_event.sendMove(x, y);
+                }
+            }
+        });
+
+        thread_keyboard_events = std::thread([]() {
+            while (!quit) {
+                if (keyboard_events.size()) {
+                    KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                    if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                    else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+                }
+            }
         });
     }
 
@@ -246,6 +270,8 @@ int main(int argc, char** argv)
     thread_screen.join();
     thread_mouse.join();
     thread_keyboard.join();
+    thread_mouse_events.join();
+    thread_keyboard_events.join();
 
     cleanEasyImgui();
     cleanEasySocket();

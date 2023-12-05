@@ -34,39 +34,41 @@ std::vector<uchar> buf;
 int width, height, channels;
 std::queue<std::vector<uchar>> bufs;
 
-void TransmitKeyboardEvents(keytype type, int keycode) {
-    static int id = 0;
-
-    if (type == KeyDown) std::cout << "Key pressed: " << keycode << std::endl;
-    else if (type == KeyUp) std::cout << "Key released: " << keycode << std::endl;
-
-    KeyboardEvent ke(type, keycode);
-
-    std::vector<uchar> buf((char*)&ke, (char*)(&ke + sizeof(ke)));
-    PacketBox box;
-    BufToPacketBox(buf, box, ++id, 'K', 24);
-
-    for (int i = 0; i < (int) box.packets.size(); i++) {
-        client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
-    }
-}
-
 void TransmitMouseEvents(mousetype type, int ix, int iy) {
     static int id = 0;
     
     double x = (double) ix / width;
     double y = (double) iy / height;
 
-    printf("Mouse event %lf %lf\n", x, y);
+    // printf("Mouse event %lf %lf\n", x, y);
 
     MouseEvent me(type, x, y);
 
-    std::vector<uchar> buf((char*)&me, (char*)(&me + sizeof(me)));
+    std::vector<uchar> buf((char*)&me, (char*)(&me) + sizeof(me));
+    std::cout << "mouse buf.size() = " << buf.size() << '\n';
     PacketBox box;
-    BufToPacketBox(buf, box, ++id, 'M', 24);
+    BufToPacketBox(buf, box, ++id, 'M', 26);
 
     for (int i = 0; i < (int) box.packets.size(); i++) {
         client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+    }
+}
+
+void TransmitKeyboardEvents(keytype type, int keycode) {
+    static int id = 0;
+
+    if (type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(keycode) << std::endl;
+    else if (type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(keycode) << std::endl;
+
+    KeyboardEvent ke(type, keycode);
+
+    std::vector<uchar> buf((char*)&ke, (char*)(&ke) + sizeof(ke));
+    std::cout << "keyboard buf.size() = " << buf.size() << '\n';
+    PacketBox box;
+    BufToPacketBox(buf, box, ++id, 'K', 14);
+
+    for (int i = 0; i < (int) box.packets.size(); i++) {
+        client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
     }
 }
 
@@ -78,7 +80,7 @@ void HandleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && isFocused && isHovered)
+        else if (connected)
         {
             if (event.type == SDL_KEYDOWN) TransmitKeyboardEvents(KeyDown, static_cast<int>(event.key.keysym.sym));
             else if (event.type == SDL_KEYUP) TransmitKeyboardEvents(KeyUp, static_cast<int>(event.key.keysym.sym));

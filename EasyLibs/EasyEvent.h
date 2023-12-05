@@ -18,17 +18,21 @@
 enum keytype { KeyDown, KeyUp };
 enum mousetype { LDown, LUp, RDown, RUp, MouseMove };
 
+#pragma pack(push, 1)
 struct KeyboardEvent {
     keytype type; int keyCode;
     KeyboardEvent(keytype type, int keyCode):
         type(type), keyCode(keyCode) {}
 };
+#pragma pack(pop)
 
+#pragma pack(push, 1)
 struct MouseEvent {
     mousetype type; double x, y;
     MouseEvent(mousetype type, double x, double y):
         type(type), x(x), y(y) {}
 };
+#pragma pack(pop)
 
 class EasyEvent {
 
