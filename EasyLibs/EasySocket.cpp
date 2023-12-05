@@ -118,7 +118,7 @@ void EasyServer::TCPReceive(int max_bytes) {
         delete[] buffer;
         return;
     }
-    printf("bytesRead = %d\n", bytesRead);
+    // printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, NULL);
     delete[] buffer;
 }
@@ -136,7 +136,7 @@ void EasyServer::UDPReceive(int max_bytes) {
         delete[] buffer;
         return;
     }
-    printf("bytesRead = %d\n", bytesRead);
+    // printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, ipv4);
     delete[] buffer;
 }
@@ -207,6 +207,6 @@ bool EasyClient::sendData(char* data, int size) {
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    printf("UDP bytesSend = %d\n", bytesSend);
+    // printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
 }

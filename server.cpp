@@ -19,12 +19,20 @@
 char host[16] = "127.0.0.1";
 char passcode[5] = "0000";
 
-EasyClient client_passcode, client_mouse, client_keyboard;
+EasyClient client_passcode;
+EasyClient client_mouse;
+EasyClient client_keyboard;
 EasyServer server_screen;
 
+// std::thread thread_passcode;
 std::thread thread_screen;
+std::thread thread_mouse;
+std::thread thread_keyboard;
 
-BoxManager boxman;
+std::queue<MouseEvent> mouse_events;
+std::queue<KeyboardEvent> keyboard_events;
+
+BoxManager boxman_screen;
 
 bool quit = false, connected = false;
 
@@ -34,44 +42,6 @@ std::vector<uchar> buf;
 int width, height, channels;
 std::queue<std::vector<uchar>> bufs;
 
-void TransmitMouseEvents(mousetype type, int ix, int iy) {
-    static int id = 0;
-    
-    double x = (double) ix / width;
-    double y = (double) iy / height;
-
-    // printf("Mouse event %lf %lf\n", x, y);
-
-    MouseEvent me(type, x, y);
-
-    std::vector<uchar> buf((char*)&me, (char*)(&me) + sizeof(me));
-    std::cout << "mouse buf.size() = " << buf.size() << '\n';
-    PacketBox box;
-    BufToPacketBox(buf, box, ++id, 'M', 26);
-
-    for (int i = 0; i < (int) box.packets.size(); i++) {
-        client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
-    }
-}
-
-void TransmitKeyboardEvents(keytype type, int keycode) {
-    static int id = 0;
-
-    if (type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(keycode) << std::endl;
-    else if (type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(keycode) << std::endl;
-
-    KeyboardEvent ke(type, keycode);
-
-    std::vector<uchar> buf((char*)&ke, (char*)(&ke) + sizeof(ke));
-    std::cout << "keyboard buf.size() = " << buf.size() << '\n';
-    PacketBox box;
-    BufToPacketBox(buf, box, ++id, 'K', 14);
-
-    for (int i = 0; i < (int) box.packets.size(); i++) {
-        client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
-    }
-}
-
 void HandleEvents() {
     // SDL poll event
     SDL_Event event;
@@ -80,21 +50,21 @@ void HandleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected)
+        else if (connected && isFocused && isHovered)
         {
-            if (event.type == SDL_KEYDOWN) TransmitKeyboardEvents(KeyDown, static_cast<int>(event.key.keysym.sym));
-            else if (event.type == SDL_KEYUP) TransmitKeyboardEvents(KeyUp, static_cast<int>(event.key.keysym.sym));
+            if (event.type == SDL_KEYDOWN) keyboard_events.push(KeyboardEvent(KeyDown, event.key.keysym.sym));
+            else if (event.type == SDL_KEYUP) keyboard_events.push(KeyboardEvent(KeyUp, event.key.keysym.sym));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) TransmitMouseEvents(LDown, event.button.x - 20, event.button.y - 60);
-                else if (event.button.button == SDL_BUTTON_RIGHT) TransmitMouseEvents(RDown, event.button.x - 20, event.button.y - 60);
+                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LDown, event.button.x - 20,  event.button.y - 60));
+                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RDown, event.button.x - 20,  event.button.y - 60));
             }
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) TransmitMouseEvents(LUp, event.button.x - 20, event.button.y - 60);
-                else if (event.button.button == SDL_BUTTON_RIGHT) TransmitMouseEvents(RUp, event.button.x - 20, event.button.y - 60);
+                if (event.button.button == SDL_BUTTON_LEFT) mouse_events.push(MouseEvent(LUp, event.button.x - 20,  event.button.y - 60));
+                else if (event.button.button == SDL_BUTTON_RIGHT) mouse_events.push(MouseEvent(RUp, event.button.x - 20,  event.button.y - 60));
             }
-            else if (event.type == SDL_MOUSEMOTION) TransmitMouseEvents(MouseMove, event.button.x - 20, event.button.y - 60);
+            else if (event.type == SDL_MOUSEMOTION) mouse_events.push(MouseEvent(MouseMove, event.button.x - 20,  event.button.y - 60));
         }
     }
 }
@@ -108,7 +78,7 @@ void ConnectButtonHandle() {
     // Receive screen capture
     thread_screen = std::thread([]()
     {
-        boxman.setCompleteCallback([](PacketBox& box) {
+        boxman_screen.setCompleteCallback([](PacketBox& box) {
             PacketBoxToBuf(box, buf);
             if (box.type == 'I') {
                 if (bufs.size() <= 2) bufs.push(buf);
@@ -118,7 +88,7 @@ void ConnectButtonHandle() {
         server_screen.setService(
             [](SOCKET sock, char data[], int size, char host[]) {
                 std::vector<uchar> buf(data, data + size);
-                boxman.addPacketToBox(buf);
+                boxman_screen.addPacketToBox(buf);
             }
         );
 
@@ -127,11 +97,63 @@ void ConnectButtonHandle() {
         while (!quit) server_screen.TCPReceive(1440);
     });
 
-    // client_mouse send mouse events
-    while (!client_mouse.econnect(host, port_mouse, "TCP"));
+    thread_screen.detach();
 
-    // client_keyboard send keyboard events
-    while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
+    thread_mouse = std::thread([](){
+        // client_mouse send mouse events
+        while (!client_mouse.econnect(host, port_mouse, "TCP"));
+
+        while (!quit) {
+            if (mouse_events.size()) {
+                MouseEvent me = mouse_events.front(); mouse_events.pop();
+
+                static int id = 0;
+    
+                me.x /= width;
+                me.y /= height;
+
+                printf("Mouse event %lf %lf\n", me.x, me.y);
+
+                std::vector<uchar> buf((char*)&me, (char*)(&me) + sizeof(me));
+                // std::cout << "mouse buf.size() = " << buf.size() << '\n';
+                PacketBox box;
+                BufToPacketBox(buf, box, ++id, 'M', 26);
+
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                }
+            }
+        }
+    });
+
+    thread_mouse.detach();
+
+    thread_keyboard = std::thread([](){
+        // client_keyboard send keyboard events
+        while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
+
+        while (!quit) {
+            if (keyboard_events.size()) {
+                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+
+                static int id = 0;
+
+                if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+                else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+
+                std::vector<uchar> buf((char*)&ke, (char*)(&ke) + sizeof(ke));
+                // std::cout << "keyboard buf.size() = " << buf.size() << '\n';
+                PacketBox box;
+                BufToPacketBox(buf, box, ++id, 'K', 14);
+
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                }
+            }
+        }
+    });
+
+    thread_keyboard.detach();
 
     // Connected!
     connected = true;
@@ -192,11 +214,20 @@ void ConnectToClientWindow() {
     ImGui::End();
 }
 
+void ConvertImage() {
+    if (bufs.size()) {
+        auto cur_buf = bufs.front(); bufs.pop();
+        BufToTexture(cur_buf, image_texture, width, height, channels);
+    }
+}
+
 void ScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
     ImGui::SetNextWindowSize(ImVec2(922, 600));
 
     ImGui::Begin("Screen");
+
+    ConvertImage();
 
     ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
     float window_aspect = window_avail_size.x / window_avail_size.y;
@@ -234,13 +265,6 @@ void MouseEventInfoWindow() {
     ImGui::End();
 }
 
-void ConvertImage() {
-    if (bufs.size()) {
-        auto cur_buf = bufs.front(); bufs.pop();
-        BufToTexture(cur_buf, image_texture, width, height, channels);
-    }
-}
-
 void StartNewFrame() {
     // Start a new ImGui frame
     ImGui_ImplOpenGL2_NewFrame();
@@ -258,6 +282,9 @@ void Rendering() {
 
     // Swap buffers
     SDL_GL_SwapWindow(window);
+
+    // Introduce a delay to reduce CPU usage
+    SDL_Delay(16);
 }
 
 int main(int argc, char** argv)
@@ -275,15 +302,14 @@ int main(int argc, char** argv)
     {
         HandleEvents();
         StartNewFrame();
+
         MenuBar();
         ConnectToClientWindow();
-        ConvertImage();
         ScreenWindow();
         MouseEventInfoWindow();
+
         Rendering();
     }
-
-    thread_screen.join();
 
     cleanEasyImgui();
     cleanEasySocket();
