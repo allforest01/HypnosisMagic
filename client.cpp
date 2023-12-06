@@ -11,15 +11,16 @@
 #include "EasyLibs/EasyImgui.h"
 #include "EasyLibs/EasyKeyCode.h"
 
-#define port_passcoode "3401"
-#define port_screen    "3402"
-#define port_mouse     "3403"
-#define port_keyboard  "3404"
+#define port_passcode "3401"
+#define port_screen   "3402"
+#define port_mouse    "3403"
+#define port_keyboard "3404"
 
 char host[16] = "127.0.0.1";
-char passcode[5] = "0000";
+char passcode[7] = "000000";
 
 EasyServer server_passcode;
+EasyClient client_passcode;
 EasyServer server_mouse;
 EasyServer server_keyboard;
 EasyClient client_screen;
@@ -29,10 +30,10 @@ std::thread thread_screen;
 std::thread thread_mouse;
 std::thread thread_keyboard_socket, thread_keyboard_events;
 
+BoxManager boxman_mouse, boxman_keyboard;
+
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_keyboard;
-
-BoxManager boxman_mouse, boxman_keyboard;
 
 bool quit = false, waiting = false;
 
@@ -75,6 +76,8 @@ void Rendering() {
 
 void StartButtonHandle() {
     // waiting for a connection
+    waiting = true;
+
     for (int i = 0; i < 4; i++) {
         passcode[i] = rand() % 10 + '0';
     }
@@ -82,27 +85,30 @@ void StartButtonHandle() {
     thread_passcode = std::thread([](){
         server_passcode.setService(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
-                if (!strcmp(data, passcode) || !strcmp(data, "0000")) {
+                if (!strcmp(data, passcode) || !strcmp(data, "000000")) {
                     strcpy(host, ipv4);
+                    printf("host = %s\n", host);
+                    fflush(stdout);
                     waiting = false;
                     connection_phase = 1;
                 }
             }
         );
 
-        server_passcode.elisten(port_passcoode, "UDP");
+        server_passcode.elisten(port_passcode, "UDP");
         
         while (!quit && waiting) {
-            server_passcode.UDPReceive(5);
+            server_passcode.UDPReceive(7);
         }
 
         server_passcode.eclose();
         
+        while (!client_passcode.econnect(host, port_passcode, "TCP"));
+        client_passcode.eclose();
+
     });
     
     thread_passcode.detach();
-
-    waiting = true;
 }
 
 void ListeningWindow() {
@@ -112,7 +118,7 @@ void ListeningWindow() {
     // Open UDP socket to waiting for connect from server
     ImGui::Text("Open a port to waiting for a connection");
     ImGui::PushItemWidth(200);
-    ImGui::InputText("##port_passcode", (char*)port_passcoode, 6);
+    ImGui::InputText("##port_passcode", (char*)port_passcode, 6);
     ImGui::PopItemWidth();
 
     ImGui::SameLine();
@@ -140,34 +146,6 @@ void waitingingWindow() {
 }
 
 void FirstPhaseHandle() {
-
-    thread_screen = std::thread([]() {
-
-        while (!client_screen.econnect(host, port_screen, "UDP"));
-
-        int id = 0;
-
-        while (!quit)
-        {
-            cv::Mat mat = easy_event.captureScreen();
-            resize(mat, mat, cv::Size(), 0.7, 0.7);
-
-            std::vector<uchar> buf;
-            compressImage(mat, buf, 70);
-
-            PacketBox box;
-            BufToPacketBox(buf, box, ++id, 'I', 128);
-
-            for (int i = 0; i < (int) box.packets.size(); i++) {
-                client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-            printf("%d\n", box.packets.size());
-        }
-
-    });
-
-    thread_screen.detach();
 
     thread_mouse = std::thread([]()
     {
@@ -249,6 +227,36 @@ void FirstPhaseHandle() {
     });
 
     thread_keyboard_events.detach();
+
+    thread_screen = std::thread([]() {
+
+        while (!client_screen.econnect(host, port_screen, "UDP"));
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+        while (!quit)
+        {
+            static int id = 0;
+
+            cv::Mat mat = easy_event.captureScreen();
+            resize(mat, mat, cv::Size(), 0.7, 0.7);
+
+            std::vector<uchar> buf;
+            compressImage(mat, buf, 70);
+
+            PacketBox box;
+            BufToPacketBox(buf, box, ++id, 'I', 128);
+
+            for (int i = 0; i < (int) box.packets.size(); i++) {
+                client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            // printf("%d\n", box.packets.size());
+        }
+
+    });
+
+    thread_screen.detach();
 }
 
 void ConnectedWindow() {

@@ -53,8 +53,8 @@ void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
     // printf("Hehe!");
     this->boxs[id].addPacket(packet);
     if (num == this->boxs[id].packets.size()) {
-        printf("num = %d\n", num);
-        printf("size = %d\n", this->boxs[id].packets.size());
+        // printf("num = %d\n", num);
+        // printf("size = %d\n", this->boxs[id].packets.size());
         this->boxs[id].sort();
         this->onComplete(this->boxs[id]);
         this->boxs.erase(id);

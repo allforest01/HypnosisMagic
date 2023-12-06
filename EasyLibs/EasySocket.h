@@ -31,6 +31,7 @@ private:
     SOCKET listen_socket;
     std::function<void(SOCKET, char[], int, char[])> service;
 public:
+    struct sockaddr_in client_address;
     EasyServer(): listen_socket(0), service(nullptr) {}
     void elisten(char*, const char*);
     void eclose();
@@ -49,3 +50,5 @@ public:
     void eclose();
     bool sendData(char*, int);
 };
+
+bool broadcast(char*, char*, int, int);

@@ -13,6 +13,7 @@ void initEasySocket() {
             WSACleanup();
             return;
         }
+        printf("WSAStartup successful!\n");
     #endif
 }
 
@@ -65,7 +66,8 @@ void EasyServer::elisten(char* port, const char* type) {
         }
         printf("Listening port %s...\n", port);
         SOCKET ClientSocket;
-        ClientSocket = accept(ListenSocket, NULL, NULL);
+        socklen_t client_address_size = sizeof(this->client_address);
+        ClientSocket = accept(ListenSocket, (sockaddr*)(&this->client_address), &client_address_size);
         if (ClientSocket == INVALID_SOCKET) {
             printf("accept failed!\n");
             closesocket(ListenSocket);
@@ -170,12 +172,12 @@ bool EasyClient::econnect(char* host, char* port, const char* type) {
     }
     if (strcmp(type, "TCP") == 0) {
         err = connect(connect_socket, result->ai_addr, (int)result->ai_addrlen);
-        char ipv4[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
-        printf("from address = %s\n", ipv4);
+        // char ipv4[INET_ADDRSTRLEN];
+        // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
         freeaddrinfo(result);
         if (err == SOCKET_ERROR) {
             printf("connect failed: %d\n", err);
+            // printf("to address = %s\n", ipv4);
             closesocket(connect_socket);
             return false;
         }
@@ -209,4 +211,30 @@ bool EasyClient::sendData(char* data, int size) {
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
     // printf("UDP bytesSend = %d\n", bytesSend);
     return bytesSend;
+}
+
+bool broadcast(char* port, char* message, int size, int host = INADDR_BROADCAST) {
+    SOCKET udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (udpSocket == -1) {
+        printf("Socket creation failed");
+        return false;
+    }
+
+    int broadcastEnable = 1;
+    if (setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcastEnable, sizeof(broadcastEnable)) == SOCKET_ERROR) {
+        printf("Failed to enable broadcast\n");
+        closesocket(udpSocket);
+        return false;
+    }
+    
+    sockaddr_in serverAddr;
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons(atoi(port));
+    serverAddr.sin_addr.s_addr = host;
+
+    bool result = (sendto(udpSocket, message, size, 0, (sockaddr*)&serverAddr, sizeof(serverAddr)) != SOCKET_ERROR);
+
+    closesocket(udpSocket);
+
+    return result;
 }
