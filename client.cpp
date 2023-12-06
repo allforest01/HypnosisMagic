@@ -35,10 +35,9 @@ BoxManager boxman_mouse, boxman_keyboard;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_keyboard;
 
-bool quit = false, waiting = false;
+bool quit = false, waiting = false, connected = false;
 
 EasyEvent easy_event;
-int connection_phase = 0;
 char debug[256] = "Debug message";
 
 void HandleEvents() {
@@ -90,7 +89,7 @@ void StartButtonHandle() {
                     printf("host = %s\n", host);
                     fflush(stdout);
                     waiting = false;
-                    connection_phase = 1;
+                    connected = 1;
                 }
             }
         );
@@ -105,6 +104,115 @@ void StartButtonHandle() {
         
         while (!client_passcode.econnect(host, port_passcode, "TCP"));
         client_passcode.eclose();
+
+        boxman_mouse.setCompleteCallback([](PacketBox& box) {
+            std::vector<uchar> buf;
+            PacketBoxToBuf(box, buf);
+            if (box.type == 'M')
+            {
+                MouseEvent &me = *(MouseEvent*)buf.data();
+                
+                int x = round(me.x * easy_event.width);
+                int y = round(me.y * easy_event.height);
+
+                sprintf(debug, "Send Mouse %d %d\n", x, y);
+
+                if (me.type == LDown) easy_event.sendLDown(x, y);
+                else if (me.type == LUp) easy_event.sendLUp(x, y);
+                else if (me.type == RDown) easy_event.sendRDown(x, y);
+                else if (me.type == RUp) easy_event.sendRUp(x, y);
+                else if (me.type == MouseMove) easy_event.sendMove(x, y);
+            }
+        });
+
+        server_mouse.setService(
+            [](SOCKET sock, char data[], int size, char host[]) {
+                std::vector<uchar> buf(data, data + size);
+                boxman_mouse.addPacketToBox(buf);
+            }
+        );
+
+        server_mouse.elisten(port_mouse, "TCP");
+
+        boxman_keyboard.setCompleteCallback([](PacketBox& box) {
+            std::vector<uchar> buf;
+            PacketBoxToBuf(box, buf);
+            if (box.type == 'K')
+            {
+                std::unique_lock<std::mutex> lock(mtx_keyboard);
+                keyboard_events.push(*(KeyboardEvent*)buf.data());
+                mtx_keyboard.unlock();
+            }
+        });
+
+        server_keyboard.setService(
+            [](SOCKET sock, char data[], int size, char host[]) {
+                std::vector<uchar> buf(data, data + size);
+                boxman_keyboard.addPacketToBox(buf);
+            }
+        );
+
+        server_keyboard.elisten(port_keyboard, "TCP");
+
+        thread_mouse = std::thread([]()
+        {
+            while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
+        });
+
+        thread_mouse.detach();
+
+        thread_keyboard_socket = std::thread([]()
+        {
+            while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
+        });
+
+        thread_keyboard_socket.detach();
+
+        thread_keyboard_events = std::thread([]() {
+            while (!quit) {
+                std::unique_lock<std::mutex> lock(mtx_keyboard);
+                if (!keyboard_events.size()) {
+                    mtx_keyboard.unlock();
+                    continue;
+                }
+                
+                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                mtx_keyboard.unlock();
+                
+                if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+            }
+        });
+
+        thread_keyboard_events.detach();
+
+        thread_screen = std::thread([]() {
+
+            while (!client_screen.econnect(host, port_screen, "UDP"));
+
+            while (!quit)
+            {
+                static int id = 0;
+
+                cv::Mat mat = easy_event.captureScreen();
+                resize(mat, mat, cv::Size(), 0.7, 0.7);
+
+                std::vector<uchar> buf;
+                compressImage(mat, buf, 70);
+
+                PacketBox box;
+                BufToPacketBox(buf, box, ++id, 'I', 128);
+
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+                // printf("%d\n", box.packets.size());
+            }
+
+        });
+
+        thread_screen.detach();
 
     });
     
@@ -145,131 +253,12 @@ void waitingingWindow() {
     ImGui::End();
 }
 
-void FirstPhaseHandle() {
-
-    thread_mouse = std::thread([]()
-    {
-        boxman_mouse.setCompleteCallback([](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'M')
-            {
-                MouseEvent &me = *(MouseEvent*)buf.data();
-                
-                int x = round(me.x * easy_event.width);
-                int y = round(me.y * easy_event.height);
-
-                sprintf(debug, "Send Mouse %d %d\n", x, y);
-
-                if (me.type == LDown) easy_event.sendLDown(x, y);
-                else if (me.type == LUp) easy_event.sendLUp(x, y);
-                else if (me.type == RDown) easy_event.sendRDown(x, y);
-                else if (me.type == RUp) easy_event.sendRUp(x, y);
-                else if (me.type == MouseMove) easy_event.sendMove(x, y);
-            }
-        });
-
-        server_mouse.setService(
-            [](SOCKET sock, char data[], int size, char host[]) {
-                std::vector<uchar> buf(data, data + size);
-                boxman_mouse.addPacketToBox(buf);
-            }
-        );
-
-        server_mouse.elisten(port_mouse, "TCP");
-
-        while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
-    });
-
-    thread_mouse.detach();
-
-    thread_keyboard_socket = std::thread([]()
-    {
-        boxman_keyboard.setCompleteCallback([](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'K')
-            {
-                std::unique_lock<std::mutex> lock(mtx_keyboard);
-                keyboard_events.push(*(KeyboardEvent*)buf.data());
-                mtx_keyboard.unlock();
-            }
-        });
-
-        server_keyboard.setService(
-            [](SOCKET sock, char data[], int size, char host[]) {
-                std::vector<uchar> buf(data, data + size);
-                boxman_keyboard.addPacketToBox(buf);
-            }
-        );
-
-        server_keyboard.elisten(port_keyboard, "TCP");
-
-        while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
-    });
-
-    thread_keyboard_socket.detach();
-
-    thread_keyboard_events = std::thread([]() {
-        while (!quit) {
-            std::unique_lock<std::mutex> lock(mtx_keyboard);
-            if (!keyboard_events.size()) {
-                mtx_keyboard.unlock();
-                continue;
-            }
-            
-            KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
-            mtx_keyboard.unlock();
-            
-            if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-            else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
-        }
-    });
-
-    thread_keyboard_events.detach();
-
-    thread_screen = std::thread([]() {
-
-        while (!client_screen.econnect(host, port_screen, "UDP"));
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-        while (!quit)
-        {
-            static int id = 0;
-
-            cv::Mat mat = easy_event.captureScreen();
-            resize(mat, mat, cv::Size(), 0.7, 0.7);
-
-            std::vector<uchar> buf;
-            compressImage(mat, buf, 70);
-
-            PacketBox box;
-            BufToPacketBox(buf, box, ++id, 'I', 128);
-
-            for (int i = 0; i < (int) box.packets.size(); i++) {
-                client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(16));
-            // printf("%d\n", box.packets.size());
-        }
-
-    });
-
-    thread_screen.detach();
-}
-
 void ConnectedWindow() {
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(270, 80));
     ImGui::Begin("Port");
 
     // When client is connected from server
-    if (connection_phase == 1) {
-        FirstPhaseHandle();
-        connection_phase = 2;
-    }
-
     ImGui::Text("%s", debug);
     ImGui::End();
 }
@@ -289,9 +278,9 @@ int main(int argc, char** argv)
     {
         StartNewFrame();
 
-        if (!waiting && !connection_phase) ListeningWindow();
+        if (!waiting && !connected) ListeningWindow();
         else if (waiting) waitingingWindow();
-        else if (connection_phase) ConnectedWindow();
+        else if (connected) ConnectedWindow();
 
         Rendering();
         HandleEvents();

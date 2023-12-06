@@ -66,7 +66,7 @@ void HandleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && isHovered && isFocused)
+        else if (connected && isHovered)
         {
             if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - startX,  event.button.y - startY));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -101,14 +101,17 @@ void ConnectButtonHandle() {
 
         server_passcode.eclose();
 
+        printf("Start thread_mouse\n");
+
+        // client_mouse send mouse events
+        while (!client_mouse.econnect(host, port_mouse, "TCP"));
+
+        printf("Start thread_keyboard\n");
+
+        // client_mouse send mouse events
+        while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
+
         thread_mouse = std::thread([](){
-            printf("Start thread_mouse\n");
-
-            // client_mouse send mouse events
-            while (!client_mouse.econnect(host, port_mouse, "TCP"));
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
             while (!quit) {
                 if (mouse_events.size()) {
                     std::unique_lock<std::mutex> lock(mtx_mouse);
@@ -139,13 +142,6 @@ void ConnectButtonHandle() {
         thread_mouse.detach();
 
         thread_keyboard = std::thread([](){
-            printf("Start thread_keyboard\n");
-
-            // client_keyboard send keyboard events
-            while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
             while (!quit) {
                 if (keyboard_events.size()) {
                     std::unique_lock<std::mutex> lock(mtx_keyboard);
