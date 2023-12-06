@@ -26,15 +26,13 @@ EasyClient client_screen;
 
 std::thread thread_passcode;
 std::thread thread_screen;
-std::thread thread_mouse_socket, thread_mouse_events;
+std::thread thread_mouse;
 std::thread thread_keyboard_socket, thread_keyboard_events;
 
-std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
+std::mutex mtx_keyboard;
 
 BoxManager boxman_mouse, boxman_keyboard;
-
-std::mutex mtx_mouse, mtx_keyboard;
 
 bool quit = false, waiting = false;
 
@@ -158,7 +156,7 @@ void FirstPhaseHandle() {
             compressImage(mat, buf, 70);
 
             PacketBox box;
-            BufToPacketBox(buf, box, ++id, 'I', 512);
+            BufToPacketBox(buf, box, ++id, 'I', 128);
 
             for (int i = 0; i < (int) box.packets.size(); i++) {
                 client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
@@ -171,16 +169,25 @@ void FirstPhaseHandle() {
 
     thread_screen.detach();
 
-    thread_mouse_socket = std::thread([]()
+    thread_mouse = std::thread([]()
     {
         boxman_mouse.setCompleteCallback([](PacketBox& box) {
             std::vector<uchar> buf;
             PacketBoxToBuf(box, buf);
             if (box.type == 'M')
             {
-                std::unique_lock<std::mutex> lock(mtx_mouse);
-                mouse_events.push(*(MouseEvent*)buf.data());
-                mtx_mouse.unlock();
+                MouseEvent &me = *(MouseEvent*)buf.data();
+                
+                int x = round(me.x * easy_event.width);
+                int y = round(me.y * easy_event.height);
+
+                sprintf(debug, "Send Mouse %d %d\n", x, y);
+
+                if (me.type == LDown) easy_event.sendLDown(x, y);
+                else if (me.type == LUp) easy_event.sendLUp(x, y);
+                else if (me.type == RDown) easy_event.sendRDown(x, y);
+                else if (me.type == RUp) easy_event.sendRUp(x, y);
+                else if (me.type == MouseMove) easy_event.sendMove(x, y);
             }
         });
 
@@ -196,33 +203,7 @@ void FirstPhaseHandle() {
         while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
     });
 
-    thread_mouse_socket.detach();
-
-    thread_mouse_events = std::thread([]() {
-        while (!quit) {
-            std::unique_lock<std::mutex> lock(mtx_mouse);
-            if (!mouse_events.size()) {
-                mtx_mouse.unlock();
-                continue;
-            }
-
-            MouseEvent me = mouse_events.front(); mouse_events.pop();
-            mtx_mouse.unlock();
-
-            int x = round(me.x * easy_event.width);
-            int y = round(me.y * easy_event.height);
-
-            sprintf(debug, "Send Mouse %d %d\n", x, y);
-
-            if (me.type == LDown) easy_event.sendLDown(x, y);
-            else if (me.type == LUp) easy_event.sendLUp(x, y);
-            else if (me.type == RDown) easy_event.sendRDown(x, y);
-            else if (me.type == RUp) easy_event.sendRUp(x, y);
-            else if (me.type == MouseMove) easy_event.sendMove(x, y);
-        }
-    });
-
-    thread_mouse_events.detach();
+    thread_mouse.detach();
 
     thread_keyboard_socket = std::thread([]()
     {
@@ -298,7 +279,6 @@ int main(int argc, char** argv)
 
     while (!quit)
     {
-        HandleEvents();
         StartNewFrame();
 
         if (!waiting && !connection_phase) ListeningWindow();
@@ -306,6 +286,7 @@ int main(int argc, char** argv)
         else if (connection_phase) ConnectedWindow();
 
         Rendering();
+        HandleEvents();
     }
 
     cleanEasyImgui();

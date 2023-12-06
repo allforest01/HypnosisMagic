@@ -29,16 +29,15 @@ std::thread thread_screen;
 std::thread thread_mouse;
 std::thread thread_keyboard;
 
-std::queue<MouseEvent> mouse_events;
-std::queue<KeyboardEvent> keyboard_events;
-
 BoxManager boxman_screen;
 
+std::queue<MouseEvent> mouse_events;
+std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
 
 bool quit = false, connected = false;
-
 bool isHovered = false, isFocused = false;
+
 GLuint image_texture;
 std::vector<uchar> buf;
 int width, height, channels;
@@ -66,7 +65,7 @@ void HandleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && isFocused && isHovered)
+        else if (connected && isHovered)
         {
             if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - startX,  event.button.y - startY));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -112,7 +111,7 @@ void ConnectButtonHandle() {
 
         server_screen.elisten(port_screen, "UDP");
 
-        while (!quit) server_screen.UDPReceive(512);
+        while (!quit) server_screen.UDPReceive(128);
     });
 
     thread_screen.detach();
@@ -333,7 +332,6 @@ int main(int argc, char** argv)
 
     while (!quit)
     {
-        HandleEvents();
         StartNewFrame();
 
         MenuBar();
@@ -342,6 +340,7 @@ int main(int argc, char** argv)
         MouseEventInfoWindow();
 
         Rendering();
+        HandleEvents();
     }
 
     cleanEasyImgui();
