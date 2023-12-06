@@ -9,11 +9,12 @@ typedef unsigned char uchar;
 
 class PacketBox {
 public:
-    int id; char type; char isComplete;
+    short id; char type; short size;
     std::vector<std::vector<uchar>> packets;
-    PacketBox(): id(-1), type(-1), isComplete(false) {}
+    PacketBox(): id(-1), type(-1), size(-1) {}
     ~PacketBox();
     void addPacket(std::vector<uchar>&);
+    void sort();
 };
 
 class BoxManager {

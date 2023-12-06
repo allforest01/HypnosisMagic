@@ -34,6 +34,8 @@ std::queue<KeyboardEvent> keyboard_events;
 
 BoxManager boxman_mouse, boxman_keyboard;
 
+std::mutex mtx_mouse, mtx_keyboard;
+
 bool quit = false, waiting = false;
 
 EasyEvent easy_event;
@@ -143,7 +145,7 @@ void FirstPhaseHandle() {
 
     thread_screen = std::thread([]() {
 
-        while (!client_screen.econnect(host, port_screen, "TCP"));
+        while (!client_screen.econnect(host, port_screen, "UDP"));
 
         int id = 0;
 
@@ -156,12 +158,13 @@ void FirstPhaseHandle() {
             compressImage(mat, buf, 70);
 
             PacketBox box;
-            BufToPacketBox(buf, box, ++id, 'I', 1440);
+            BufToPacketBox(buf, box, ++id, 'I', 512);
 
             for (int i = 0; i < (int) box.packets.size(); i++) {
                 client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            printf("%d\n", box.packets.size());
         }
 
     });
@@ -175,7 +178,9 @@ void FirstPhaseHandle() {
             PacketBoxToBuf(box, buf);
             if (box.type == 'M')
             {
+                std::unique_lock<std::mutex> lock(mtx_mouse);
                 mouse_events.push(*(MouseEvent*)buf.data());
+                mtx_mouse.unlock();
             }
         });
 
@@ -188,27 +193,32 @@ void FirstPhaseHandle() {
 
         server_mouse.elisten(port_mouse, "TCP");
 
-        while (!quit) server_mouse.TCPReceive(26);
+        while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
     });
 
     thread_mouse_socket.detach();
 
     thread_mouse_events = std::thread([]() {
         while (!quit) {
-            if (mouse_events.size()) {
-                MouseEvent me = mouse_events.front(); mouse_events.pop();
-
-                int x = round(me.x * easy_event.width);
-                int y = round(me.y * easy_event.height);
-
-                sprintf(debug, "Send Mouse %d %d\n", x, y);
-
-                if (me.type == LDown) easy_event.sendLDown(x, y);
-                else if (me.type == LUp) easy_event.sendLUp(x, y);
-                else if (me.type == RDown) easy_event.sendRDown(x, y);
-                else if (me.type == RUp) easy_event.sendRUp(x, y);
-                else if (me.type == MouseMove) easy_event.sendMove(x, y);
+            std::unique_lock<std::mutex> lock(mtx_mouse);
+            if (!mouse_events.size()) {
+                mtx_mouse.unlock();
+                continue;
             }
+
+            MouseEvent me = mouse_events.front(); mouse_events.pop();
+            mtx_mouse.unlock();
+
+            int x = round(me.x * easy_event.width);
+            int y = round(me.y * easy_event.height);
+
+            sprintf(debug, "Send Mouse %d %d\n", x, y);
+
+            if (me.type == LDown) easy_event.sendLDown(x, y);
+            else if (me.type == LUp) easy_event.sendLUp(x, y);
+            else if (me.type == RDown) easy_event.sendRDown(x, y);
+            else if (me.type == RUp) easy_event.sendRUp(x, y);
+            else if (me.type == MouseMove) easy_event.sendMove(x, y);
         }
     });
 
@@ -221,7 +231,9 @@ void FirstPhaseHandle() {
             PacketBoxToBuf(box, buf);
             if (box.type == 'K')
             {
+                std::unique_lock<std::mutex> lock(mtx_keyboard);
                 keyboard_events.push(*(KeyboardEvent*)buf.data());
+                mtx_keyboard.unlock();
             }
         });
 
@@ -234,18 +246,24 @@ void FirstPhaseHandle() {
 
         server_keyboard.elisten(port_keyboard, "TCP");
 
-        while (!quit) server_keyboard.TCPReceive(14);
+        while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
     });
 
     thread_keyboard_socket.detach();
 
     thread_keyboard_events = std::thread([]() {
         while (!quit) {
-            if (keyboard_events.size()) {
-                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
-                if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+            std::unique_lock<std::mutex> lock(mtx_keyboard);
+            if (!keyboard_events.size()) {
+                mtx_keyboard.unlock();
+                continue;
             }
+            
+            KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+            mtx_keyboard.unlock();
+            
+            if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+            else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
         }
     });
 
