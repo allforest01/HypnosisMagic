@@ -1,4 +1,4 @@
-#include "EasyData.h"
+#include "hypno_data.h"
 
 void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packetSize) {
     packetSize -= 7;

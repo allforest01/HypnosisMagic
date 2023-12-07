@@ -23,32 +23,32 @@
     #define closesocket close
 #endif
 
-void initEasySocket();
-void cleanEasySocket();
+void initHypnoSocket();
+void cleanHypnoSocket();
 
-class EasyServer {
+class HypnoServer {
 private:
     SOCKET listen_socket;
     std::function<void(SOCKET, char[], int, char[])> service;
 public:
     struct sockaddr_in client_address;
-    EasyServer(): listen_socket(0), service(nullptr) {}
-    void elisten(char*, const char*);
-    void eclose();
+    HypnoServer(): listen_socket(0), service(nullptr) {}
+    void hypnoListen(char*, const char*);
+    void hypnoClose();
     void setService(std::function<void(SOCKET, char[], int, char[])>);
     void TCPReceive(int max_bytes);
     void UDPReceive(int max_bytes);
 };
 
-class EasyClient {
+class HypnoClient {
 private:
     SOCKET connect_socket;
     struct addrinfo *server_address;
 public:
-    EasyClient(): connect_socket(0), server_address(nullptr) {}
-    bool econnect(char*, char*, const char*);
-    void eclose();
+    HypnoClient(): connect_socket(0), server_address(nullptr) {}
+    bool hypnoConnect(char*, char*, const char*);
+    void hypnoClose();
     bool sendData(char*, int);
 };
 
-bool broadcast(char*, char*, int, int host = INADDR_BROADCAST);
+bool broadcastMessage(char*, char*, int, int host);

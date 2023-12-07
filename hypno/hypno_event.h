@@ -1,6 +1,6 @@
 #pragma once
 
-#include "EasyKeyCode.h"
+#include "hypno_keycode.h"
 #include <functional>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -34,7 +34,7 @@ struct MouseEvent {
 };
 #pragma pack(pop)
 
-class EasyEvent {
+class hypno_event {
 
 private:
 #ifdef WINDOWS
@@ -51,14 +51,14 @@ private:
 #endif
 
 public:
-    static EasyEvent& getInstance() {
-        static EasyEvent instance;
+    static hypno_event& getInstance() {
+        static hypno_event instance;
         return instance;
     }
 
-    EasyEvent();
+    hypno_event();
 
-    int screenX, screenY;
+    int screen_x, screen_y;
     int width, height;
 
     cv::Mat captureScreen();

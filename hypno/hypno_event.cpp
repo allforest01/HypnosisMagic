@@ -1,30 +1,30 @@
-#include "EasyEvent.h"
+#include "hypno_event.h"
 
-// void EasyEvent::setKeyDownCallback(std::function<void(int)> onKeyDown) {
-//     EasyEvent::getInstance().onKeyDown = onKeyDown;
+// void hypno_event::setKeyDownCallback(std::function<void(int)> onKeyDown) {
+//     hypno_event::getInstance().onKeyDown = onKeyDown;
 // }
 
-// void EasyEvent::setKeyUpCallback(std::function<void(int)> onKeyUp) {
-//     EasyEvent::getInstance().onKeyUp = onKeyUp;
+// void hypno_event::setKeyUpCallback(std::function<void(int)> onKeyUp) {
+//     hypno_event::getInstance().onKeyUp = onKeyUp;
 // }
 
-// void EasyEvent::setLDownCallback(std::function<void(int, int)> onLDown) {
-//     EasyEvent::getInstance().onLDown = onLDown;
+// void hypno_event::setLDownCallback(std::function<void(int, int)> onLDown) {
+//     hypno_event::getInstance().onLDown = onLDown;
 // }
 
-// void EasyEvent::setLUpCallback(std::function<void(int, int)> onLUp) {
-//     EasyEvent::getInstance().onLUp = onLUp;
+// void hypno_event::setLUpCallback(std::function<void(int, int)> onLUp) {
+//     hypno_event::getInstance().onLUp = onLUp;
 // }
-// void EasyEvent::setRDownCallback(std::function<void(int, int)> onRDown) {
-//     EasyEvent::getInstance().onRDown = onRDown;
-// }
-
-// void EasyEvent::setRUpCallback(std::function<void(int, int)> onRUp) {
-//     EasyEvent::getInstance().onRUp = onRUp;
+// void hypno_event::setRDownCallback(std::function<void(int, int)> onRDown) {
+//     hypno_event::getInstance().onRDown = onRDown;
 // }
 
-// void EasyEvent::setMoveCallback(std::function<void(int, int)> onMove) {
-//     EasyEvent::getInstance().onMove = onMove;
+// void hypno_event::setRUpCallback(std::function<void(int, int)> onRUp) {
+//     hypno_event::getInstance().onRUp = onRUp;
+// }
+
+// void hypno_event::setMoveCallback(std::function<void(int, int)> onMove) {
+//     hypno_event::getInstance().onMove = onMove;
 // }
 
 #ifdef WINDOWS
@@ -48,9 +48,9 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
     return bi;
 }
 
-EasyEvent::EasyEvent() {
-    screenX = GetSystemMetrics(SM_XVIRTUALSCREEN);
-    screenY = GetSystemMetrics(SM_YVIRTUALSCREEN);
+hypno_event::hypno_event() {
+    screen_x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    screen_y = GetSystemMetrics(SM_YVIRTUALSCREEN);
     width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
 }
@@ -63,10 +63,10 @@ cv::Mat captureScreenMat(HWND hwnd)
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
     SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
 
-    int screenX = EasyEvent::getInstance().screenX;
-    int screenY = EasyEvent::getInstance().screenY;
-    int width  = EasyEvent::getInstance().width;
-    int height = EasyEvent::getInstance().height;
+    int screen_x = hypno_event::getInstance().screen_x;
+    int screen_y = hypno_event::getInstance().screen_y;
+    int width  = hypno_event::getInstance().width;
+    int height = hypno_event::getInstance().height;
 
     img.create(height, width, CV_8UC4);
     bgrim.create(height, width, CV_8UC3);
@@ -76,7 +76,7 @@ cv::Mat captureScreenMat(HWND hwnd)
 
     SelectObject(hwindowCompatibleDC, hbwindow);
 
-    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screenX, screenY, width, height, SRCCOPY);
+    StretchBlt(hwindowCompatibleDC, 0, 0, width, height, hwindowDC, screen_x, screen_y, width, height, SRCCOPY);
     GetDIBits(hwindowCompatibleDC, hbwindow, 0, height, img.data, (BITMAPINFO*)&bi, DIB_RGB_COLORS);
     cvtColor(img, bgrim, cv::COLOR_BGRA2BGR);
 
@@ -87,11 +87,11 @@ cv::Mat captureScreenMat(HWND hwnd)
     return bgrim;
 }
 
-cv::Mat EasyEvent::captureScreen() {
+cv::Mat hypno_event::captureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
-void EasyEvent::sendKeyDown(int keyCode) {
+void hypno_event::sendKeyDown(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -99,7 +99,7 @@ void EasyEvent::sendKeyDown(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::sendKeyUp(int keyCode) {
+void hypno_event::sendKeyUp(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -107,12 +107,12 @@ void EasyEvent::sendKeyUp(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::toScreenCoord(int &x, int &y) {
-    x = (long long)(x * 65536) / EasyEvent::getInstance().width;
-    y = (long long)(y * 65536) / EasyEvent::getInstance().height;
+void hypno_event::toScreenCoord(int &x, int &y) {
+    x = (long long)(x * 65536) / hypno_event::getInstance().width;
+    y = (long long)(y * 65536) / hypno_event::getInstance().height;
 }
 
-void EasyEvent::sendLDown(int x, int y) {
+void hypno_event::sendLDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -125,7 +125,7 @@ void EasyEvent::sendLDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::sendRDown(int x, int y) {
+void hypno_event::sendRDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -138,7 +138,7 @@ void EasyEvent::sendRDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::sendLUp(int x, int y) {
+void hypno_event::sendLUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -151,7 +151,7 @@ void EasyEvent::sendLUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::sendRUp(int x, int y) {
+void hypno_event::sendRUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -164,7 +164,7 @@ void EasyEvent::sendRUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void EasyEvent::sendMove(int x, int y) {
+void hypno_event::sendMove(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -177,78 +177,78 @@ void EasyEvent::sendMove(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// LRESULT CALLBACK EasyEvent::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
-//     return EasyEvent::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
+// LRESULT CALLBACK hypno_event::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+//     return hypno_event::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK EasyEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+// LRESULT CALLBACK hypno_event::KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 //     if (nCode >= 0) {
 //         KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
 //         if (wParam == WM_KEYDOWN) {
-//             EasyEvent::getInstance().onKeyDown(kbdStruct->vkCode);
+//             hypno_event::getInstance().onKeyDown(kbdStruct->vkCode);
 //         }
 //         else if (wParam == WM_KEYUP) {
-//             EasyEvent::getInstance().onKeyUp(kbdStruct->vkCode);
+//             hypno_event::getInstance().onKeyUp(kbdStruct->vkCode);
 //         }
 //     }
 //     return CallNextHookEx(NULL, nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK EasyEvent::GlobalMouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
-//     return EasyEvent::getInstance().MouseHookCallback(nCode, wParam, lParam);
+// LRESULT CALLBACK hypno_event::GlobalMouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+//     return hypno_event::getInstance().MouseHookCallback(nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK EasyEvent::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+// LRESULT CALLBACK hypno_event::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 //     if (nCode >= 0) {
 //         MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
 //         int x = mouseInfo->pt.x;
 //         int y = mouseInfo->pt.y;
 //         if (wParam == WM_LBUTTONDOWN) {
-//             EasyEvent::getInstance().onLDown(x, y);
+//             hypno_event::getInstance().onLDown(x, y);
 //         }
 //         else if (wParam == WM_LBUTTONUP) {
-//             EasyEvent::getInstance().onLUp(x, y);
+//             hypno_event::getInstance().onLUp(x, y);
 //         }
 //         else if (wParam == WM_RBUTTONDOWN) {
-//             EasyEvent::getInstance().onRDown(x, y);
+//             hypno_event::getInstance().onRDown(x, y);
 //         }
 //         else if (wParam == WM_RBUTTONUP) {
-//             EasyEvent::getInstance().onRUp(x, y);
+//             hypno_event::getInstance().onRUp(x, y);
 //         }
 //         else if (wParam == WM_MOUSEMOVE) {
-//             EasyEvent::getInstance().onMove(x, y);
+//             hypno_event::getInstance().onMove(x, y);
 //         }
 //     }
 //     return CallNextHookEx(NULL, nCode, wParam, lParam);
 // }
 
-// void EasyEvent::startHook() {
-//     EasyEvent::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
-//     EasyEvent::getInstance().mouseHook = SetWindowsHookEx(WH_MOUSE_LL, GlobalMouseHookCallback, GetModuleHandle(NULL), 0);
+// void hypno_event::startHook() {
+//     hypno_event::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
+//     hypno_event::getInstance().mouseHook = SetWindowsHookEx(WH_MOUSE_LL, GlobalMouseHookCallback, GetModuleHandle(NULL), 0);
 // }
 
-// void EasyEvent::msgLoop() {
-//     if (GetMessage(&EasyEvent::getInstance().msg, NULL, 0, 0) > 0) {
-//         TranslateMessage(&EasyEvent::getInstance().msg);
-//         DispatchMessage(&EasyEvent::getInstance().msg);
+// void hypno_event::msgLoop() {
+//     if (GetMessage(&hypno_event::getInstance().msg, NULL, 0, 0) > 0) {
+//         TranslateMessage(&hypno_event::getInstance().msg);
+//         DispatchMessage(&hypno_event::getInstance().msg);
 //     }
 // }
 
-// void EasyEvent::stopHook() {
-//     UnhookWindowsHookEx(EasyEvent::getInstance().keyboardHook);
+// void hypno_event::stopHook() {
+//     UnhookWindowsHookEx(hypno_event::getInstance().keyboardHook);
 // }
 
 #else
 
-EasyEvent::EasyEvent() {
+hypno_event::hypno_event() {
     width = CGDisplayPixelsWide(CGMainDisplayID());
     height = CGDisplayPixelsHigh(CGMainDisplayID());
 }
 
-cv::Mat EasyEvent::captureScreen()
+cv::Mat hypno_event::captureScreen()
 {
-    size_t width = EasyEvent::getInstance().width;
-    size_t height = EasyEvent::getInstance().height;
+    size_t width = hypno_event::getInstance().width;
+    size_t height = hypno_event::getInstance().height;
 
     cv::Mat im(cv::Size(width,height), CV_8UC4);
     cv::Mat bgrim(cv::Size(width,height), CV_8UC3);
@@ -267,21 +267,21 @@ cv::Mat EasyEvent::captureScreen()
     return bgrim;
 }
 
-void EasyEvent::sendKeyDown(int keyCode) {
+void hypno_event::sendKeyDown(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyDown);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void EasyEvent::sendKeyUp(int keyCode) {
+void hypno_event::sendKeyUp(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void EasyEvent::sendLDown(int x, int y) {
+void hypno_event::sendLDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -289,7 +289,7 @@ void EasyEvent::sendLDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void EasyEvent::sendLUp(int x, int y) {
+void hypno_event::sendLUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -297,7 +297,7 @@ void EasyEvent::sendLUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void EasyEvent::sendRDown(int x, int y) {
+void hypno_event::sendRDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -305,7 +305,7 @@ void EasyEvent::sendRDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void EasyEvent::sendRUp(int x, int y) {
+void hypno_event::sendRUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -313,7 +313,7 @@ void EasyEvent::sendRUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void EasyEvent::sendMove(int x, int y) {
+void hypno_event::sendMove(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventMouseMoved);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -321,9 +321,9 @@ void EasyEvent::sendMove(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-// void EasyEvent::startHook()
+// void hypno_event::startHook()
 // {
-//     CFMachPortRef &eventTap = EasyEvent::getInstance().eventTap;
+//     CFMachPortRef &eventTap = hypno_event::getInstance().eventTap;
 //     eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, kCGEventMaskForAllEvents, MyCGEventCallback, NULL);
 
 //     if (!eventTap) {
@@ -331,20 +331,20 @@ void EasyEvent::sendMove(int x, int y) {
 //         return;
 //     }
 
-//     CFRunLoopSourceRef &runLoopSource = EasyEvent::getInstance().runLoopSource;
+//     CFRunLoopSourceRef &runLoopSource = hypno_event::getInstance().runLoopSource;
 //     runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
 //     CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
 //     CGEventTapEnable(eventTap, true);
 // }
 
-// CGEventRef EasyEvent::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+// CGEventRef hypno_event::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
 //     if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
 //         CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
 //         if (type == kCGEventKeyDown) {
-//             EasyEvent::getInstance().onKeyDown(keyCode);
+//             hypno_event::getInstance().onKeyDown(keyCode);
 //         }
 //         else if (type == kCGEventKeyUp) {
-//             EasyEvent::getInstance().onKeyUp(keyCode);
+//             hypno_event::getInstance().onKeyUp(keyCode);
 //         }
 //     }
 //     else if (type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown || type == kCGEventLeftMouseUp || type == kCGEventRightMouseUp || type == kCGEventMouseMoved) {
@@ -352,35 +352,35 @@ void EasyEvent::sendMove(int x, int y) {
 //         int x = cursor.x;
 //         int y = cursor.y;
 //         if (type == kCGEventLeftMouseDown) {
-//             EasyEvent::getInstance().onLDown(x, y);
+//             hypno_event::getInstance().onLDown(x, y);
 //         }
 //         else if (type == kCGEventLeftMouseUp) {
-//             EasyEvent::getInstance().onLUp(x, y);
+//             hypno_event::getInstance().onLUp(x, y);
 //         }
 //         else if (type == kCGEventRightMouseDown) {
-//             EasyEvent::getInstance().onRDown(x, y);
+//             hypno_event::getInstance().onRDown(x, y);
 //         }
 //         else if (type == kCGEventRightMouseUp) {
-//             EasyEvent::getInstance().onRUp(x, y);
+//             hypno_event::getInstance().onRUp(x, y);
 //         }
 //         else if (type == kCGEventMouseMoved) {
-//             EasyEvent::getInstance().onMove(x, y);
+//             hypno_event::getInstance().onMove(x, y);
 //         }
 //     }
 //     return event;
 // }
 
-// void EasyEvent::msgLoop() {
+// void hypno_event::msgLoop() {
 //     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false); // Poll for events with a 0.1 second timeout
 // }
 
-// void EasyEvent::stopHook() {
-//     CFMachPortRef &eventTap = EasyEvent::getInstance().eventTap;
+// void hypno_event::stopHook() {
+//     CFMachPortRef &eventTap = hypno_event::getInstance().eventTap;
 //     if (eventTap) {
 //         CGEventTapEnable(eventTap, false);
 //         CFRelease(eventTap);
 //     }
-//     CFRunLoopSourceRef &runLoopSource = EasyEvent::getInstance().runLoopSource;
+//     CFRunLoopSourceRef &runLoopSource = hypno_event::getInstance().runLoopSource;
 //     if (runLoopSource) {
 //         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
 //         CFRelease(runLoopSource);

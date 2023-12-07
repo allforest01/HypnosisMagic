@@ -4,12 +4,12 @@
 #include <mutex>
 #include <random>
 
-#include "EasyLibs/EasySocket.h"
-#include "EasyLibs/EasyEvent.h"
-#include "EasyLibs/EasyImage.h"
-#include "EasyLibs/EasyData.h"
-#include "EasyLibs/EasyImgui.h"
-#include "EasyLibs/EasyKeyCode.h"
+#include "hypno/hypno_socket.h"
+#include "hypno/hypno_event.h"
+#include "hypno/hypno_image.h"
+#include "hypno/hypno_data.h"
+#include "hypno/hypno_imgui.h"
+#include "hypno/hypno_keycode.h"
 
 #define port_passcode "3401"
 #define port_screen   "3402"
@@ -19,11 +19,11 @@
 char host[16];
 char passcode[7] = "ABCXYZ";
 
-EasyServer server_passcode;
-EasyClient client_passcode;
-EasyServer server_mouse;
-EasyServer server_keyboard;
-EasyClient client_screen;
+HypnoServer server_passcode;
+HypnoClient client_passcode;
+HypnoServer server_mouse;
+HypnoServer server_keyboard;
+HypnoClient client_screen;
 
 BoxManager boxman_mouse, boxman_keyboard;
 std::queue<KeyboardEvent> keyboard_events;
@@ -31,7 +31,7 @@ std::mutex mtx_keyboard;
 
 bool quit = false, waiting = false, connected = false;
 
-EasyEvent easy_event;
+hypno_event easy_event;
 char debug[256] = "Debug message";
 
 void HandleEvents() {
@@ -54,7 +54,7 @@ void StartNewFrame() {
 
 void Rendering() {
     // Rendering
-    glViewport(0, 0, windowWidth, windowHeight);
+    glViewport(0, 0, window_width, window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
@@ -88,16 +88,16 @@ void StartButtonHandle() {
             }
         );
 
-        server_passcode.elisten(port_passcode, "UDP");
+        server_passcode.hypnoListen(port_passcode, "UDP");
         
         while (!quit && waiting) {
             server_passcode.UDPReceive(7);
         }
 
-        server_passcode.eclose();
+        server_passcode.hypnoClose();
         
-        while (!client_passcode.econnect(host, port_passcode, "TCP"));
-        client_passcode.eclose();
+        while (!client_passcode.hypnoConnect(host, port_passcode, "TCP"));
+        client_passcode.hypnoClose();
 
         boxman_mouse.setCompleteCallback([](PacketBox& box) {
             std::vector<uchar> buf;
@@ -126,7 +126,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_mouse.elisten(port_mouse, "TCP");
+        server_mouse.hypnoListen(port_mouse, "TCP");
 
         boxman_keyboard.setCompleteCallback([](PacketBox& box) {
             std::vector<uchar> buf;
@@ -146,7 +146,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_keyboard.elisten(port_keyboard, "TCP");
+        server_keyboard.hypnoListen(port_keyboard, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -182,7 +182,7 @@ void StartButtonHandle() {
 
         std::thread thread_screen([&]() {
 
-            while (!client_screen.econnect(host, port_screen, "UDP"));
+            while (!client_screen.hypnoConnect(host, port_screen, "UDP"));
 
             while (!quit)
             {
@@ -259,12 +259,12 @@ void ConnectedWindow() {
 
 int main(int argc, char** argv)
 {
-    windowTitle  = (char*)"Client";
-    windowWidth  = 310;
-    windowHeight = 120;
+    window_title  = (char*)"Client";
+    window_width  = 310;
+    window_height = 120;
 
-    initEasySocket();
-    initEasyImgui();
+    initHypnoSocket();
+    initHypnoImgui();
 
     srand(time(NULL));
 
@@ -280,8 +280,8 @@ int main(int argc, char** argv)
         HandleEvents();
     }
 
-    cleanEasyImgui();
-    cleanEasySocket();
+    cleanHypnoImgui();
+    cleanHypnoSocket();
 
     return 0;
 }

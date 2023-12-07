@@ -1,6 +1,6 @@
-#include "EasySocket.h"
+#include "hypno_socket.h"
 
-void initEasySocket() {
+void initHypnoSocket() {
     #ifdef WINDOWS
         WSADATA wsaData;
         int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -17,13 +17,13 @@ void initEasySocket() {
     #endif
 }
 
-void cleanEasySocket() {   
+void cleanHypnoSocket() {   
     #ifdef WINDOWS
         WSACleanup();
     #endif
 }
 
-void EasyServer::elisten(char* port, const char* type) {
+void HypnoServer::hypnoListen(char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -102,17 +102,17 @@ void EasyServer::elisten(char* port, const char* type) {
     }
 }
 
-void EasyServer::eclose() {
+void HypnoServer::hypnoClose() {
     closesocket(this->listen_socket);
     listen_socket = 0;
     this->service = nullptr;
 }
 
-void EasyServer::setService(std::function<void(SOCKET, char[], int, char[])> service) {
+void HypnoServer::setService(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
-void EasyServer::TCPReceive(int max_bytes) {
+void HypnoServer::TCPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
@@ -125,7 +125,7 @@ void EasyServer::TCPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-void EasyServer::UDPReceive(int max_bytes) {
+void HypnoServer::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
@@ -143,7 +143,7 @@ void EasyServer::UDPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-bool EasyClient::econnect(char* host, char* port, const char* type) {
+bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -193,14 +193,14 @@ bool EasyClient::econnect(char* host, char* port, const char* type) {
     return true;
 }
 
-void EasyClient::eclose() {
+void HypnoClient::hypnoClose() {
     closesocket(this->connect_socket);
     freeaddrinfo(this->server_address);
     connect_socket = 0;
     this->server_address = nullptr;
 }
 
-bool EasyClient::sendData(char* data, int size) {
+bool HypnoClient::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
@@ -213,7 +213,7 @@ bool EasyClient::sendData(char* data, int size) {
     return bytesSend;
 }
 
-bool broadcast(char* port, char* message, int size, int host = INADDR_BROADCAST) {
+bool broadcastMessage(char* port, char* message, int size, int host = INADDR_BROADCAST) {
     SOCKET udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
     if (udpSocket == -1) {
         printf("Socket creation failed");
@@ -222,7 +222,7 @@ bool broadcast(char* port, char* message, int size, int host = INADDR_BROADCAST)
 
     int broadcastEnable = 1;
     if (setsockopt(udpSocket, SOL_SOCKET, SO_BROADCAST, (char*)&broadcastEnable, sizeof(broadcastEnable)) == SOCKET_ERROR) {
-        printf("Failed to enable broadcast\n");
+        printf("Failed to enable broadcastMessage\n");
         closesocket(udpSocket);
         return false;
     }

@@ -11,9 +11,9 @@
 
 extern SDL_Window* window;
 extern SDL_GLContext glContext;
-extern char* windowTitle;
-extern int windowWidth;
-extern int windowHeight;
+extern char* window_title;
+extern int window_width;
+extern int window_height;
 
-void initEasyImgui();
-void cleanEasyImgui();
+void initHypnoImgui();
+void cleanHypnoImgui();

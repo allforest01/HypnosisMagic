@@ -1,6 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE2_IMPLEMENTATION
-#include "EasyImage.h"
+#include "hypno_image.h"
 
 // Texture2D MatToTexture(const cv::Mat& rgbImage) {
 //     Image raylibImage;

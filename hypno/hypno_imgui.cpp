@@ -1,12 +1,12 @@
-#include "EasyImgui.h"
+#include "hypno_imgui.h"
 
 SDL_Window* window;
 SDL_GLContext glContext;
-char* windowTitle = (char*)"ImGui with SDL 2 and OpenGL 2";
-int windowWidth = 1100;
-int windowHeight = 700;
+char* window_title = (char*)"ImGui with SDL 2 and OpenGL 2";
+int window_width = 1100;
+int window_height = 700;
 
-void initEasyImgui() {
+void initHypnoImgui() {
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO)) {
         printf("Error: %s\n", SDL_GetError());
@@ -14,9 +14,9 @@ void initEasyImgui() {
     }
 
     window = SDL_CreateWindow(
-        windowTitle,
+        window_title,
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-        windowWidth, windowHeight, SDL_WINDOW_OPENGL
+        window_width, window_height, SDL_WINDOW_OPENGL
     );
 
     if (window == NULL) {
@@ -41,7 +41,7 @@ void initEasyImgui() {
     ImGui_ImplOpenGL2_Init();
 }
 
-void cleanEasyImgui() {
+void cleanHypnoImgui() {
     // Cleanup and shutdown
     ImGui_ImplOpenGL2_Shutdown();
     ImGui_ImplSDL2_Shutdown();

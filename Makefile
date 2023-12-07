@@ -15,14 +15,14 @@
 #	pacman -S mingw-w64-ucrt-x86_64-glew
 
 IMGUI_DIR = imgui/
-EASYLIBS_DIR = EasyLibs/
+EASYLIBS_DIR = hypno/
 
 EXE = $(BUILD_TYPE)
 SOURCES = $(BUILD_TYPE).cpp
 
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += $(EASYLIBS_DIR)/EasySocket.cpp $(EASYLIBS_DIR)/EasyEvent.cpp $(EASYLIBS_DIR)/EasyKeyCode.cpp $(EASYLIBS_DIR)/EasyImage.cpp $(EASYLIBS_DIR)/EasyData.cpp $(EASYLIBS_DIR)/EasyImgui.cpp
+SOURCES += $(EASYLIBS_DIR)/hypno_socket.cpp $(EASYLIBS_DIR)/hypno_event.cpp $(EASYLIBS_DIR)/hypno_keycode.cpp $(EASYLIBS_DIR)/hypno_image.cpp $(EASYLIBS_DIR)/hypno_data.cpp $(EASYLIBS_DIR)/hypno_imgui.cpp
 
 BUILD_DIR_MAC = build_mac/
 BUILD_DIR_WIN = build_win/

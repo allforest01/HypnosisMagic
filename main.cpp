@@ -2,26 +2,26 @@
 #include <thread>
 #include <mutex>
 
-#include "EasyLibs/EasySocket.h"
-#include "EasyLibs/EasyEvent.h"
-#include "EasyLibs/EasyImage.h"
-#include "EasyLibs/EasyData.h"
-#include "EasyLibs/EasyImgui.h"
+#include "hypno/hypno_socket.h"
+#include "hypno/hypno_event.h"
+#include "hypno/hypno_image.h"
+#include "hypno/hypno_data.h"
+#include "hypno/hypno_imgui.h"
 
 std::mutex mtx;
 
 int main(int argc, char** argv)
 {
     initKeyMapping();
-    initEasySocket();
+    initHypnoSocket();
 
     char port[] = "3402";
-    EasyEvent easy_event;
+    hypno_event easy_event;
 
     if (std::stoi(argv[1]) == 1)
     {
-        EasyServer server;
-        server.elisten(port, "UDP");
+        HypnoServer server;
+        server.hypnoListen(port, "UDP");
         BoxManager boxman;
         cv::Mat image;
         GLuint image_texture;
@@ -60,7 +60,7 @@ int main(int argc, char** argv)
             }
         });
 
-        initEasyImgui();
+        initHypnoImgui();
 
         ImVec2 mousePosRelativeToImage;
 
@@ -103,7 +103,7 @@ int main(int argc, char** argv)
             ImGui::End();
 
             // Rendering
-            glViewport(0, 0, windowWidth, windowHeight);
+            glViewport(0, 0, window_width, window_height);
             glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
             glClear(GL_COLOR_BUFFER_BIT);
             ImGui::Render();
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
             SDL_GL_SwapWindow(window);
         }
 
-        cleanEasyImgui();
+        cleanHypnoImgui();
 
         socketThread.join();
     }
@@ -127,8 +127,8 @@ int main(int argc, char** argv)
         // printf("host = ");
         // scanf("%s", host);
 
-        EasyClient client;
-        client.econnect(host, port, "UDP");
+        HypnoClient client;
+        client.hypnoConnect(host, port, "UDP");
 
         int id = 0;
 
@@ -150,7 +150,7 @@ int main(int argc, char** argv)
         }
     }
 
-    cleanEasySocket();
+    cleanHypnoSocket();
     cleanKeyMapping();
 
     return 0;

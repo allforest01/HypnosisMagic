@@ -4,12 +4,12 @@
 #include <mutex>
 #include <random>
 
-#include "EasyLibs/EasySocket.h"
-#include "EasyLibs/EasyEvent.h"
-#include "EasyLibs/EasyImage.h"
-#include "EasyLibs/EasyData.h"
-#include "EasyLibs/EasyImgui.h"
-#include "EasyLibs/EasyKeyCode.h"
+#include "hypno/hypno_socket.h"
+#include "hypno/hypno_event.h"
+#include "hypno/hypno_image.h"
+#include "hypno/hypno_data.h"
+#include "hypno/hypno_imgui.h"
+#include "hypno/hypno_keycode.h"
 
 #define port_passcode "3401"
 #define port_screen   "3402"
@@ -19,11 +19,11 @@
 char host[16] = "10.211.55.255";
 char passcode[7] = "ABCXYZ";
 
-EasyClient client_passcode;
-EasyServer server_passcode;
-EasyClient client_mouse;
-EasyClient client_keyboard;
-EasyServer server_screen;
+HypnoClient client_passcode;
+HypnoServer server_passcode;
+HypnoClient client_mouse;
+HypnoClient client_keyboard;
+HypnoServer server_screen;
 
 BoxManager boxman_screen;
 std::queue<MouseEvent> mouse_events;
@@ -83,9 +83,9 @@ void ConnectButtonHandle() {
     // Send passcode
     std::thread thread_passcode([&]()
     {
-        broadcast(port_passcode, passcode, 7, inet_addr(host));
+        broadcastMessage(port_passcode, passcode, 7, inet_addr(host));
 
-        server_passcode.elisten(port_passcode, "TCP");
+        server_passcode.hypnoListen(port_passcode, "TCP");
 
         char ipv4[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
@@ -93,17 +93,17 @@ void ConnectButtonHandle() {
         printf("host = %s\n", host);
         fflush(stdout);
 
-        server_passcode.eclose();
+        server_passcode.hypnoClose();
 
         printf("Start thread_mouse\n");
 
         // client_mouse send mouse events
-        while (!client_mouse.econnect(host, port_mouse, "TCP"));
+        while (!client_mouse.hypnoConnect(host, port_mouse, "TCP"));
 
         printf("Start thread_keyboard\n");
 
         // client_mouse send mouse events
-        while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
+        while (!client_keyboard.hypnoConnect(host, port_keyboard, "TCP"));
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -185,7 +185,7 @@ void ConnectButtonHandle() {
                 }
             );
 
-            server_screen.elisten(port_screen, "UDP");
+            server_screen.hypnoListen(port_screen, "UDP");
 
             while (!quit) server_screen.UDPReceive(128);
         });
@@ -328,7 +328,7 @@ void StartNewFrame() {
 
 void Rendering() {
     // Rendering
-    glViewport(0, 0, windowWidth, windowHeight);
+    glViewport(0, 0, window_width, window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
@@ -343,12 +343,12 @@ void Rendering() {
 
 int main(int argc, char** argv)
 {
-    windowTitle  = (char*)"server_screen";
-    windowWidth  = 1200;
-    windowHeight = 640;
+    window_title  = (char*)"server_screen";
+    window_width  = 1200;
+    window_height = 640;
 
-    initEasySocket();
-    initEasyImgui();
+    initHypnoSocket();
+    initHypnoImgui();
 
     glGenTextures(1, &image_texture);
 
@@ -365,8 +365,8 @@ int main(int argc, char** argv)
         HandleEvents();
     }
 
-    cleanEasyImgui();
-    cleanEasySocket();
+    cleanHypnoImgui();
+    cleanHypnoSocket();
 
     return 0;
 }
