@@ -2,17 +2,6 @@
 #define STB_IMAGE_RESIZE2_IMPLEMENTATION
 #include "hypno_image.h"
 
-// Texture2D MatToTexture(const cv::Mat& rgbImage) {
-//     Image raylibImage;
-//     raylibImage.data    = (void*)rgbImage.data;
-//     raylibImage.width   = rgbImage.cols;
-//     raylibImage.height  = rgbImage.rows;
-//     raylibImage.format  = PIXELFORMAT_UNCOMPRESSED_R8G8B8;
-//     raylibImage.mipmaps = 1;
-//     Texture2D texture = LoadTextureFromImage(raylibImage);
-//     return texture;
-// }
-
 void MatToTexture(const cv::Mat& bgrImage, GLuint& textureID) {
     glBindTexture(GL_TEXTURE_2D, textureID);
 

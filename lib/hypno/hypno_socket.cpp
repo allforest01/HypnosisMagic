@@ -1,44 +1,34 @@
 #include "hypno_socket.h"
 
 void initHypnoSocket() {
-    #ifdef WINDOWS
-        WSADATA wsaData;
-        int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
-        if (err) {
-            printf("WSAStartup failed: %d\n", err);
-            return;
-        }
-        if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
-            fprintf(stderr, "Version 2.2 is not available!\n");
-            WSACleanup();
-            return;
-        }
-        printf("WSAStartup successful!\n");
-    #endif
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    WSADATA wsaData;
+    int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
+    if (err) {
+        printf("WSAStartup failed: %d\n", err);
+        return;
+    }
+    if (LOBYTE(wsaData.wVersion) != 2 || HIBYTE(wsaData.wVersion) != 2) {
+        fprintf(stderr, "Version 2.2 is not available!\n");
+        WSACleanup();
+        return;
+    }
+    printf("WSAStartup successful!\n");
+#endif
 }
 
 void cleanHypnoSocket() {   
-    #ifdef WINDOWS
-        WSACleanup();
-    #endif
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    WSACleanup();
+#endif
 }
 
-void HypnoServer::hypnoListen(char* port, const char* type) {
+void HypnoServer::hypnoTCPListen(char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
-    if (strcmp(type, "TCP") == 0) {
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-    }
-    else if (strcmp(type, "UDP") == 0) {
-        hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_protocol = IPPROTO_UDP;
-    }
-    else {
-        printf("type error!\n");
-        return;
-    }
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = AI_PASSIVE;
     int err = getaddrinfo(NULL, port, &hints, &result);
     if (err) {
@@ -58,47 +48,82 @@ void HypnoServer::hypnoListen(char* port, const char* type) {
         closesocket(ListenSocket);
         return;
     }
-    if (strcmp(type, "TCP") == 0) {
-        if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
-            printf("listen failed!");
-            closesocket(ListenSocket);
-            return;
-        }
-        printf("Listening port %s...\n", port);
-        SOCKET ClientSocket;
-        socklen_t client_address_size = sizeof(this->client_address);
-        ClientSocket = accept(ListenSocket, (sockaddr*)(&this->client_address), &client_address_size);
-        if (ClientSocket == INVALID_SOCKET) {
-            printf("accept failed!\n");
-            closesocket(ListenSocket);
-            return;
-        }
-        printf("Client connected!\n");
-        this->listen_socket = ClientSocket;
+    if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
+        printf("listen failed!");
+        closesocket(ListenSocket);
+        return;
     }
-    else if (strcmp(type, "UDP") == 0) {
-        printf("UDP Socket is created!\n");
-        this->listen_socket = ListenSocket;
+    printf("Listening port %s...\n", port);
+    SOCKET ClientSocket;
+    socklen_t client_address_size = sizeof(this->client_address);
+    ClientSocket = accept(ListenSocket, (sockaddr*)(&this->client_address), &client_address_size);
+    if (ClientSocket == INVALID_SOCKET) {
+        printf("accept failed!\n");
+        closesocket(ListenSocket);
+        return;
     }
-    #ifdef WINDOWS
+    printf("Client connected!\n");
+    this->listen_socket = ClientSocket;
+    #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
         int timeout = 500; // 500 miliseconds
     #else
         struct timeval timeout;
         timeout.tv_sec = 0;
         timeout.tv_usec = 500000; // 500 miliseconds
     #endif
-    if (strcmp(type, "TCP") == 0) {
-        int flag = 1;
-        if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
-            printf("setsockopt failed!\n");
-            return;
-        }
+    int flag = 1;
+    if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
+        printf("setsockopt failed!\n");
+        return;
     }
-    else if (strcmp(type, "UDP") == 0) {
-        if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-            printf("setsockopt failed!\n");
-            return;
-        }
+}
+
+void HypnoServer::hypnoUDPListen(char* port) {
+    struct addrinfo *result = NULL, hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    hints.ai_flags = AI_PASSIVE;
+    int err = getaddrinfo(NULL, port, &hints, &result);
+    if (err) {
+        printf("getaddrinfo failed: %d\n", err);
+        return;
+    }
+    SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (ListenSocket == INVALID_SOCKET) {
+        printf("socket failed!\n");
+        freeaddrinfo(result);
+        return;
+    }
+    err = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
+    freeaddrinfo(result);
+    if (err) {
+        printf("bind failed: %d\n", err);
+        closesocket(ListenSocket);
+        return;
+    }
+    printf("UDP Socket is created!\n");
+    this->listen_socket = ListenSocket;
+    #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+        int timeout = 500; // 500 miliseconds
+    #else
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 500000; // 500 miliseconds
+    #endif
+    if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
+        printf("setsockopt failed!\n");
+        return;
+    }
+}
+
+void HypnoServer::hypnoListen(char* port, const char* type) {
+    if (strcmp(type, "TCP") == 0) this->hypnoTCPListen(port);
+    else if (strcmp(type, "UDP") == 0) this->hypnoUDPListen(port);
+    else {
+        printf("type error!\n");
+        return;
     }
 }
 

@@ -1,19 +1,5 @@
 #include "../include/port.h"
-
-#include <stdio.h>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <random>
-
-#include "../lib/hypno/hypno_socket.h"
-#include "../lib/hypno/hypno_event.h"
-#include "../lib/hypno/hypno_image.h"
-#include "../lib/hypno/hypno_data.h"
-#include "../lib/hypno/hypno_keycode.h"
-
-#include "../include/imgui_wrapper.h"
-#include "../include/frame_wrapper.h"
+#include "../include/server.h"
 
 char host[16] = "10.211.55.255";
 char passcode[7] = "ABCXYZ";
@@ -289,17 +275,17 @@ void ScreenWindow() {
     ImGui::End();
 }
 
-void MouseEventInfoWindow() {
-    ImGui::SetNextWindowPos(ImVec2(940, 140));
-    ImGui::SetNextWindowSize(ImVec2(255, 100));
+// void MouseEventInfoWindow() {
+//     ImGui::SetNextWindowPos(ImVec2(940, 140));
+//     ImGui::SetNextWindowSize(ImVec2(255, 100));
 
-    ImGui::Begin("Mouse event info", NULL, ImGuiWindowFlags_NoMove);
+//     ImGui::Begin("Mouse event info", NULL, ImGuiWindowFlags_NoMove);
 
-    ImGui::Text("Is mouse over screen? %s", frame_wrapper.is_hovered ? "Yes" : "No");
-    ImGui::Text("Is screen focused? %s", frame_wrapper.is_focused ? "Yes" : "No");
+//     ImGui::Text("Is mouse over screen? %s", frame_wrapper.is_hovered ? "Yes" : "No");
+//     ImGui::Text("Is screen focused? %s", frame_wrapper.is_focused ? "Yes" : "No");
 
-    ImGui::End();
-}
+//     ImGui::End();
+// }
 
 void StartNewFrame() {
     // Start a new ImGui frame
@@ -340,7 +326,6 @@ int main(int argc, char** argv)
         MenuBar();
         ConnectToClientWindow();
         ScreenWindow();
-        MouseEventInfoWindow();
 
         Rendering();
         HandleEvents();

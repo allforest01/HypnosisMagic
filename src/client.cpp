@@ -1,18 +1,5 @@
 #include "../include/port.h"
-
-#include <stdio.h>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <random>
-
-#include "../lib/hypno/hypno_socket.h"
-#include "../lib/hypno/hypno_event.h"
-#include "../lib/hypno/hypno_image.h"
-#include "../lib/hypno/hypno_data.h"
-#include "../lib/hypno/hypno_keycode.h"
-
-#include "../include/imgui_wrapper.h"
+#include "../include/client.h"
 
 char host[16];
 char passcode[7] = "ABCXYZ";
@@ -31,7 +18,6 @@ HypnoEvent easy_event;
 bool quit = false, waiting = false, connected = false;
 
 ImGuiWrapper imgui_wrapper;
-
 char debug[256] = "Debug message";
 
 void HandleEvents() {
@@ -70,10 +56,6 @@ void Rendering() {
 void StartButtonHandle() {
     // waiting for a connection
     waiting = true;
-
-    // for (int i = 0; i < 4; i++) {
-    //     passcode[i] = rand() % 10 + '0';
-    // }
 
     std::thread thread_passcode([&](){
         server_passcode.setService(
@@ -120,11 +102,11 @@ void StartButtonHandle() {
 
                     sprintf(debug, "Send Mouse %d %d\n", x, y);
 
-                    if (me.type == LDown) easy_event.sendLDown(x, y);
-                    else if (me.type == LUp) easy_event.sendLUp(x, y);
-                    else if (me.type == RDown) easy_event.sendRDown(x, y);
-                    else if (me.type == RUp) easy_event.sendRUp(x, y);
-                    else if (me.type == MouseMove) easy_event.sendMove(x, y);
+                    if (me.type == LDown) easy_event.emitLDown(x, y);
+                    else if (me.type == LUp) easy_event.emitLUp(x, y);
+                    else if (me.type == RDown) easy_event.emitRDown(x, y);
+                    else if (me.type == RUp) easy_event.emitRUp(x, y);
+                    else if (me.type == MouseMove) easy_event.emitMove(x, y);
                 }
             });
 
@@ -178,8 +160,8 @@ void StartButtonHandle() {
                 KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
                 mtx_keyboard.unlock();
                 
-                if (ke.type == KeyDown) easy_event.sendKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                else if (ke.type == KeyUp) easy_event.sendKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+                if (ke.type == KeyDown) easy_event.emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                else if (ke.type == KeyUp) easy_event.emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
             }
         });
 
@@ -305,8 +287,6 @@ int main(int argc, char** argv)
     imgui_wrapper = ImGuiWrapper(310, 120, (char*)"Client");
 
     initImGui(imgui_wrapper);
-
-    srand(time(NULL));
 
     while (!quit)
     {

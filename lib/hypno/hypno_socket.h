@@ -5,7 +5,6 @@
 #include <functional>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    #define WINDOWS
     #define WIN32_LEAN_AND_MEAN
     #include <winsock2.h>
     #include <ws2tcpip.h>
@@ -33,6 +32,8 @@ private:
 public:
     struct sockaddr_in client_address;
     HypnoServer(): listen_socket(0), service(nullptr) {}
+    void hypnoTCPListen(char*);
+    void hypnoUDPListen(char*);
     void hypnoListen(char*, const char*);
     void hypnoClose();
     void setService(std::function<void(SOCKET, char[], int, char[])>);
