@@ -34,7 +34,7 @@ struct MouseEvent {
 };
 #pragma pack(pop)
 
-class hypno_event {
+class HypnoEvent {
 
 private:
 #ifdef WINDOWS
@@ -51,12 +51,12 @@ private:
 #endif
 
 public:
-    static hypno_event& getInstance() {
-        static hypno_event instance;
+    static HypnoEvent& getInstance() {
+        static HypnoEvent instance;
         return instance;
     }
 
-    hypno_event();
+    HypnoEvent();
 
     int screen_x, screen_y;
     int width, height;

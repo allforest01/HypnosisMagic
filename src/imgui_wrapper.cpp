@@ -3,6 +3,7 @@
 ImGuiWrapper::ImGuiWrapper(int width, int height, char* title) {
     this->window_width = width;
     this->window_height = height;
+    this->window_title = new char[strlen(title) + 1];
     strcpy(this->window_title, title);
 }
 
@@ -50,4 +51,6 @@ void cleanImGui(ImGuiWrapper& imgui_wrapper) {
     SDL_GL_DeleteContext(imgui_wrapper.glContext);
     SDL_DestroyWindow(imgui_wrapper.window);
     SDL_Quit();
+
+    delete[] imgui_wrapper.window_title;
 }

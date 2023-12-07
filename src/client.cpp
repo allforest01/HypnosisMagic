@@ -31,7 +31,7 @@ bool quit = false, waiting = false, connected = false;
 
 ImGuiWrapper imgui_wrapper;
 
-hypno_event easy_event;
+HypnoEvent easy_event;
 char debug[256] = "Debug message";
 
 void HandleEvents() {

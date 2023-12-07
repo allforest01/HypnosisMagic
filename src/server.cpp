@@ -256,31 +256,7 @@ void ScreenWindow() {
 
     ImGui::Begin("Screen");
 
-    if (frame_wrapper.frame_queue.size()) {
-        auto cur_buf = frame_wrapper.frame_queue.front(); frame_wrapper.frame_queue.pop();
-
-        unsigned char* imageData = stbi_load_from_memory(cur_buf.data(), cur_buf.size(), &frame_wrapper.width, &frame_wrapper.height, &frame_wrapper.channels, 3);
-
-        ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
-        float window_aspect = window_avail_size.x / window_avail_size.y;
-        float image_aspect = (float) frame_wrapper.width / frame_wrapper.height;
-
-        float scale;
-        if (window_aspect > image_aspect) {
-            // imgui_wrapper.window is wider than the image
-            scale = window_avail_size.y / frame_wrapper.height;
-        } else {
-            // imgui_wrapper.window is narrower than the image
-            scale = window_avail_size.x / frame_wrapper.width;
-        }
-
-        frame_wrapper.scaled_width = frame_wrapper.width * scale;
-        frame_wrapper.scaled_height = frame_wrapper.height * scale;
-
-        ImageToTexture(imageData, frame_wrapper.image_texture, frame_wrapper.width, frame_wrapper.height, frame_wrapper.channels);
-
-        stbi_image_free(imageData);
-    }
+    if (frame_wrapper.frame_queue.size()) frame_wrapper.pushToTexture();
 
     ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
 
@@ -344,7 +320,7 @@ int main(int argc, char** argv)
     imgui_wrapper = ImGuiWrapper(1200, 640, (char*)"Server");
 
     initImGui(imgui_wrapper);
-    
+
     frame_wrapper.initTexture();
 
     while (!quit)

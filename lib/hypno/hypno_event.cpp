@@ -1,30 +1,30 @@
 #include "hypno_event.h"
 
-// void hypno_event::setKeyDownCallback(std::function<void(int)> onKeyDown) {
-//     hypno_event::getInstance().onKeyDown = onKeyDown;
+// void HypnoEvent::setKeyDownCallback(std::function<void(int)> onKeyDown) {
+//     HypnoEvent::getInstance().onKeyDown = onKeyDown;
 // }
 
-// void hypno_event::setKeyUpCallback(std::function<void(int)> onKeyUp) {
-//     hypno_event::getInstance().onKeyUp = onKeyUp;
+// void HypnoEvent::setKeyUpCallback(std::function<void(int)> onKeyUp) {
+//     HypnoEvent::getInstance().onKeyUp = onKeyUp;
 // }
 
-// void hypno_event::setLDownCallback(std::function<void(int, int)> onLDown) {
-//     hypno_event::getInstance().onLDown = onLDown;
+// void HypnoEvent::setLDownCallback(std::function<void(int, int)> onLDown) {
+//     HypnoEvent::getInstance().onLDown = onLDown;
 // }
 
-// void hypno_event::setLUpCallback(std::function<void(int, int)> onLUp) {
-//     hypno_event::getInstance().onLUp = onLUp;
+// void HypnoEvent::setLUpCallback(std::function<void(int, int)> onLUp) {
+//     HypnoEvent::getInstance().onLUp = onLUp;
 // }
-// void hypno_event::setRDownCallback(std::function<void(int, int)> onRDown) {
-//     hypno_event::getInstance().onRDown = onRDown;
-// }
-
-// void hypno_event::setRUpCallback(std::function<void(int, int)> onRUp) {
-//     hypno_event::getInstance().onRUp = onRUp;
+// void HypnoEvent::setRDownCallback(std::function<void(int, int)> onRDown) {
+//     HypnoEvent::getInstance().onRDown = onRDown;
 // }
 
-// void hypno_event::setMoveCallback(std::function<void(int, int)> onMove) {
-//     hypno_event::getInstance().onMove = onMove;
+// void HypnoEvent::setRUpCallback(std::function<void(int, int)> onRUp) {
+//     HypnoEvent::getInstance().onRUp = onRUp;
+// }
+
+// void HypnoEvent::setMoveCallback(std::function<void(int, int)> onMove) {
+//     HypnoEvent::getInstance().onMove = onMove;
 // }
 
 #ifdef WINDOWS
@@ -48,7 +48,7 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
     return bi;
 }
 
-hypno_event::hypno_event() {
+HypnoEvent::HypnoEvent() {
     screen_x = GetSystemMetrics(SM_XVIRTUALSCREEN);
     screen_y = GetSystemMetrics(SM_YVIRTUALSCREEN);
     width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -63,10 +63,10 @@ cv::Mat captureScreenMat(HWND hwnd)
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
     SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
 
-    int screen_x = hypno_event::getInstance().screen_x;
-    int screen_y = hypno_event::getInstance().screen_y;
-    int width  = hypno_event::getInstance().width;
-    int height = hypno_event::getInstance().height;
+    int screen_x = HypnoEvent::getInstance().screen_x;
+    int screen_y = HypnoEvent::getInstance().screen_y;
+    int width  = HypnoEvent::getInstance().width;
+    int height = HypnoEvent::getInstance().height;
 
     img.create(height, width, CV_8UC4);
     bgrim.create(height, width, CV_8UC3);
@@ -87,11 +87,11 @@ cv::Mat captureScreenMat(HWND hwnd)
     return bgrim;
 }
 
-cv::Mat hypno_event::captureScreen() {
+cv::Mat HypnoEvent::captureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
-void hypno_event::sendKeyDown(int keyCode) {
+void HypnoEvent::sendKeyDown(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -99,7 +99,7 @@ void hypno_event::sendKeyDown(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::sendKeyUp(int keyCode) {
+void HypnoEvent::sendKeyUp(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -107,12 +107,12 @@ void hypno_event::sendKeyUp(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::toScreenCoord(int &x, int &y) {
-    x = (long long)(x * 65536) / hypno_event::getInstance().width;
-    y = (long long)(y * 65536) / hypno_event::getInstance().height;
+void HypnoEvent::toScreenCoord(int &x, int &y) {
+    x = (long long)(x * 65536) / HypnoEvent::getInstance().width;
+    y = (long long)(y * 65536) / HypnoEvent::getInstance().height;
 }
 
-void hypno_event::sendLDown(int x, int y) {
+void HypnoEvent::sendLDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -125,7 +125,7 @@ void hypno_event::sendLDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::sendRDown(int x, int y) {
+void HypnoEvent::sendRDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -138,7 +138,7 @@ void hypno_event::sendRDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::sendLUp(int x, int y) {
+void HypnoEvent::sendLUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -151,7 +151,7 @@ void hypno_event::sendLUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::sendRUp(int x, int y) {
+void HypnoEvent::sendRUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -164,7 +164,7 @@ void hypno_event::sendRUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void hypno_event::sendMove(int x, int y) {
+void HypnoEvent::sendMove(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -177,78 +177,78 @@ void hypno_event::sendMove(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-// LRESULT CALLBACK hypno_event::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
-//     return hypno_event::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
+// LRESULT CALLBACK HypnoEvent::GlobalKeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+//     return HypnoEvent::getInstance().KeyboardHookCallback(nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK hypno_event::KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+// LRESULT CALLBACK HypnoEvent::KeyboardHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 //     if (nCode >= 0) {
 //         KBDLLHOOKSTRUCT* kbdStruct = reinterpret_cast<KBDLLHOOKSTRUCT*>(lParam);
 //         if (wParam == WM_KEYDOWN) {
-//             hypno_event::getInstance().onKeyDown(kbdStruct->vkCode);
+//             HypnoEvent::getInstance().onKeyDown(kbdStruct->vkCode);
 //         }
 //         else if (wParam == WM_KEYUP) {
-//             hypno_event::getInstance().onKeyUp(kbdStruct->vkCode);
+//             HypnoEvent::getInstance().onKeyUp(kbdStruct->vkCode);
 //         }
 //     }
 //     return CallNextHookEx(NULL, nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK hypno_event::GlobalMouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
-//     return hypno_event::getInstance().MouseHookCallback(nCode, wParam, lParam);
+// LRESULT CALLBACK HypnoEvent::GlobalMouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+//     return HypnoEvent::getInstance().MouseHookCallback(nCode, wParam, lParam);
 // }
 
-// LRESULT CALLBACK hypno_event::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
+// LRESULT CALLBACK HypnoEvent::MouseHookCallback(int nCode, WPARAM wParam, LPARAM lParam) {
 //     if (nCode >= 0) {
 //         MSLLHOOKSTRUCT* mouseInfo = reinterpret_cast<MSLLHOOKSTRUCT*>(lParam);
 //         int x = mouseInfo->pt.x;
 //         int y = mouseInfo->pt.y;
 //         if (wParam == WM_LBUTTONDOWN) {
-//             hypno_event::getInstance().onLDown(x, y);
+//             HypnoEvent::getInstance().onLDown(x, y);
 //         }
 //         else if (wParam == WM_LBUTTONUP) {
-//             hypno_event::getInstance().onLUp(x, y);
+//             HypnoEvent::getInstance().onLUp(x, y);
 //         }
 //         else if (wParam == WM_RBUTTONDOWN) {
-//             hypno_event::getInstance().onRDown(x, y);
+//             HypnoEvent::getInstance().onRDown(x, y);
 //         }
 //         else if (wParam == WM_RBUTTONUP) {
-//             hypno_event::getInstance().onRUp(x, y);
+//             HypnoEvent::getInstance().onRUp(x, y);
 //         }
 //         else if (wParam == WM_MOUSEMOVE) {
-//             hypno_event::getInstance().onMove(x, y);
+//             HypnoEvent::getInstance().onMove(x, y);
 //         }
 //     }
 //     return CallNextHookEx(NULL, nCode, wParam, lParam);
 // }
 
-// void hypno_event::startHook() {
-//     hypno_event::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
-//     hypno_event::getInstance().mouseHook = SetWindowsHookEx(WH_MOUSE_LL, GlobalMouseHookCallback, GetModuleHandle(NULL), 0);
+// void HypnoEvent::startHook() {
+//     HypnoEvent::getInstance().keyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, GlobalKeyboardHookCallback, GetModuleHandle(NULL), 0);
+//     HypnoEvent::getInstance().mouseHook = SetWindowsHookEx(WH_MOUSE_LL, GlobalMouseHookCallback, GetModuleHandle(NULL), 0);
 // }
 
-// void hypno_event::msgLoop() {
-//     if (GetMessage(&hypno_event::getInstance().msg, NULL, 0, 0) > 0) {
-//         TranslateMessage(&hypno_event::getInstance().msg);
-//         DispatchMessage(&hypno_event::getInstance().msg);
+// void HypnoEvent::msgLoop() {
+//     if (GetMessage(&HypnoEvent::getInstance().msg, NULL, 0, 0) > 0) {
+//         TranslateMessage(&HypnoEvent::getInstance().msg);
+//         DispatchMessage(&HypnoEvent::getInstance().msg);
 //     }
 // }
 
-// void hypno_event::stopHook() {
-//     UnhookWindowsHookEx(hypno_event::getInstance().keyboardHook);
+// void HypnoEvent::stopHook() {
+//     UnhookWindowsHookEx(HypnoEvent::getInstance().keyboardHook);
 // }
 
 #else
 
-hypno_event::hypno_event() {
+HypnoEvent::HypnoEvent() {
     width = CGDisplayPixelsWide(CGMainDisplayID());
     height = CGDisplayPixelsHigh(CGMainDisplayID());
 }
 
-cv::Mat hypno_event::captureScreen()
+cv::Mat HypnoEvent::captureScreen()
 {
-    size_t width = hypno_event::getInstance().width;
-    size_t height = hypno_event::getInstance().height;
+    size_t width = HypnoEvent::getInstance().width;
+    size_t height = HypnoEvent::getInstance().height;
 
     cv::Mat im(cv::Size(width,height), CV_8UC4);
     cv::Mat bgrim(cv::Size(width,height), CV_8UC3);
@@ -267,21 +267,21 @@ cv::Mat hypno_event::captureScreen()
     return bgrim;
 }
 
-void hypno_event::sendKeyDown(int keyCode) {
+void HypnoEvent::sendKeyDown(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyDown);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void hypno_event::sendKeyUp(int keyCode) {
+void HypnoEvent::sendKeyUp(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void hypno_event::sendLDown(int x, int y) {
+void HypnoEvent::sendLDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -289,7 +289,7 @@ void hypno_event::sendLDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void hypno_event::sendLUp(int x, int y) {
+void HypnoEvent::sendLUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -297,7 +297,7 @@ void hypno_event::sendLUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void hypno_event::sendRDown(int x, int y) {
+void HypnoEvent::sendRDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -305,7 +305,7 @@ void hypno_event::sendRDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void hypno_event::sendRUp(int x, int y) {
+void HypnoEvent::sendRUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -313,7 +313,7 @@ void hypno_event::sendRUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void hypno_event::sendMove(int x, int y) {
+void HypnoEvent::sendMove(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventMouseMoved);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -321,9 +321,9 @@ void hypno_event::sendMove(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-// void hypno_event::startHook()
+// void HypnoEvent::startHook()
 // {
-//     CFMachPortRef &eventTap = hypno_event::getInstance().eventTap;
+//     CFMachPortRef &eventTap = HypnoEvent::getInstance().eventTap;
 //     eventTap = CGEventTapCreate(kCGHIDEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, kCGEventMaskForAllEvents, MyCGEventCallback, NULL);
 
 //     if (!eventTap) {
@@ -331,20 +331,20 @@ void hypno_event::sendMove(int x, int y) {
 //         return;
 //     }
 
-//     CFRunLoopSourceRef &runLoopSource = hypno_event::getInstance().runLoopSource;
+//     CFRunLoopSourceRef &runLoopSource = HypnoEvent::getInstance().runLoopSource;
 //     runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, eventTap, 0);
 //     CFRunLoopAddSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
 //     CGEventTapEnable(eventTap, true);
 // }
 
-// CGEventRef hypno_event::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+// CGEventRef HypnoEvent::MyCGEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
 //     if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
 //         CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
 //         if (type == kCGEventKeyDown) {
-//             hypno_event::getInstance().onKeyDown(keyCode);
+//             HypnoEvent::getInstance().onKeyDown(keyCode);
 //         }
 //         else if (type == kCGEventKeyUp) {
-//             hypno_event::getInstance().onKeyUp(keyCode);
+//             HypnoEvent::getInstance().onKeyUp(keyCode);
 //         }
 //     }
 //     else if (type == kCGEventLeftMouseDown || type == kCGEventRightMouseDown || type == kCGEventLeftMouseUp || type == kCGEventRightMouseUp || type == kCGEventMouseMoved) {
@@ -352,35 +352,35 @@ void hypno_event::sendMove(int x, int y) {
 //         int x = cursor.x;
 //         int y = cursor.y;
 //         if (type == kCGEventLeftMouseDown) {
-//             hypno_event::getInstance().onLDown(x, y);
+//             HypnoEvent::getInstance().onLDown(x, y);
 //         }
 //         else if (type == kCGEventLeftMouseUp) {
-//             hypno_event::getInstance().onLUp(x, y);
+//             HypnoEvent::getInstance().onLUp(x, y);
 //         }
 //         else if (type == kCGEventRightMouseDown) {
-//             hypno_event::getInstance().onRDown(x, y);
+//             HypnoEvent::getInstance().onRDown(x, y);
 //         }
 //         else if (type == kCGEventRightMouseUp) {
-//             hypno_event::getInstance().onRUp(x, y);
+//             HypnoEvent::getInstance().onRUp(x, y);
 //         }
 //         else if (type == kCGEventMouseMoved) {
-//             hypno_event::getInstance().onMove(x, y);
+//             HypnoEvent::getInstance().onMove(x, y);
 //         }
 //     }
 //     return event;
 // }
 
-// void hypno_event::msgLoop() {
+// void HypnoEvent::msgLoop() {
 //     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false); // Poll for events with a 0.1 second timeout
 // }
 
-// void hypno_event::stopHook() {
-//     CFMachPortRef &eventTap = hypno_event::getInstance().eventTap;
+// void HypnoEvent::stopHook() {
+//     CFMachPortRef &eventTap = HypnoEvent::getInstance().eventTap;
 //     if (eventTap) {
 //         CGEventTapEnable(eventTap, false);
 //         CFRelease(eventTap);
 //     }
-//     CFRunLoopSourceRef &runLoopSource = hypno_event::getInstance().runLoopSource;
+//     CFRunLoopSourceRef &runLoopSource = HypnoEvent::getInstance().runLoopSource;
 //     if (runLoopSource) {
 //         CFRunLoopRemoveSource(CFRunLoopGetCurrent(), runLoopSource, kCFRunLoopCommonModes);
 //         CFRelease(runLoopSource);
