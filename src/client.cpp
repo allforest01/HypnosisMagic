@@ -68,7 +68,7 @@ void startButtonHandle() {
             }
         );
 
-        server_passcode.hypnoListen(PORT_P, "UDP");
+        server_passcode.hypnoListen((char*)PORT_P, "UDP");
         
         while (!quit && waiting) {
             server_passcode.UDPReceive(7);
@@ -76,13 +76,13 @@ void startButtonHandle() {
 
         server_passcode.hypnoClose();
         
-        while (!client_passcode.hypnoConnect(host, PORT_P, "TCP"));
+        while (!client_passcode.hypnoConnect(host, (char*)PORT_P, "TCP"));
 
         client_passcode.hypnoClose();
 
-        server_mouse.hypnoListen(PORT_M, "TCP");
+        server_mouse.hypnoListen((char*)PORT_M, "TCP");
 
-        server_keyboard.hypnoListen(PORT_K, "TCP");
+        server_keyboard.hypnoListen((char*)PORT_K, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -98,7 +98,7 @@ void startButtonHandle() {
                     int x = round(me.x * HypnoEvent::getInstance().width);
                     int y = round(me.y * HypnoEvent::getInstance().height);
 
-                    sprintf(debug, "Send Mouse %d %d\n", x, y);
+                    snprintf(debug, 256, "Send Mouse %d %d\n", x, y);
 
                     if (me.type == LDown) HypnoEvent::getInstance().emitLDown(x, y);
                     else if (me.type == LUp) HypnoEvent::getInstance().emitLUp(x, y);
@@ -167,7 +167,7 @@ void startButtonHandle() {
 
         std::thread thread_screen_socket([&]() {
 
-            while (!client_screen.hypnoConnect(host, PORT_S, "UDP"));
+            while (!client_screen.hypnoConnect(host, (char*)PORT_S, "UDP"));
 
             while (!quit)
             {
@@ -175,26 +175,25 @@ void startButtonHandle() {
                 // resize(mat, mat, cv::Size(), 1, 1);
 
                 std::vector<uchar> frame;
-                auto start1 = std::chrono::high_resolution_clock::now();
-                compressImage(mat, frame, 70);
-                auto end1 = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> duration1 = end1 - start1;
-                printf("compressImage = %lf\n", duration1.count());
+                // auto start1 = std::chrono::high_resolution_clock::now();
+                compressImage(mat, frame, 90);
+                // auto end1 = std::chrono::high_resolution_clock::now();
+                // std::chrono::duration<double> duration1 = end1 - start1;
+                // printf("compressImage = %lf\n", duration1.count());
 
                 static int id = 0;
 
                 PacketBox box;
-                auto start = std::chrono::high_resolution_clock::now();
+                // auto start = std::chrono::high_resolution_clock::now();
                 BufToPacketBox(frame, box, ++id, 'I', 1440);
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> duration = end - start;
-                printf("BufToPacketBox = %lf\n", duration.count());
+                // auto end = std::chrono::high_resolution_clock::now();
+                // std::chrono::duration<double> duration = end - start;
+                // printf("BufToPacketBox = %lf\n", duration.count());
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 frame_box_queue.push(box);
                 mtx_screen.unlock();
-                
-                // break;
+
             }
 
         });
@@ -214,15 +213,17 @@ void startButtonHandle() {
                 PacketBox box = frame_box_queue.front(); frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                auto start = std::chrono::high_resolution_clock::now();
+                // auto start = std::chrono::high_resolution_clock::now();
                 for (int i = 0; i < (int) box.packets.size(); i++) {
                     client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> duration = end - start;
-                printf("client_screen = %lf\n", duration.count());
+                // auto end = std::chrono::high_resolution_clock::now();
+                // std::chrono::duration<double> duration = end - start;
+                // printf("client_screen = %lf\n", duration.count());
                 
                 std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+                printf("packets.size() = %lu\n", box.packets.size());
             }
 
         });

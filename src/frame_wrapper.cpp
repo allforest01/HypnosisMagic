@@ -31,8 +31,8 @@ void FrameWrapper::pushToTexture() {
             scale = window_avail_size.x / this->width;
         }
 
-        this->scaled_width = this->width; // * scale;
-        this->scaled_height = this->height; // * scale;
+        this->scaled_width = this->width * scale;
+        this->scaled_height = this->height * scale;
     }
 
     ImageToTexture(imageData, this->image_texture, this->width, this->height, this->channels);
