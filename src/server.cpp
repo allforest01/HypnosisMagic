@@ -13,6 +13,7 @@
 #include "../lib/hypno/hypno_keycode.h"
 
 #include "../include/imgui_wrapper.h"
+#include "../include/frame_wrapper.h"
 
 char host[16] = "10.211.55.255";
 char passcode[7] = "ABCXYZ";
@@ -32,12 +33,7 @@ bool quit = false, waiting = false, connected = false;
 bool is_hovered = false, is_focused = false;
 
 ImGuiWrapper imgui_wrapper;
-
-GLuint image_texture;
-std::queue<std::vector<uchar>> queue_image_data;
-int image_width, image_height, image_channels;
-int image_scaled_width, image_scaled_height;
-int image_start_x, image_start_y;
+FrameWrapper frame_wrapper;
 
 void PushMouseEvent(MouseEvent me) {
     std::unique_lock<std::mutex> lock(mtx_mouse);
@@ -61,16 +57,16 @@ void HandleEvents() {
         }
         else if (connected && is_hovered)
         {
-            if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - image_start_x,  event.button.y - image_start_y));
+            if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LDown, event.button.x - image_start_x,  event.button.y - image_start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RDown, event.button.x - image_start_x,  event.button.y - image_start_y));
+                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             }
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LUp, event.button.x - image_start_x,  event.button.y - image_start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RUp, event.button.x - image_start_x,  event.button.y - image_start_y));
+                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             }
             else if (event.type == SDL_KEYDOWN) PushKeyboardEvent(KeyboardEvent(KeyDown, event.key.keysym.sym));
             else if (event.type == SDL_KEYUP) PushKeyboardEvent(KeyboardEvent(KeyUp, event.key.keysym.sym));
@@ -113,8 +109,8 @@ void ConnectButtonHandle() {
 
                     static int id = 0;
         
-                    me.x /= image_width;
-                    me.y /= image_height;
+                    me.x /= frame_wrapper.width;
+                    me.y /= frame_wrapper.height;
 
                     if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
 
@@ -170,8 +166,8 @@ void ConnectButtonHandle() {
                 std::vector<uchar> image_data;
                 PacketBoxToBuf(box, image_data);
                 if (box.type == 'I') {
-                    // if (queue_image_data.size() <= 2)
-                    queue_image_data.push(image_data);
+                    // if (frame_wrapper.frame_queue.size() <= 2)
+                    frame_wrapper.frame_queue.push(image_data);
                 }
             });
 
@@ -260,39 +256,39 @@ void ScreenWindow() {
 
     ImGui::Begin("Screen");
 
-    if (queue_image_data.size()) {
-        auto cur_buf = queue_image_data.front(); queue_image_data.pop();
+    if (frame_wrapper.frame_queue.size()) {
+        auto cur_buf = frame_wrapper.frame_queue.front(); frame_wrapper.frame_queue.pop();
 
-        unsigned char* imageData = stbi_load_from_memory(cur_buf.data(), cur_buf.size(), &image_width, &image_height, &image_channels, 3);
+        unsigned char* imageData = stbi_load_from_memory(cur_buf.data(), cur_buf.size(), &frame_wrapper.width, &frame_wrapper.height, &frame_wrapper.channels, 3);
 
         ImVec2 window_avail_size = ImGui::GetContentRegionAvail() - ImVec2(0, 6);
         float window_aspect = window_avail_size.x / window_avail_size.y;
-        float image_aspect = (float) image_width / image_height;
+        float image_aspect = (float) frame_wrapper.width / frame_wrapper.height;
 
         float scale;
         if (window_aspect > image_aspect) {
             // imgui_wrapper.window is wider than the image
-            scale = window_avail_size.y / image_height;
+            scale = window_avail_size.y / frame_wrapper.height;
         } else {
             // imgui_wrapper.window is narrower than the image
-            scale = window_avail_size.x / image_width;
+            scale = window_avail_size.x / frame_wrapper.width;
         }
 
-        image_scaled_width = image_width * scale;
-        image_scaled_height = image_height * scale;
+        frame_wrapper.scaled_width = frame_wrapper.width * scale;
+        frame_wrapper.scaled_height = frame_wrapper.height * scale;
 
-        ImageToTexture(imageData, image_texture, image_width, image_height, image_channels);
+        ImageToTexture(imageData, frame_wrapper.image_texture, frame_wrapper.width, frame_wrapper.height, frame_wrapper.channels);
 
         stbi_image_free(imageData);
     }
 
-    ImGui::ImageButton((void*)(intptr_t)image_texture, ImVec2(image_scaled_width, image_scaled_height));
+    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
 
     is_hovered = ImGui::IsItemHovered();
     is_focused = ImGui::IsItemFocused();
 
-    image_start_x = ImGui::GetItemRectMin().x;
-    image_start_y = ImGui::GetItemRectMin().y;
+    frame_wrapper.start_x = ImGui::GetItemRectMin().x;
+    frame_wrapper.start_y = ImGui::GetItemRectMin().y;
 
     if (!is_hovered || !is_focused) {
         std::unique_lock<std::mutex> lock_mouse(mtx_mouse);
@@ -348,8 +344,8 @@ int main(int argc, char** argv)
     imgui_wrapper = ImGuiWrapper(1200, 640, (char*)"Server");
 
     initImGui(imgui_wrapper);
-
-    glGenTextures(1, &image_texture);
+    
+    frame_wrapper.initTexture();
 
     while (!quit)
     {
@@ -365,6 +361,8 @@ int main(int argc, char** argv)
     }
 
     cleanImGui(imgui_wrapper);
+
+    frame_wrapper.cleanTexture();
 
     cleanHypnoSocket();
 
