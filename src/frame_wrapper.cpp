@@ -9,12 +9,12 @@ void FrameWrapper::cleanTexture() {
 }
 
 void FrameWrapper::pushToTexture() {
-    auto cur_buf = this->frame_queue.front(); this->frame_queue.pop();
+    auto frame = this->frame_queue.front(); this->frame_queue.pop();
 
-    unsigned char* imageData = stbi_load_from_memory(cur_buf.data(), cur_buf.size(), &this->width, &this->height, &this->channels, 3);
+    unsigned char* imageData = stbi_load_from_memory(frame.data(), frame.size(), &this->width, &this->height, &this->channels, 3);
 
     if (!this->scale_calculated) {
-        scale_calculated = true;
+        this->scale_calculated = true;
         
         ImVec2 window_avail_size = ImGui::GetContentRegionAvail();
         window_avail_size.y -= 6;
@@ -31,8 +31,8 @@ void FrameWrapper::pushToTexture() {
             scale = window_avail_size.x / this->width;
         }
 
-        this->scaled_width = this->width * scale;
-        this->scaled_height = this->height * scale;
+        this->scaled_width = this->width; // * scale;
+        this->scaled_height = this->height; // * scale;
     }
 
     ImageToTexture(imageData, this->image_texture, this->width, this->height, this->channels);

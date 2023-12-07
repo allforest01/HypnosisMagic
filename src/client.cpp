@@ -24,7 +24,8 @@ HypnoServer server_keyboard;
 HypnoClient client_screen;
 
 std::queue<KeyboardEvent> keyboard_events;
-std::mutex mtx_keyboard;
+std::queue<PacketBox> framebox_queue;
+std::mutex mtx_keyboard, mtx_screen;
 HypnoEvent easy_event;
 
 bool quit = false, waiting = false, connected = false;
@@ -184,33 +185,69 @@ void StartButtonHandle() {
 
         thread_keyboard_events.detach();
 
-        std::thread thread_screen([&]() {
+        std::thread thread_screen_socket([&]() {
 
             while (!client_screen.hypnoConnect(host, PORT_SCREEN, "UDP"));
 
             while (!quit)
             {
+                cv::Mat mat = easy_event.captureScreen();
+                // resize(mat, mat, cv::Size(), 1, 1);
+
+                std::vector<uchar> frame;
+                auto start1 = std::chrono::high_resolution_clock::now();
+                compressImage(mat, frame, 70);
+                auto end1 = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration1 = end1 - start1;
+                printf("compressImage = %lf\n", duration1.count());
+
                 static int id = 0;
 
-                cv::Mat mat = easy_event.captureScreen();
-                resize(mat, mat, cv::Size(), 0.7, 0.7);
-
-                std::vector<uchar> buf;
-                compressImage(mat, buf, 70);
-
                 PacketBox box;
-                BufToPacketBox(buf, box, ++id, 'I', 128);
+                auto start = std::chrono::high_resolution_clock::now();
+                BufToPacketBox(frame, box, ++id, 'I', 1440);
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                printf("BufToPacketBox = %lf\n", duration.count());
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
-                }
-                std::this_thread::sleep_for(std::chrono::milliseconds(16));
-                // printf("%d\n", box.packets.size());
+                std::unique_lock<std::mutex> lock(mtx_screen);
+                framebox_queue.push(box);
+                mtx_screen.unlock();
+                
+                // break;
             }
 
         });
 
-        thread_screen.detach();
+        thread_screen_socket.detach();
+
+        std::thread thread_screen_events([&]() {
+
+            while (!quit)
+            {
+                std::unique_lock<std::mutex> lock(mtx_screen);
+                if (!framebox_queue.size()) {
+                    mtx_screen.unlock();
+                    continue;
+                }
+
+                PacketBox box = framebox_queue.front(); framebox_queue.pop();
+                mtx_screen.unlock();
+
+                auto start = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                }
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+                printf("client_screen = %lf\n", duration.count());
+                
+                std::this_thread::sleep_for(std::chrono::milliseconds(16));
+            }
+
+        });
+
+        thread_screen_events.detach();
 
     });
     

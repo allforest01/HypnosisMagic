@@ -27,7 +27,6 @@ HypnoServer server_screen;
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
-bool is_hovered = false, is_focused = false;
 
 bool quit = false, waiting = false, connected = false;
 
@@ -54,7 +53,7 @@ void HandleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && is_hovered)
+        else if (connected && frame_wrapper.is_hovered)
         {
             if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
@@ -101,28 +100,31 @@ void ConnectButtonHandle() {
 
         std::thread thread_mouse([&](){
             while (!quit) {
-                if (mouse_events.size()) {
-                    std::unique_lock<std::mutex> lock(mtx_mouse);
-                    MouseEvent me = mouse_events.front(); mouse_events.pop();
+                std::unique_lock<std::mutex> lock(mtx_mouse);
+                if (!mouse_events.size()) {
                     mtx_mouse.unlock();
+                    continue;
+                }
 
-                    static int id = 0;
-        
-                    me.x /= frame_wrapper.width;
-                    me.y /= frame_wrapper.height;
+                MouseEvent me = mouse_events.front(); mouse_events.pop();
+                mtx_mouse.unlock();
+    
+                me.x /= frame_wrapper.width;
+                me.y /= frame_wrapper.height;
 
-                    if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
+                if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
 
-                    printf("Mouse event %lf %lf\n", me.x, me.y);
+                // printf("Mouse event %lf %lf\n", me.x, me.y);
 
-                    std::vector<uchar> image_data((char*)&me, (char*)(&me) + sizeof(me));
-                    // std::cout << "mouse image_data.size() = " << image_data.size() << '\n';
-                    PacketBox box;
-                    BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
+                std::vector<uchar> image_data((char*)&me, (char*)(&me) + sizeof(me));
 
-                    for (int i = 0; i < (int) box.packets.size(); i++) {
-                        client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
-                    }
+                static int id = 0;
+
+                PacketBox box;
+                BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
+
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
             }
         });
@@ -131,24 +133,27 @@ void ConnectButtonHandle() {
 
         std::thread thread_keyboard([&](){
             while (!quit) {
-                if (keyboard_events.size()) {
-                    std::unique_lock<std::mutex> lock(mtx_keyboard);
-                    KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                std::unique_lock<std::mutex> lock(mtx_keyboard);
+                if (!keyboard_events.size()) {
                     mtx_keyboard.unlock();
+                    continue;
+                }
 
-                    static int id = 0;
+                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                mtx_keyboard.unlock();
 
-                    if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
-                    else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+                // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+                // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
 
-                    std::vector<uchar> image_data((char*)&ke, (char*)(&ke) + sizeof(ke));
-                    // std::cout << "keyboard image_data.size() = " << image_data.size() << '\n';
-                    PacketBox box;
-                    BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
+                std::vector<uchar> image_data((char*)&ke, (char*)(&ke) + sizeof(ke));
 
-                    for (int i = 0; i < (int) box.packets.size(); i++) {
-                        client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
-                    }
+                static int id = 0;
+
+                PacketBox box;
+                BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
+
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
             }
         });
@@ -163,7 +168,7 @@ void ConnectButtonHandle() {
             BoxManager boxman_screen;
 
             boxman_screen.setCompleteCallback([](PacketBox& box) {
-                printf("%d\n", box.packets.size());
+                // printf("%d\n", box.packets.size());
                 std::vector<uchar> image_data;
                 PacketBoxToBuf(box, image_data);
                 if (box.type == 'I') {
@@ -184,7 +189,7 @@ void ConnectButtonHandle() {
 
             server_screen.hypnoListen(PORT_SCREEN, "UDP");
 
-            while (!quit) server_screen.UDPReceive(128);
+            while (!quit) server_screen.UDPReceive(1440);
         });
 
         thread_screen.detach();
@@ -257,17 +262,21 @@ void ScreenWindow() {
 
     ImGui::Begin("Screen");
 
-    if (frame_wrapper.frame_queue.size()) frame_wrapper.pushToTexture();
+    if (frame_wrapper.frame_queue.size()) {
+        frame_wrapper.pushToTexture();
+        static int cnt = 0;
+        printf("cnt = %d\n", ++cnt);
+    }
 
     ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
 
-    is_hovered = ImGui::IsItemHovered();
-    is_focused = ImGui::IsItemFocused();
+    frame_wrapper.is_hovered = ImGui::IsItemHovered();
+    frame_wrapper.is_focused = ImGui::IsItemFocused();
 
     frame_wrapper.start_x = ImGui::GetItemRectMin().x;
     frame_wrapper.start_y = ImGui::GetItemRectMin().y;
 
-    if (!is_hovered || !is_focused) {
+    if (!frame_wrapper.is_hovered || !frame_wrapper.is_focused) {
         std::unique_lock<std::mutex> lock_mouse(mtx_mouse);
         std::queue<MouseEvent>().swap(mouse_events);
         lock_mouse.unlock();
@@ -286,8 +295,8 @@ void MouseEventInfoWindow() {
 
     ImGui::Begin("Mouse event info", NULL, ImGuiWindowFlags_NoMove);
 
-    ImGui::Text("Is mouse over screen? %s", is_hovered ? "Yes" : "No");
-    ImGui::Text("Is screen focused? %s", is_focused ? "Yes" : "No");
+    ImGui::Text("Is mouse over screen? %s", frame_wrapper.is_hovered ? "Yes" : "No");
+    ImGui::Text("Is screen focused? %s", frame_wrapper.is_focused ? "Yes" : "No");
 
     ImGui::End();
 }
