@@ -1,20 +1,18 @@
+#include "../include/port.h"
+
 #include <stdio.h>
 #include <chrono>
 #include <thread>
 #include <mutex>
 #include <random>
 
-#include "hypno/hypno_socket.h"
-#include "hypno/hypno_event.h"
-#include "hypno/hypno_image.h"
-#include "hypno/hypno_data.h"
-#include "hypno/hypno_imgui.h"
-#include "hypno/hypno_keycode.h"
+#include "../lib/hypno/hypno_socket.h"
+#include "../lib/hypno/hypno_event.h"
+#include "../lib/hypno/hypno_image.h"
+#include "../lib/hypno/hypno_data.h"
+#include "../lib/hypno/hypno_keycode.h"
 
-#define port_passcode "3401"
-#define port_screen   "3402"
-#define port_mouse    "3403"
-#define port_keyboard "3404"
+#include "../include/imgui_wrapper.h"
 
 char host[16] = "10.211.55.255";
 char passcode[7] = "ABCXYZ";
@@ -33,8 +31,9 @@ std::mutex mtx_mouse, mtx_keyboard;
 bool quit = false, waiting = false, connected = false;
 bool is_hovered = false, is_focused = false;
 
+ImGuiWrapper imgui_wrapper;
+
 GLuint image_texture;
-std::vector<uchar> image_data;
 std::queue<std::vector<uchar>> queue_image_data;
 int image_width, image_height, image_channels;
 int image_scaled_width, image_scaled_height;
@@ -83,9 +82,9 @@ void ConnectButtonHandle() {
     // Send passcode
     std::thread thread_passcode([&]()
     {
-        broadcastMessage(port_passcode, passcode, 7, inet_addr(host));
+        broadcastMessage(PORT_PASSCODE, passcode, 7, inet_addr(host));
 
-        server_passcode.hypnoListen(port_passcode, "TCP");
+        server_passcode.hypnoListen(PORT_PASSCODE, "TCP");
 
         char ipv4[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
@@ -98,12 +97,12 @@ void ConnectButtonHandle() {
         printf("Start thread_mouse\n");
 
         // client_mouse send mouse events
-        while (!client_mouse.hypnoConnect(host, port_mouse, "TCP"));
+        while (!client_mouse.hypnoConnect(host, PORT_MOUSE, "TCP"));
 
         printf("Start thread_keyboard\n");
 
         // client_mouse send mouse events
-        while (!client_keyboard.hypnoConnect(host, port_keyboard, "TCP"));
+        while (!client_keyboard.hypnoConnect(host, PORT_KEYBOARD, "TCP"));
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -168,6 +167,7 @@ void ConnectButtonHandle() {
 
             boxman_screen.setCompleteCallback([](PacketBox& box) {
                 printf("%d\n", box.packets.size());
+                std::vector<uchar> image_data;
                 PacketBoxToBuf(box, image_data);
                 if (box.type == 'I') {
                     // if (queue_image_data.size() <= 2)
@@ -185,7 +185,7 @@ void ConnectButtonHandle() {
                 }
             );
 
-            server_screen.hypnoListen(port_screen, "UDP");
+            server_screen.hypnoListen(PORT_SCREEN, "UDP");
 
             while (!quit) server_screen.UDPReceive(128);
         });
@@ -239,7 +239,7 @@ void ConnectToClientWindow() {
     ImGui::Text("Port");
     ImGui::SameLine();
     ImGui::PushItemWidth(200);
-    ImGui::InputText("##port_passcode", (char*)port_passcode, 6);
+    ImGui::InputText("##PORT_PASSCODE", (char*)PORT_PASSCODE, 6);
     ImGui::PopItemWidth();
 
     ImGui::Text("Code");
@@ -271,10 +271,10 @@ void ScreenWindow() {
 
         float scale;
         if (window_aspect > image_aspect) {
-            // Window is wider than the image
+            // imgui_wrapper.window is wider than the image
             scale = window_avail_size.y / image_height;
         } else {
-            // Window is narrower than the image
+            // imgui_wrapper.window is narrower than the image
             scale = window_avail_size.x / image_width;
         }
 
@@ -322,20 +322,20 @@ void MouseEventInfoWindow() {
 void StartNewFrame() {
     // Start a new ImGui frame
     ImGui_ImplOpenGL2_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window);
+    ImGui_ImplSDL2_NewFrame(imgui_wrapper.window);
     ImGui::NewFrame();
 }
 
 void Rendering() {
     // Rendering
-    glViewport(0, 0, window_width, window_height);
+    glViewport(0, 0, imgui_wrapper.window_width, imgui_wrapper.window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
     // Swap buffers
-    SDL_GL_SwapWindow(window);
+    SDL_GL_SwapWindow(imgui_wrapper.window);
 
     // Introduce a delay to reduce CPU usage
     SDL_Delay(16);
@@ -343,12 +343,11 @@ void Rendering() {
 
 int main(int argc, char** argv)
 {
-    window_title  = (char*)"server_screen";
-    window_width  = 1200;
-    window_height = 640;
-
     initHypnoSocket();
-    initHypnoImgui();
+
+    imgui_wrapper = ImGuiWrapper(1200, 640, (char*)"Server");
+
+    initImGui(imgui_wrapper);
 
     glGenTextures(1, &image_texture);
 
@@ -365,7 +364,8 @@ int main(int argc, char** argv)
         HandleEvents();
     }
 
-    cleanHypnoImgui();
+    cleanImGui(imgui_wrapper);
+
     cleanHypnoSocket();
 
     return 0;

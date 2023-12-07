@@ -1,20 +1,18 @@
+#include "../include/port.h"
+
 #include <stdio.h>
 #include <chrono>
 #include <thread>
 #include <mutex>
 #include <random>
 
-#include "hypno/hypno_socket.h"
-#include "hypno/hypno_event.h"
-#include "hypno/hypno_image.h"
-#include "hypno/hypno_data.h"
-#include "hypno/hypno_imgui.h"
-#include "hypno/hypno_keycode.h"
+#include "../lib/hypno/hypno_socket.h"
+#include "../lib/hypno/hypno_event.h"
+#include "../lib/hypno/hypno_image.h"
+#include "../lib/hypno/hypno_data.h"
+#include "../lib/hypno/hypno_keycode.h"
 
-#define port_passcode "3401"
-#define port_screen   "3402"
-#define port_mouse    "3403"
-#define port_keyboard "3404"
+#include "../include/imgui_wrapper.h"
 
 char host[16];
 char passcode[7] = "ABCXYZ";
@@ -30,6 +28,8 @@ std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_keyboard;
 
 bool quit = false, waiting = false, connected = false;
+
+ImGuiWrapper imgui_wrapper;
 
 hypno_event easy_event;
 char debug[256] = "Debug message";
@@ -48,20 +48,20 @@ void HandleEvents() {
 void StartNewFrame() {
     // Start a new ImGui frame
     ImGui_ImplOpenGL2_NewFrame();
-    ImGui_ImplSDL2_NewFrame(window);
+    ImGui_ImplSDL2_NewFrame(imgui_wrapper.window);
     ImGui::NewFrame();
 }
 
 void Rendering() {
     // Rendering
-    glViewport(0, 0, window_width, window_height);
+    glViewport(0, 0, imgui_wrapper.window_width, imgui_wrapper.window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
     ImGui::Render();
     ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
     // Swap buffers
-    SDL_GL_SwapWindow(window);
+    SDL_GL_SwapWindow(imgui_wrapper.window);
 
     // Introduce a delay to reduce CPU usage
     SDL_Delay(16);
@@ -88,7 +88,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_passcode.hypnoListen(port_passcode, "UDP");
+        server_passcode.hypnoListen(PORT_PASSCODE, "UDP");
         
         while (!quit && waiting) {
             server_passcode.UDPReceive(7);
@@ -96,7 +96,7 @@ void StartButtonHandle() {
 
         server_passcode.hypnoClose();
         
-        while (!client_passcode.hypnoConnect(host, port_passcode, "TCP"));
+        while (!client_passcode.hypnoConnect(host, PORT_PASSCODE, "TCP"));
         client_passcode.hypnoClose();
 
         boxman_mouse.setCompleteCallback([](PacketBox& box) {
@@ -126,7 +126,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_mouse.hypnoListen(port_mouse, "TCP");
+        server_mouse.hypnoListen(PORT_MOUSE, "TCP");
 
         boxman_keyboard.setCompleteCallback([](PacketBox& box) {
             std::vector<uchar> buf;
@@ -146,7 +146,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_keyboard.hypnoListen(port_keyboard, "TCP");
+        server_keyboard.hypnoListen(PORT_KEYBOARD, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -182,7 +182,7 @@ void StartButtonHandle() {
 
         std::thread thread_screen([&]() {
 
-            while (!client_screen.hypnoConnect(host, port_screen, "UDP"));
+            while (!client_screen.hypnoConnect(host, PORT_SCREEN, "UDP"));
 
             while (!quit)
             {
@@ -220,7 +220,7 @@ void ListeningWindow() {
     // Open UDP socket to waiting for connect from server
     ImGui::Text("Open a port to waiting for a connection");
     ImGui::PushItemWidth(200);
-    ImGui::InputText("##port_passcode", (char*)port_passcode, 6);
+    ImGui::InputText("##PORT_PASSCODE", (char*)PORT_PASSCODE, 6);
     ImGui::PopItemWidth();
 
     ImGui::SameLine();
@@ -259,12 +259,11 @@ void ConnectedWindow() {
 
 int main(int argc, char** argv)
 {
-    window_title  = (char*)"Client";
-    window_width  = 310;
-    window_height = 120;
-
     initHypnoSocket();
-    initHypnoImgui();
+
+    imgui_wrapper = ImGuiWrapper(310, 120, (char*)"Client");
+
+    initImGui(imgui_wrapper);
 
     srand(time(NULL));
 
@@ -280,7 +279,8 @@ int main(int argc, char** argv)
         HandleEvents();
     }
 
-    cleanHypnoImgui();
+    cleanImGui(imgui_wrapper);
+
     cleanHypnoSocket();
 
     return 0;

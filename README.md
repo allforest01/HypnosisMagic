@@ -1,4 +1,5 @@
 # HypnosisMagic
 
-make BUILD_TYPE=server && ./server.exe
-make BUILD_TYPE=client && ./client.exe
+make BUILD_TYPE=server && ./src/server
+
+make BUILD_TYPE=client && ./src/client

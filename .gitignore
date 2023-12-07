@@ -6,10 +6,4 @@ server
 server.exe
 client
 client.exe
-main
-main.exe
-*.ini
-image_client.jpg
-image_server.jpg
-test
-test.cpp
+imgui.ini

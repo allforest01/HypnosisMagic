@@ -14,15 +14,16 @@
 #	pacman -S mingw-w64-ucrt-x86_64-SDL2
 #	pacman -S mingw-w64-ucrt-x86_64-glew
 
-IMGUI_DIR = imgui/
-EASYLIBS_DIR = hypno/
+IMGUI_DIR = external/imgui/
+HYPNO_DIR = lib/hypno/
 
-EXE = $(BUILD_TYPE)
+EXE = src/$(BUILD_TYPE)
 SOURCES = $(BUILD_TYPE).cpp
 
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += $(EASYLIBS_DIR)/hypno_socket.cpp $(EASYLIBS_DIR)/hypno_event.cpp $(EASYLIBS_DIR)/hypno_keycode.cpp $(EASYLIBS_DIR)/hypno_image.cpp $(EASYLIBS_DIR)/hypno_data.cpp $(EASYLIBS_DIR)/hypno_imgui.cpp
+SOURCES += $(HYPNO_DIR)/hypno_socket.cpp $(HYPNO_DIR)/hypno_event.cpp $(HYPNO_DIR)/hypno_keycode.cpp $(HYPNO_DIR)/hypno_image.cpp $(HYPNO_DIR)/hypno_data.cpp
+SOURCES += src/imgui_wrapper.cpp
 
 BUILD_DIR_MAC = build_mac/
 BUILD_DIR_WIN = build_win/
@@ -95,7 +96,7 @@ OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)
 
 $(shell mkdir -p $(BUILD_DIR))
 
-$(BUILD_DIR)/%.o:%.cpp
+$(BUILD_DIR)/%.o:src/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 $(BUILD_DIR)/%.o:$(IMGUI_DIR)/%.cpp
@@ -104,7 +105,7 @@ $(BUILD_DIR)/%.o:$(IMGUI_DIR)/%.cpp
 $(BUILD_DIR)/%.o:$(IMGUI_DIR)/backends/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o:$(EASYLIBS_DIR)/%.cpp
+$(BUILD_DIR)/%.o:$(HYPNO_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)
