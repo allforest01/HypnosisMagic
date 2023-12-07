@@ -16,8 +16,8 @@
 #define port_mouse    "3403"
 #define port_keyboard "3404"
 
-char host[16] = "127.0.0.1";
-char passcode[7] = "000000";
+char host[16];
+char passcode[7] = "ABCXYZ";
 
 EasyServer server_passcode;
 EasyClient client_passcode;
@@ -25,13 +25,7 @@ EasyServer server_mouse;
 EasyServer server_keyboard;
 EasyClient client_screen;
 
-std::thread thread_passcode;
-std::thread thread_screen;
-std::thread thread_mouse;
-std::thread thread_keyboard_socket, thread_keyboard_events;
-
 BoxManager boxman_mouse, boxman_keyboard;
-
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_keyboard;
 
@@ -77,14 +71,14 @@ void StartButtonHandle() {
     // waiting for a connection
     waiting = true;
 
-    for (int i = 0; i < 4; i++) {
-        passcode[i] = rand() % 10 + '0';
-    }
+    // for (int i = 0; i < 4; i++) {
+    //     passcode[i] = rand() % 10 + '0';
+    // }
 
-    thread_passcode = std::thread([](){
+    std::thread thread_passcode([&](){
         server_passcode.setService(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
-                if (!strcmp(data, passcode) || !strcmp(data, "000000")) {
+                if (!strcmp(data, passcode) || !strcmp(data, "ABCXYZ")) {
                     strcpy(host, ipv4);
                     printf("host = %s\n", host);
                     fflush(stdout);
@@ -154,21 +148,21 @@ void StartButtonHandle() {
 
         server_keyboard.elisten(port_keyboard, "TCP");
 
-        thread_mouse = std::thread([]()
+        std::thread thread_mouse([&]()
         {
             while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
         });
 
         thread_mouse.detach();
 
-        thread_keyboard_socket = std::thread([]()
+        std::thread thread_keyboard_socket([&]()
         {
             while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
         });
 
         thread_keyboard_socket.detach();
 
-        thread_keyboard_events = std::thread([]() {
+        std::thread thread_keyboard_events([&]() {
             while (!quit) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
                 if (!keyboard_events.size()) {
@@ -186,7 +180,7 @@ void StartButtonHandle() {
 
         thread_keyboard_events.detach();
 
-        thread_screen = std::thread([]() {
+        std::thread thread_screen([&]() {
 
             while (!client_screen.econnect(host, port_screen, "UDP"));
 

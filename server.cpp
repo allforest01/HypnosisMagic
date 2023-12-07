@@ -17,18 +17,13 @@
 #define port_keyboard "3404"
 
 char host[16] = "10.211.55.255";
-char passcode[7] = "000000";
+char passcode[7] = "ABCXYZ";
 
 EasyClient client_passcode;
 EasyServer server_passcode;
 EasyClient client_mouse;
 EasyClient client_keyboard;
 EasyServer server_screen;
-
-std::thread thread_passcode;
-std::thread thread_screen;
-std::thread thread_mouse;
-std::thread thread_keyboard;
 
 BoxManager boxman_screen;
 
@@ -87,7 +82,7 @@ void HandleEvents() {
 
 void ConnectButtonHandle() {
     // Send passcode
-    thread_passcode = std::thread([]()
+    std::thread thread_passcode([&]()
     {
         broadcast(port_passcode, passcode, 7, inet_addr(host));
 
@@ -111,7 +106,7 @@ void ConnectButtonHandle() {
         // client_mouse send mouse events
         while (!client_keyboard.econnect(host, port_keyboard, "TCP"));
 
-        thread_mouse = std::thread([](){
+        std::thread thread_mouse([&](){
             while (!quit) {
                 if (mouse_events.size()) {
                     std::unique_lock<std::mutex> lock(mtx_mouse);
@@ -141,7 +136,7 @@ void ConnectButtonHandle() {
 
         thread_mouse.detach();
 
-        thread_keyboard = std::thread([](){
+        std::thread thread_keyboard([&](){
             while (!quit) {
                 if (keyboard_events.size()) {
                     std::unique_lock<std::mutex> lock(mtx_keyboard);
@@ -168,7 +163,7 @@ void ConnectButtonHandle() {
         thread_keyboard.detach();
 
         // Receive screen capture
-        thread_screen = std::thread([]()
+        std::thread thread_screen([&]()
         {
             printf("Start thread_screen\n");
 

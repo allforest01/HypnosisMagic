@@ -51,4 +51,4 @@ public:
     bool sendData(char*, int);
 };
 
-bool broadcast(char*, char*, int, int);
+bool broadcast(char*, char*, int, int host = INADDR_BROADCAST);
