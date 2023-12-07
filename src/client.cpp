@@ -4,6 +4,8 @@
 char host[16] = "255.255.255.255";
 char debug[256] = "Debug message";
 
+ImGuiWrapper imgui_wrapper;
+
 HypnoServer server_passcode;
 HypnoClient client_passcode;
 HypnoServer server_mouse;
@@ -15,8 +17,6 @@ std::queue<PacketBox> frame_box_queue;
 std::mutex mtx_keyboard, mtx_screen;
 
 bool quit = false, waiting = false, connected = false;
-
-ImGuiWrapper imgui_wrapper;
 
 void handleEvents() {
     // SDL poll event
@@ -71,7 +71,7 @@ void startButtonHandle() {
         server_passcode.hypnoListen((char*)PORT_P, "UDP");
         
         while (!quit && waiting) {
-            server_passcode.UDPReceive(7);
+            server_passcode.receiveData(7);
         }
 
         server_passcode.hypnoClose();
@@ -115,7 +115,7 @@ void startButtonHandle() {
                 }
             );
 
-            while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
+            while (!quit) server_mouse.receiveData(sizeof(MouseEvent) + 7);
         });
 
         thread_mouse.detach();
@@ -142,7 +142,7 @@ void startButtonHandle() {
                 }
             );
 
-            while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
+            while (!quit) server_keyboard.receiveData(sizeof(KeyboardEvent) + 7);
         });
 
         thread_keyboard_socket.detach();

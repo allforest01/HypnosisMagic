@@ -3,6 +3,9 @@
 
 char host[16] = "10.211.55.255";
 
+FrameWrapper frame_wrapper;
+ImGuiWrapper imgui_wrapper;
+
 HypnoClient client_passcode;
 HypnoServer server_passcode;
 HypnoClient client_mouse;
@@ -14,9 +17,6 @@ std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
 
 bool quit = false, connected = false;
-
-ImGuiWrapper imgui_wrapper;
-FrameWrapper frame_wrapper;
 
 void pushMouseEvent(MouseEvent me) {
     std::unique_lock<std::mutex> lock(mtx_mouse);
@@ -164,8 +164,8 @@ void connectButtonHandle() {
 
             server_screen.setService(
                 [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
-                    short id = *(data);
-                    short num = *(short*)(data + 3);
+                    // short id = *(data);
+                    // short num = *(short*)(data + 3);
                     // printf("id = %d, num = %d\n", id, num);
                     std::vector<uchar> image_data(data, data + size);
                     boxman_screen.addPacketToBox(image_data);
@@ -174,7 +174,7 @@ void connectButtonHandle() {
 
             server_screen.hypnoListen(PORT_S, "UDP");
 
-            while (!quit) server_screen.UDPReceive(1440);
+            while (!quit) server_screen.receiveData(1440);
         });
 
         thread_screen.detach();

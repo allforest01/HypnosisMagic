@@ -28,17 +28,19 @@ void cleanHypnoSocket();
 class HypnoServer {
 private:
     SOCKET listen_socket;
+    bool isTCPServer;
     std::function<void(SOCKET, char[], int, char[])> service;
 public:
     struct sockaddr_in client_address;
-    HypnoServer(): listen_socket(0), service(nullptr) {}
-    void hypnoTCPListen(char*);
-    void hypnoUDPListen(char*);
+    HypnoServer(): listen_socket(0), isTCPServer(false), service(nullptr) {}
+    void TCPListen(char*);
+    void UDPListen(char*);
     void hypnoListen(char*, const char*);
     void hypnoClose();
     void setService(std::function<void(SOCKET, char[], int, char[])>);
-    void TCPReceive(int max_bytes);
-    void UDPReceive(int max_bytes);
+    void TCPReceive(int);
+    void UDPReceive(int);
+    void receiveData(int);
 };
 
 class HypnoClient {
@@ -47,6 +49,8 @@ private:
     struct addrinfo *server_address;
 public:
     HypnoClient(): connect_socket(0), server_address(nullptr) {}
+    bool TCPConnect(char*, char*);
+    bool UDPConnect(char*, char*);
     bool hypnoConnect(char*, char*, const char*);
     void hypnoClose();
     bool sendData(char*, int);

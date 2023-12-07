@@ -23,7 +23,9 @@ void cleanHypnoSocket() {
 #endif
 }
 
-void HypnoServer::hypnoTCPListen(char* port) {
+void HypnoServer::TCPListen(char* port) {
+    isTCPServer = true;
+
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -78,7 +80,9 @@ void HypnoServer::hypnoTCPListen(char* port) {
     }
 }
 
-void HypnoServer::hypnoUDPListen(char* port) {
+void HypnoServer::UDPListen(char* port) {
+    isTCPServer = false;
+
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -119,12 +123,9 @@ void HypnoServer::hypnoUDPListen(char* port) {
 }
 
 void HypnoServer::hypnoListen(char* port, const char* type) {
-    if (strcmp(type, "TCP") == 0) this->hypnoTCPListen(port);
-    else if (strcmp(type, "UDP") == 0) this->hypnoUDPListen(port);
-    else {
-        printf("type error!\n");
-        return;
-    }
+    if (strcmp(type, "TCP") == 0) this->TCPListen(port);
+    else if (strcmp(type, "UDP") == 0) this->UDPListen(port);
+    else { printf("type error!\n"); return; }
 }
 
 void HypnoServer::hypnoClose() {
@@ -168,22 +169,17 @@ void HypnoServer::UDPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
+void HypnoServer::receiveData(int max_bytes) {
+    if (this->isTCPServer) TCPReceive(max_bytes);
+    else UDPReceive(max_bytes);
+}
+
+bool HypnoClient::TCPConnect(char* host, char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
-    if (strcmp(type, "TCP") == 0) {
-        hints.ai_socktype = SOCK_STREAM;
-        hints.ai_protocol = IPPROTO_TCP;
-    }
-    else if (strcmp(type, "UDP") == 0) {
-        hints.ai_socktype = SOCK_DGRAM;
-        hints.ai_protocol = IPPROTO_UDP;
-    }
-    else {
-        printf("type error!\n");
-        return false;
-    }
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
     int err = getaddrinfo(host, port, &hints, &result);
     if (err) {
         printf("getaddrinfo failed: %d\n", err);
@@ -195,27 +191,50 @@ bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
         freeaddrinfo(result);
         return false;
     }
-    if (strcmp(type, "TCP") == 0) {
-        err = connect(connect_socket, result->ai_addr, (int)result->ai_addrlen);
-        // char ipv4[INET_ADDRSTRLEN];
-        // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
-        freeaddrinfo(result);
-        if (err == SOCKET_ERROR) {
-            printf("connect failed: %d\n", err);
-            // printf("to address = %s\n", ipv4);
-            closesocket(connect_socket);
-            return false;
-        }
-        printf("Connect successful!\n");
+    err = connect(connect_socket, result->ai_addr, (int)result->ai_addrlen);
+    // char ipv4[INET_ADDRSTRLEN];
+    // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
+    freeaddrinfo(result);
+    if (err == SOCKET_ERROR) {
+        printf("connect failed: %d\n", err);
+        // printf("to address = %s\n", ipv4);
+        closesocket(connect_socket);
+        return false;
     }
-    else if (strcmp(type, "UDP") == 0) {
-        char ipv4[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
-        this->server_address = result;
-        printf("Socket created for UDP communication!\n");
-    }
+    printf("Connect successful!\n");
     this->connect_socket = connect_socket;
     return true;
+}
+
+bool HypnoClient::UDPConnect(char* host, char* port) {
+    struct addrinfo *result = NULL, hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+    hints.ai_protocol = IPPROTO_UDP;
+    int err = getaddrinfo(host, port, &hints, &result);
+    if (err) {
+        printf("getaddrinfo failed: %d\n", err);
+        return false;
+    }
+    SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+    if (connect_socket == INVALID_SOCKET) {
+        printf("socket failed!\n");
+        freeaddrinfo(result);
+        return false;
+    }
+    char ipv4[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
+    this->server_address = result;
+    printf("Socket created for UDP communication!\n");
+    this->connect_socket = connect_socket;
+    return true;
+}
+
+bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
+    if (strcmp(type, "TCP") == 0) return this->TCPConnect(host, port);
+    else if (strcmp(type, "UDP") == 0) return this->UDPConnect(host, port);
+    else { printf("type error!\n"); return false; }
 }
 
 void HypnoClient::hypnoClose() {
