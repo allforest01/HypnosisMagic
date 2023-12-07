@@ -24,13 +24,12 @@ HypnoClient client_mouse;
 HypnoClient client_keyboard;
 HypnoServer server_screen;
 
-BoxManager boxman_screen;
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
+bool is_hovered = false, is_focused = false;
 
 bool quit = false, waiting = false, connected = false;
-bool is_hovered = false, is_focused = false;
 
 ImGuiWrapper imgui_wrapper;
 FrameWrapper frame_wrapper;
@@ -161,6 +160,8 @@ void ConnectButtonHandle() {
         {
             printf("Start thread_screen\n");
 
+            BoxManager boxman_screen;
+
             boxman_screen.setCompleteCallback([](PacketBox& box) {
                 printf("%d\n", box.packets.size());
                 std::vector<uchar> image_data;
@@ -172,7 +173,7 @@ void ConnectButtonHandle() {
             });
 
             server_screen.setService(
-                [](SOCKET sock, char data[], int size, char host[]) {
+                [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
                     short id = *(data);
                     short num = *(short*)(data + 3);
                     // printf("id = %d, num = %d\n", id, num);

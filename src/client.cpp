@@ -23,15 +23,14 @@ HypnoServer server_mouse;
 HypnoServer server_keyboard;
 HypnoClient client_screen;
 
-BoxManager boxman_mouse, boxman_keyboard;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_keyboard;
+HypnoEvent easy_event;
 
 bool quit = false, waiting = false, connected = false;
 
 ImGuiWrapper imgui_wrapper;
 
-HypnoEvent easy_event;
 char debug[256] = "Debug message";
 
 void HandleEvents() {
@@ -97,59 +96,44 @@ void StartButtonHandle() {
         server_passcode.hypnoClose();
         
         while (!client_passcode.hypnoConnect(host, PORT_PASSCODE, "TCP"));
+
         client_passcode.hypnoClose();
 
-        boxman_mouse.setCompleteCallback([](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'M')
-            {
-                MouseEvent &me = *(MouseEvent*)buf.data();
-                
-                int x = round(me.x * easy_event.width);
-                int y = round(me.y * easy_event.height);
-
-                sprintf(debug, "Send Mouse %d %d\n", x, y);
-
-                if (me.type == LDown) easy_event.sendLDown(x, y);
-                else if (me.type == LUp) easy_event.sendLUp(x, y);
-                else if (me.type == RDown) easy_event.sendRDown(x, y);
-                else if (me.type == RUp) easy_event.sendRUp(x, y);
-                else if (me.type == MouseMove) easy_event.sendMove(x, y);
-            }
-        });
-
-        server_mouse.setService(
-            [](SOCKET sock, char data[], int size, char host[]) {
-                std::vector<uchar> buf(data, data + size);
-                boxman_mouse.addPacketToBox(buf);
-            }
-        );
-
         server_mouse.hypnoListen(PORT_MOUSE, "TCP");
-
-        boxman_keyboard.setCompleteCallback([](PacketBox& box) {
-            std::vector<uchar> buf;
-            PacketBoxToBuf(box, buf);
-            if (box.type == 'K')
-            {
-                std::unique_lock<std::mutex> lock(mtx_keyboard);
-                keyboard_events.push(*(KeyboardEvent*)buf.data());
-                mtx_keyboard.unlock();
-            }
-        });
-
-        server_keyboard.setService(
-            [](SOCKET sock, char data[], int size, char host[]) {
-                std::vector<uchar> buf(data, data + size);
-                boxman_keyboard.addPacketToBox(buf);
-            }
-        );
 
         server_keyboard.hypnoListen(PORT_KEYBOARD, "TCP");
 
         std::thread thread_mouse([&]()
         {
+            BoxManager boxman_mouse;
+
+            boxman_mouse.setCompleteCallback([](PacketBox& box) {
+                std::vector<uchar> buf;
+                PacketBoxToBuf(box, buf);
+                if (box.type == 'M')
+                {
+                    MouseEvent &me = *(MouseEvent*)buf.data();
+                    
+                    int x = round(me.x * easy_event.width);
+                    int y = round(me.y * easy_event.height);
+
+                    sprintf(debug, "Send Mouse %d %d\n", x, y);
+
+                    if (me.type == LDown) easy_event.sendLDown(x, y);
+                    else if (me.type == LUp) easy_event.sendLUp(x, y);
+                    else if (me.type == RDown) easy_event.sendRDown(x, y);
+                    else if (me.type == RUp) easy_event.sendRUp(x, y);
+                    else if (me.type == MouseMove) easy_event.sendMove(x, y);
+                }
+            });
+
+            server_mouse.setService(
+                [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
+                    std::vector<uchar> buf(data, data + size);
+                    boxman_mouse.addPacketToBox(buf);
+                }
+            );
+
             while (!quit) server_mouse.TCPReceive(sizeof(MouseEvent) + 7);
         });
 
@@ -157,6 +141,26 @@ void StartButtonHandle() {
 
         std::thread thread_keyboard_socket([&]()
         {
+            BoxManager boxman_keyboard;
+
+            boxman_keyboard.setCompleteCallback([](PacketBox& box) {
+                std::vector<uchar> buf;
+                PacketBoxToBuf(box, buf);
+                if (box.type == 'K')
+                {
+                    std::unique_lock<std::mutex> lock(mtx_keyboard);
+                    keyboard_events.push(*(KeyboardEvent*)buf.data());
+                    mtx_keyboard.unlock();
+                }
+            });
+
+            server_keyboard.setService(
+                [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
+                    std::vector<uchar> buf(data, data + size);
+                    boxman_keyboard.addPacketToBox(buf);
+                }
+            );
+
             while (!quit) server_keyboard.TCPReceive(sizeof(KeyboardEvent) + 7);
         });
 
