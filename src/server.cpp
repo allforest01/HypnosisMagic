@@ -1,8 +1,7 @@
-#include "../include/port.h"
+#include "../include/constant.h"
 #include "../include/server.h"
 
 char host[16] = "10.211.55.255";
-char passcode[7] = "ABCXYZ";
 
 HypnoClient client_passcode;
 HypnoServer server_passcode;
@@ -14,24 +13,24 @@ std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
 
-bool quit = false, waiting = false, connected = false;
+bool quit = false, connected = false;
 
 ImGuiWrapper imgui_wrapper;
 FrameWrapper frame_wrapper;
 
-void PushMouseEvent(MouseEvent me) {
+void pushMouseEvent(MouseEvent me) {
     std::unique_lock<std::mutex> lock(mtx_mouse);
     mouse_events.push(me);
     mtx_mouse.unlock();
 }
 
-void PushKeyboardEvent(KeyboardEvent ke) {
+void pushKeyboardEvent(KeyboardEvent ke) {
     std::unique_lock<std::mutex> lock(mtx_keyboard);
     keyboard_events.push(ke);
     mtx_keyboard.unlock();
 }
 
-void HandleEvents() {
+void handleEvents() {
     // SDL poll event
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -41,30 +40,30 @@ void HandleEvents() {
         }
         else if (connected && frame_wrapper.is_hovered)
         {
-            if (event.type == SDL_MOUSEMOTION) PushMouseEvent(MouseEvent(MouseMove, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+            if (event.type == SDL_MOUSEMOTION) pushMouseEvent(MouseEvent(MouseMove, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RDown, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             }
             else if (event.type == SDL_MOUSEBUTTONUP)
             {
-                if (event.button.button == SDL_BUTTON_LEFT) PushMouseEvent(MouseEvent(LUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) PushMouseEvent(MouseEvent(RUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
+                else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RUp, event.button.x - frame_wrapper.start_x,  event.button.y - frame_wrapper.start_y));
             }
-            else if (event.type == SDL_KEYDOWN) PushKeyboardEvent(KeyboardEvent(KeyDown, event.key.keysym.sym));
-            else if (event.type == SDL_KEYUP) PushKeyboardEvent(KeyboardEvent(KeyUp, event.key.keysym.sym));
+            else if (event.type == SDL_KEYDOWN) pushKeyboardEvent(KeyboardEvent(KeyDown, event.key.keysym.sym));
+            else if (event.type == SDL_KEYUP) pushKeyboardEvent(KeyboardEvent(KeyUp, event.key.keysym.sym));
         }
     }
 }
 
-void ConnectButtonHandle() {
-    // Send passcode
+void connectButtonHandle() {
+    // Send SECRET
     std::thread thread_passcode([&]()
     {
-        broadcastMessage(PORT_PASSCODE, passcode, 7, inet_addr(host));
+        broadcastMessage(PORT_P, SECRET, 7, inet_addr(host));
 
-        server_passcode.hypnoListen(PORT_PASSCODE, "TCP");
+        server_passcode.hypnoListen(PORT_P, "TCP");
 
         char ipv4[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
@@ -77,12 +76,12 @@ void ConnectButtonHandle() {
         printf("Start thread_mouse\n");
 
         // client_mouse send mouse events
-        while (!client_mouse.hypnoConnect(host, PORT_MOUSE, "TCP"));
+        while (!client_mouse.hypnoConnect(host, PORT_M, "TCP"));
 
         printf("Start thread_keyboard\n");
 
         // client_mouse send mouse events
-        while (!client_keyboard.hypnoConnect(host, PORT_KEYBOARD, "TCP"));
+        while (!client_keyboard.hypnoConnect(host, PORT_K, "TCP"));
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -173,7 +172,7 @@ void ConnectButtonHandle() {
                 }
             );
 
-            server_screen.hypnoListen(PORT_SCREEN, "UDP");
+            server_screen.hypnoListen(PORT_S, "UDP");
 
             while (!quit) server_screen.UDPReceive(1440);
         });
@@ -187,7 +186,7 @@ void ConnectButtonHandle() {
     thread_passcode.detach();
 }
 
-void MenuBar() {
+void menuBar() {
     bool about_popup = false;
 
     // Menu bar
@@ -213,7 +212,7 @@ void MenuBar() {
     }
 }
 
-void ConnectToClientWindow() {
+void connectionWindow() {
     ImGui::SetNextWindowPos(ImVec2(940, 30));
     ImGui::SetNextWindowSize(ImVec2(255, 100));
     ImGui::Begin("Connect to client");
@@ -227,22 +226,22 @@ void ConnectToClientWindow() {
     ImGui::Text("Port");
     ImGui::SameLine();
     ImGui::PushItemWidth(200);
-    ImGui::InputText("##PORT_PASSCODE", (char*)PORT_PASSCODE, 6);
+    ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
     ImGui::PopItemWidth();
 
     ImGui::Text("Code");
     ImGui::SameLine();
     ImGui::PushItemWidth(135);
-    ImGui::InputText("##passcode", (char*)passcode, 5);
+    ImGui::InputText("##SECRET", (char*)SECRET, 5);
     ImGui::PopItemWidth();
 
     ImGui::SameLine();
-    if (ImGui::Button("Connect")) ConnectButtonHandle();
+    if (ImGui::Button("Connect")) connectButtonHandle();
 
     ImGui::End();
 }
 
-void ScreenWindow() {
+void clientScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
     ImGui::SetNextWindowSize(ImVec2(922, 600));
 
@@ -275,27 +274,15 @@ void ScreenWindow() {
     ImGui::End();
 }
 
-// void MouseEventInfoWindow() {
-//     ImGui::SetNextWindowPos(ImVec2(940, 140));
-//     ImGui::SetNextWindowSize(ImVec2(255, 100));
-
-//     ImGui::Begin("Mouse event info", NULL, ImGuiWindowFlags_NoMove);
-
-//     ImGui::Text("Is mouse over screen? %s", frame_wrapper.is_hovered ? "Yes" : "No");
-//     ImGui::Text("Is screen focused? %s", frame_wrapper.is_focused ? "Yes" : "No");
-
-//     ImGui::End();
-// }
-
-void StartNewFrame() {
+void startNewFrame() {
     // Start a new ImGui frame
     ImGui_ImplOpenGL2_NewFrame();
     ImGui_ImplSDL2_NewFrame(imgui_wrapper.window);
     ImGui::NewFrame();
 }
 
-void Rendering() {
-    // Rendering
+void guiRendering() {
+    // guiRendering
     glViewport(0, 0, imgui_wrapper.window_width, imgui_wrapper.window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -312,29 +299,24 @@ void Rendering() {
 int main(int argc, char** argv)
 {
     initHypnoSocket();
-
     imgui_wrapper = ImGuiWrapper(1200, 640, (char*)"Server");
-
     initImGui(imgui_wrapper);
-
     frame_wrapper.initTexture();
 
     while (!quit)
     {
-        StartNewFrame();
+        startNewFrame();
 
-        MenuBar();
-        ConnectToClientWindow();
-        ScreenWindow();
+        menuBar();
+        connectionWindow();
+        clientScreenWindow();
 
-        Rendering();
-        HandleEvents();
+        guiRendering();
+        handleEvents();
     }
 
     cleanImGui(imgui_wrapper);
-
     frame_wrapper.cleanTexture();
-
     cleanHypnoSocket();
 
     return 0;

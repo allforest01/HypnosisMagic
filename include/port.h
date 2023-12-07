@@ -1,4 +1,0 @@
-#define PORT_PASSCODE "3401"
-#define PORT_SCREEN   "3402"
-#define PORT_MOUSE    "3403"
-#define PORT_KEYBOARD "3404"

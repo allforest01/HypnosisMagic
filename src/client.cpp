@@ -1,8 +1,8 @@
-#include "../include/port.h"
+#include "../include/constant.h"
 #include "../include/client.h"
 
-char host[16];
-char passcode[7] = "ABCXYZ";
+char host[16] = "255.255.255.255";
+char debug[256] = "Debug message";
 
 HypnoServer server_passcode;
 HypnoClient client_passcode;
@@ -11,16 +11,14 @@ HypnoServer server_keyboard;
 HypnoClient client_screen;
 
 std::queue<KeyboardEvent> keyboard_events;
-std::queue<PacketBox> framebox_queue;
+std::queue<PacketBox> frame_box_queue;
 std::mutex mtx_keyboard, mtx_screen;
-HypnoEvent easy_event;
 
 bool quit = false, waiting = false, connected = false;
 
 ImGuiWrapper imgui_wrapper;
-char debug[256] = "Debug message";
 
-void HandleEvents() {
+void handleEvents() {
     // SDL poll event
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
@@ -31,15 +29,15 @@ void HandleEvents() {
     }
 }
 
-void StartNewFrame() {
+void startNewFrame() {
     // Start a new ImGui frame
     ImGui_ImplOpenGL2_NewFrame();
     ImGui_ImplSDL2_NewFrame(imgui_wrapper.window);
     ImGui::NewFrame();
 }
 
-void Rendering() {
-    // Rendering
+void guiRendering() {
+    // guiRendering
     glViewport(0, 0, imgui_wrapper.window_width, imgui_wrapper.window_height);
     glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -53,14 +51,14 @@ void Rendering() {
     SDL_Delay(16);
 }
 
-void StartButtonHandle() {
+void startButtonHandle() {
     // waiting for a connection
     waiting = true;
 
     std::thread thread_passcode([&](){
         server_passcode.setService(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
-                if (!strcmp(data, passcode) || !strcmp(data, "ABCXYZ")) {
+                if (!strcmp(data, SECRET) || !strcmp(data, "ABCXYZ")) {
                     strcpy(host, ipv4);
                     printf("host = %s\n", host);
                     fflush(stdout);
@@ -70,7 +68,7 @@ void StartButtonHandle() {
             }
         );
 
-        server_passcode.hypnoListen(PORT_PASSCODE, "UDP");
+        server_passcode.hypnoListen(PORT_P, "UDP");
         
         while (!quit && waiting) {
             server_passcode.UDPReceive(7);
@@ -78,13 +76,13 @@ void StartButtonHandle() {
 
         server_passcode.hypnoClose();
         
-        while (!client_passcode.hypnoConnect(host, PORT_PASSCODE, "TCP"));
+        while (!client_passcode.hypnoConnect(host, PORT_P, "TCP"));
 
         client_passcode.hypnoClose();
 
-        server_mouse.hypnoListen(PORT_MOUSE, "TCP");
+        server_mouse.hypnoListen(PORT_M, "TCP");
 
-        server_keyboard.hypnoListen(PORT_KEYBOARD, "TCP");
+        server_keyboard.hypnoListen(PORT_K, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -97,16 +95,16 @@ void StartButtonHandle() {
                 {
                     MouseEvent &me = *(MouseEvent*)buf.data();
                     
-                    int x = round(me.x * easy_event.width);
-                    int y = round(me.y * easy_event.height);
+                    int x = round(me.x * HypnoEvent::getInstance().width);
+                    int y = round(me.y * HypnoEvent::getInstance().height);
 
                     sprintf(debug, "Send Mouse %d %d\n", x, y);
 
-                    if (me.type == LDown) easy_event.emitLDown(x, y);
-                    else if (me.type == LUp) easy_event.emitLUp(x, y);
-                    else if (me.type == RDown) easy_event.emitRDown(x, y);
-                    else if (me.type == RUp) easy_event.emitRUp(x, y);
-                    else if (me.type == MouseMove) easy_event.emitMove(x, y);
+                    if (me.type == LDown) HypnoEvent::getInstance().emitLDown(x, y);
+                    else if (me.type == LUp) HypnoEvent::getInstance().emitLUp(x, y);
+                    else if (me.type == RDown) HypnoEvent::getInstance().emitRDown(x, y);
+                    else if (me.type == RUp) HypnoEvent::getInstance().emitRUp(x, y);
+                    else if (me.type == MouseMove) HypnoEvent::getInstance().emitMove(x, y);
                 }
             });
 
@@ -160,8 +158,8 @@ void StartButtonHandle() {
                 KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
                 mtx_keyboard.unlock();
                 
-                if (ke.type == KeyDown) easy_event.emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                else if (ke.type == KeyUp) easy_event.emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+                if (ke.type == KeyDown) HypnoEvent::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                else if (ke.type == KeyUp) HypnoEvent::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
             }
         });
 
@@ -169,11 +167,11 @@ void StartButtonHandle() {
 
         std::thread thread_screen_socket([&]() {
 
-            while (!client_screen.hypnoConnect(host, PORT_SCREEN, "UDP"));
+            while (!client_screen.hypnoConnect(host, PORT_S, "UDP"));
 
             while (!quit)
             {
-                cv::Mat mat = easy_event.captureScreen();
+                cv::Mat mat = HypnoEvent::getInstance().captureScreen();
                 // resize(mat, mat, cv::Size(), 1, 1);
 
                 std::vector<uchar> frame;
@@ -193,7 +191,7 @@ void StartButtonHandle() {
                 printf("BufToPacketBox = %lf\n", duration.count());
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
-                framebox_queue.push(box);
+                frame_box_queue.push(box);
                 mtx_screen.unlock();
                 
                 // break;
@@ -208,12 +206,12 @@ void StartButtonHandle() {
             while (!quit)
             {
                 std::unique_lock<std::mutex> lock(mtx_screen);
-                if (!framebox_queue.size()) {
+                if (!frame_box_queue.size()) {
                     mtx_screen.unlock();
                     continue;
                 }
 
-                PacketBox box = framebox_queue.front(); framebox_queue.pop();
+                PacketBox box = frame_box_queue.front(); frame_box_queue.pop();
                 mtx_screen.unlock();
 
                 auto start = std::chrono::high_resolution_clock::now();
@@ -236,22 +234,22 @@ void StartButtonHandle() {
     thread_passcode.detach();
 }
 
-void ListeningWindow() {
+void listeningWindow() {
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(270, 80));
     ImGui::Begin("Port");
     // Open UDP socket to waiting for connect from server
     ImGui::Text("Open a port to waiting for a connection");
     ImGui::PushItemWidth(200);
-    ImGui::InputText("##PORT_PASSCODE", (char*)PORT_PASSCODE, 6);
+    ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
     ImGui::PopItemWidth();
 
     ImGui::SameLine();
-    if (ImGui::Button("Start")) StartButtonHandle();
+    if (ImGui::Button("Start")) startButtonHandle();
     ImGui::End();
 }
 
-void waitingingWindow() {
+void waitingWindow() {
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(270, 80));
     ImGui::Begin("Port");
@@ -261,7 +259,7 @@ void waitingingWindow() {
     ImGui::PopItemWidth();
 
     ImGui::SetCursorPos(ImVec2(9, 53));
-    ImGui::Text("Code: %s", passcode);
+    ImGui::Text("Code: %s", SECRET);
     ImGui::SetCursorPos(ImVec2(211, 50));
 
     if (ImGui::Button("Cancel")) {
@@ -270,7 +268,7 @@ void waitingingWindow() {
     ImGui::End();
 }
 
-void ConnectedWindow() {
+void connectedWindow() {
     ImGui::SetNextWindowPos(ImVec2(20, 20));
     ImGui::SetNextWindowSize(ImVec2(270, 80));
     ImGui::Begin("Port");
@@ -283,25 +281,22 @@ void ConnectedWindow() {
 int main(int argc, char** argv)
 {
     initHypnoSocket();
-
     imgui_wrapper = ImGuiWrapper(310, 120, (char*)"Client");
-
     initImGui(imgui_wrapper);
 
     while (!quit)
     {
-        StartNewFrame();
+        startNewFrame();
 
-        if (!waiting && !connected) ListeningWindow();
-        else if (waiting) waitingingWindow();
-        else if (connected) ConnectedWindow();
+        if (!waiting && !connected) listeningWindow();
+        else if (waiting) waitingWindow();
+        else if (connected) connectedWindow();
 
-        Rendering();
-        HandleEvents();
+        guiRendering();
+        handleEvents();
     }
 
     cleanImGui(imgui_wrapper);
-
     cleanHypnoSocket();
 
     return 0;
