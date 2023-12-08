@@ -1,21 +1,21 @@
 #include "hypno_data.h"
 
-void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packetSize) {
-    packetSize -= 7;
-    int num = (int) buf.size() / packetSize + (((int) buf.size() % packetSize) != 0);
+void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packet_size) {
+    packet_size -= 7;
+    int num = (int) buf.size() / packet_size + (((int) buf.size() % packet_size) != 0);
     box.packets.clear();
     box.id = id;
     box.type = type;
     box.size = num;
     box.packets.resize(num);
     for (short i = 0; i < num; i++) {
-        auto segBeg = buf.begin() + i * packetSize;
-        auto segEnd = std::min(buf.begin() + (i + 1) * packetSize, buf.end());
+        auto seg_begin = buf.begin() + i * packet_size;
+        auto seg_end = std::min(buf.begin() + (i + 1) * packet_size, buf.end());
         box.packets[i].assign((char*)&id, (char*)&id + 2);
         box.packets[i].push_back(type);
         box.packets[i].insert(box.packets[i].end(), (char*)&num, (char*)&num + 2);
         box.packets[i].insert(box.packets[i].end(), (char*)&i, (char*)&i + 2);
-        box.packets[i].insert(box.packets[i].end(), segBeg, segEnd);
+        box.packets[i].insert(box.packets[i].end(), seg_begin, seg_end);
     }
 }
 
