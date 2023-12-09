@@ -1,4 +1,8 @@
 #include "hypno_socket.h"
+#include <chrono>
+#include <thread>
+
+// #define DEBUG
 
 void initHypnoSocket() {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -125,33 +129,39 @@ void HypnoServer::UDPListen(char* port) {
 void HypnoServer::hypnoListen(char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) this->TCPListen(port);
     else if (strcmp(type, "UDP") == 0) this->UDPListen(port);
-    else { printf("type error!\n"); return; }
+    else { printf("type error: %s\n", type); return; }
 }
 
 void HypnoServer::hypnoClose() {
     closesocket(this->listen_socket);
     listen_socket = 0;
-    this->service = nullptr;
+    this->handleReceive = nullptr;
 }
 
-void HypnoServer::setService(std::function<void(SOCKET, char[], int, char[])> service) {
-    this->service = service;
+void HypnoServer::setCallback(std::function<void(SOCKET, char[], int, char[])> handleReceive) {
+    this->handleReceive = handleReceive;
 }
 
-void HypnoServer::TCPReceive(int max_bytes) {
+int HypnoServer::TCPReceive(int max_bytes) {
+    // printf("TCPPPPPPPPPPPPPPP\n");
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
+    // printf("max bytes = %d\n", max_bytes);
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
-    if (bytesRead <= 0) {
+    // printf("RECV = %d\n", max_bytes);
+    if (bytesRead == -1) {
         delete[] buffer;
-        return;
+        return -1;
     }
-    // printf("bytesRead = %d\n", bytesRead);
-    this->service(listen_socket, buffer, bytesRead, NULL);
+    this->handleReceive(listen_socket, buffer, bytesRead, NULL);
     delete[] buffer;
+    #ifdef DEBUG
+    printf("bytesRead = %d\n", bytesRead);
+    #endif
+    return bytesRead;
 }
 
-void HypnoServer::UDPReceive(int max_bytes) {
+int HypnoServer::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
@@ -160,18 +170,21 @@ void HypnoServer::UDPReceive(int max_bytes) {
     char ipv4[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
     // printf("ipv4 = %s\n", ipv4);
-    if (bytesRead <= 0) {
+    if (bytesRead == -1) {
         delete[] buffer;
-        return;
+        return -1;
     }
-    // printf("bytesRead = %d\n", bytesRead);
-    this->service(listen_socket, buffer, bytesRead, ipv4);
+    this->handleReceive(listen_socket, buffer, bytesRead, ipv4);
     delete[] buffer;
+    #ifdef DEBUG
+    printf("bytesRead = %d\n", bytesRead);
+    #endif
+    return bytesRead;
 }
 
-void HypnoServer::receiveData(int max_bytes) {
-    if (this->isTCPServer) TCPReceive(max_bytes);
-    else UDPReceive(max_bytes);
+int HypnoServer::receiveData(int max_bytes) {
+    if (this->isTCPServer) return TCPReceive(max_bytes);
+    else return UDPReceive(max_bytes);
 }
 
 bool HypnoClient::TCPConnect(char* host, char* port) {
@@ -196,7 +209,9 @@ bool HypnoClient::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        printf("connect failed: %d\n", err);
+        printf("(%d) ", err);
+        fflush(stdout);
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         // printf("to address = %s\n", ipv4);
         closesocket(connect_socket);
         return false;
@@ -234,7 +249,7 @@ bool HypnoClient::UDPConnect(char* host, char* port) {
 bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) return this->TCPConnect(host, port);
     else if (strcmp(type, "UDP") == 0) return this->UDPConnect(host, port);
-    else { printf("type error!\n"); return false; }
+    else { printf("type error: %s\n", type); return false; }
 }
 
 void HypnoClient::hypnoClose() {
@@ -244,16 +259,20 @@ void HypnoClient::hypnoClose() {
     this->server_address = nullptr;
 }
 
-bool HypnoClient::sendData(char* data, int size) {
+int HypnoClient::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
         int bytesSend = send(connect_socket, data, size, 0);
-        // printf("TCP bytesSend = %d\n", bytesSend);
+        #ifdef DEBUG
+        printf("TCP bytesSend = %d\n", bytesSend);
+        #endif
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    // printf("UDP bytesSend = %d\n", bytesSend);
+    #ifdef DEBUG
+    printf("UDP bytesSend = %d\n", bytesSend);
+    #endif
     return bytesSend;
 }
 

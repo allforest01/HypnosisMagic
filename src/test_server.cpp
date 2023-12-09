@@ -5,6 +5,6 @@ int main() {
     ServerConnectionManager server;
     server.listen(4401, 3, "TCP");
     PacketBox box;
-    server.receive(box, 10);
+    server.receive(10);
     server.clean();
 }

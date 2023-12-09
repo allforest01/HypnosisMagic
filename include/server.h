@@ -11,3 +11,4 @@
 
 #include "../include/imgui_wrapper.h"
 #include "../include/frame_wrapper.h"
+#include "../include/server_connection_manager.h"

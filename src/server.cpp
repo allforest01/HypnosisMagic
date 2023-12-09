@@ -1,4 +1,10 @@
-#include "../include/constant.h"
+#define SECRET "aBcXyZ"
+
+#define PORT_P "50300"
+#define PORT_M "50301"
+#define PORT_K "50302"
+#define PORT_S "50303"
+
 #include "../include/server.h"
 
 char host[16] = "10.211.55.255";
@@ -10,11 +16,11 @@ HypnoClient client_passcode;
 HypnoServer server_passcode;
 HypnoClient client_mouse;
 HypnoClient client_keyboard;
-HypnoServer server_screen;
+ServerConnectionManager server_screen;
 
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
-std::mutex mtx_mouse, mtx_keyboard;
+std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
 
 bool quit = false, connected = false;
 
@@ -73,15 +79,25 @@ void connectButtonHandle() {
 
         server_passcode.hypnoClose();
 
-        printf("Start thread_mouse\n");
+        // client_mouse send mouse events
+        while (!client_mouse.hypnoConnect(host, PORT_M, "UDP"));
+
+        printf("Done mouse connect!\n");
 
         // client_mouse send mouse events
-        while (!client_mouse.hypnoConnect(host, PORT_M, "TCP"));
+        while (!client_keyboard.hypnoConnect(host, PORT_K, "UDP"));
 
-        printf("Start thread_keyboard\n");
+        printf("Done keyboard connect!\n");
 
-        // client_mouse send mouse events
-        while (!client_keyboard.hypnoConnect(host, PORT_K, "TCP"));
+        printf("PORT_S = %s\n", (char*) PORT_S);
+        printf("atoi(PORT_S) = %d\n", atoi((char*)PORT_S));
+
+        printf("PORT_S = %d\n", atoi((char*)PORT_S));
+        server_screen.listen(host, atoi((char*)PORT_S), "UDP", 4);
+
+        printf("Done screen listen!\n");
+
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -108,8 +124,8 @@ void connectButtonHandle() {
                 PacketBox box;
                 BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                for (int i = 0; i < (int) box.data.size(); i++) {
+                    client_mouse.sendData((char*)box.data[i].data(), box.data[i].size());
                 }
             }
         });
@@ -137,8 +153,8 @@ void connectButtonHandle() {
                 PacketBox box;
                 BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                for (int i = 0; i < (int) box.data.size(); i++) {
+                    client_keyboard.sendData((char*)box.data[i].data(), box.data[i].size());
                 }
             }
         });
@@ -149,32 +165,41 @@ void connectButtonHandle() {
         std::thread thread_screen([&]()
         {
             printf("Start thread_screen\n");
+            fflush(stdout);
 
-            BoxManager boxman_screen;
-
-            boxman_screen.setCompleteCallback([](PacketBox& box) {
-                // printf("%d\n", box.packets.size());
+            server_screen.setCompleteCallback([](PacketBox& box) {
                 std::vector<uchar> image_data;
+                box.sort();
                 PacketBoxToBuf(box, image_data);
-                if (box.type == 'I') {
+                if (box.type == 'I')
+                {
                     // if (frame_wrapper.frame_queue.size() <= 2)
+                    std::unique_lock<std::mutex> lock_frame(mtx_frame);
                     frame_wrapper.frame_queue.push(image_data);
+                    lock_frame.unlock();
                 }
             });
 
-            server_screen.setService(
-                [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
-                    // short id = *(data);
-                    // short num = *(short*)(data + 3);
-                    // printf("id = %d, num = %d\n", id, num);
-                    std::vector<uchar> image_data(data, data + size);
-                    boxman_screen.addPacketToBox(image_data);
-                }
-            );
+            // printf("Done!");
 
-            server_screen.hypnoListen(PORT_S, "UDP");
+            while (!quit) {
+                static int cnt = 0;
 
-            while (!quit) server_screen.receiveData(1440);
+                auto start = std::chrono::high_resolution_clock::now();
+
+                server_screen.receive();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+
+                printf("server_screen.receive = %lf\n", duration.count());
+                printf("cnt = %d\n", ++cnt);
+
+                // std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+                // break;
+            }
+            
         });
 
         thread_screen.detach();
@@ -248,12 +273,14 @@ void clientScreenWindow() {
     ImGui::Begin("Screen");
 
     if (frame_wrapper.frame_queue.size()) {
-        frame_wrapper.pushToTexture();
-        static int cnt = 0;
-        printf("cnt = %d\n", ++cnt);
+        std::unique_lock<std::mutex> lock_frame(mtx_frame);
+        auto frame = frame_wrapper.frame_queue.front(); frame_wrapper.frame_queue.pop();
+        lock_frame.unlock();
+
+        frame_wrapper.pushToTexture(frame);
     }
 
-    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
+    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.width, frame_wrapper.height));
 
     frame_wrapper.is_hovered = ImGui::IsItemHovered();
     frame_wrapper.is_focused = ImGui::IsItemFocused();
@@ -317,6 +344,7 @@ int main(int argc, char** argv)
 
     cleanImGui(imgui_wrapper);
     frame_wrapper.cleanTexture();
+    server_screen.clean();
     cleanHypnoSocket();
 
     return 0;

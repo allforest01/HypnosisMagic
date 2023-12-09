@@ -19,5 +19,5 @@ struct FrameWrapper {
 
     void initTexture();
     void cleanTexture();
-    void pushToTexture();
+    void pushToTexture(std::vector<uchar>);
 };

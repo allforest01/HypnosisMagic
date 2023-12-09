@@ -10,3 +10,4 @@
 #include "../lib/hypno/hypno_keycode.h"
 
 #include "../include/imgui_wrapper.h"
+#include "../include/client_connection_manager.h"
