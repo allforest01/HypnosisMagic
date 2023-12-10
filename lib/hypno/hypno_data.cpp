@@ -1,4 +1,4 @@
-#include "data_manager.h"
+#include "hypno_data.h"
 
 void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int packet_size) {
     packet_size -= 7;

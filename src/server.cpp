@@ -1,16 +1,22 @@
-#include "constant.h"
-#include "server.h"
+#define SECRET "aBcXyZ"
+
+#define PORT_P "50300"
+#define PORT_M "50301"
+#define PORT_K "50302"
+#define PORT_S "50303"
+
+#include "../include/server.h"
 
 char host[16] = "10.211.55.255";
 
 FrameWrapper frame_wrapper;
 ImGuiWrapper imgui_wrapper;
 
-ClientManager client_passcode;
-ServerManager server_passcode;
-ClientManager client_mouse;
-ClientManager client_keyboard;
-ServerManager server_screen;
+HypnoClient client_passcode;
+HypnoServer server_passcode;
+HypnoClient client_mouse;
+HypnoClient client_keyboard;
+ServerConnectionManager server_screen;
 
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
@@ -63,7 +69,7 @@ void connectButtonHandle() {
     {
         broadcastMessage(PORT_P, SECRET, 7, inet_addr(host));
 
-        server_passcode.Listen(PORT_P, "TCP");
+        server_passcode.hypnoListen(PORT_P, "TCP");
 
         char ipv4[INET_ADDRSTRLEN];
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
@@ -71,15 +77,27 @@ void connectButtonHandle() {
         printf("host = %s\n", host);
         fflush(stdout);
 
-        server_passcode.Close();
+        server_passcode.hypnoClose();
 
         // client_mouse send mouse events
-        while (!client_mouse.Connect(host, PORT_M, "TCP"));
+        while (!client_mouse.hypnoConnect(host, PORT_M, "UDP"));
 
         printf("Done mouse connect!\n");
 
         // client_mouse send mouse events
-        while (!client_keyboard.Connect(host, PORT_K, "TCP"));
+        while (!client_keyboard.hypnoConnect(host, PORT_K, "UDP"));
+
+        printf("Done keyboard connect!\n");
+
+        printf("PORT_S = %s\n", (char*) PORT_S);
+        printf("atoi(PORT_S) = %d\n", atoi((char*)PORT_S));
+
+        printf("PORT_S = %d\n", atoi((char*)PORT_S));
+        server_screen.listen(host, atoi((char*)PORT_S), "UDP", 4);
+
+        printf("Done screen listen!\n");
+
+        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -92,8 +110,8 @@ void connectButtonHandle() {
                 MouseEvent me = mouse_events.front(); mouse_events.pop();
                 mtx_mouse.unlock();
     
-                me.x /= frame_wrapper.scaled_width;
-                me.y /= frame_wrapper.scaled_height;
+                me.x /= frame_wrapper.width;
+                me.y /= frame_wrapper.height;
 
                 if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
 
@@ -162,19 +180,26 @@ void connectButtonHandle() {
                 }
             });
 
-            server_screen.setService(
-                [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
-                    // short id = *(data);
-                    // short num = *(short*)(data + 3);
-                    // printf("id = %d, num = %d\n", id, num);
-                    std::vector<uchar> image_data(data, data + size);
-                    boxman_screen.addPacketToBox(image_data);
-                }
-            );
+            // printf("Done!");
 
-            server_screen.Listen(PORT_S, "UDP");
+            while (!quit) {
+                static int cnt = 0;
 
-            while (!quit) server_screen.receiveData(1440);
+                auto start = std::chrono::high_resolution_clock::now();
+
+                server_screen.receive();
+
+                auto end = std::chrono::high_resolution_clock::now();
+                std::chrono::duration<double> duration = end - start;
+
+                printf("server_screen.receive = %lf\n", duration.count());
+                printf("cnt = %d\n", ++cnt);
+
+                // std::this_thread::sleep_for(std::chrono::milliseconds(16));
+
+                // break;
+            }
+            
         });
 
         thread_screen.detach();
@@ -188,13 +213,9 @@ void connectButtonHandle() {
 
 void menuBar() {
     bool about_popup = false;
-    bool connect_popup = false;
 
     // Menu bar
     if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::MenuItem("Connect")) {
-            connect_popup = true;
-        }
         if (ImGui::MenuItem("About")) {
             about_popup = true;
         }
@@ -210,32 +231,46 @@ void menuBar() {
     }
     if (ImGui::BeginPopup("About", ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::Text("Simple cross-platform remote desktop tool in LAN");
-        // ImGui::Separator();
-        // ImGui::Text("Made by: allforest01");
-        ImGui::EndPopup();
-    }
-
-    // Connect popup
-    if (connect_popup) {
-        ImGui::OpenPopup("Connect");
-    }
-    if (ImGui::BeginPopup("Connect", ImGuiWindowFlags_AlwaysAutoResize)) {
-
-        ImGui::PushItemWidth(200);
-        ImGui::InputText("##host", (char*)host, 16);
-        ImGui::PopItemWidth();
-
-        ImGui::SameLine();
-        if (ImGui::Button("Connect")) connectButtonHandle();
+        ImGui::Separator();
+        ImGui::Text("Made by: allforest01");
         ImGui::EndPopup();
     }
 }
 
+void connectionWindow() {
+    ImGui::SetNextWindowPos(ImVec2(940, 30));
+    ImGui::SetNextWindowSize(ImVec2(255, 100));
+    ImGui::Begin("Connect to client");
+
+    ImGui::Text("Host");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(200);
+    ImGui::InputText("##host", (char*)host, 16);
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Port");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(200);
+    ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
+    ImGui::PopItemWidth();
+
+    ImGui::Text("Code");
+    ImGui::SameLine();
+    ImGui::PushItemWidth(135);
+    ImGui::InputText("##SECRET", (char*)SECRET, 5);
+    ImGui::PopItemWidth();
+
+    ImGui::SameLine();
+    if (ImGui::Button("Connect")) connectButtonHandle();
+
+    ImGui::End();
+}
+
 void clientScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
-    ImGui::SetNextWindowSize(ImVec2(1100, 690));
+    ImGui::SetNextWindowSize(ImVec2(922, 600));
 
-    ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Begin("Screen");
 
     if (frame_wrapper.frame_queue.size()) {
         std::unique_lock<std::mutex> lock_frame(mtx_frame);
@@ -290,8 +325,8 @@ void guiRendering() {
 
 int main(int argc, char** argv)
 {
-    initSocketManager();
-    imgui_wrapper = ImGuiWrapper(1260, 730, (char*)"Server");
+    initHypnoSocket();
+    imgui_wrapper = ImGuiWrapper(1200, 640, (char*)"Server");
     initImGui(imgui_wrapper);
     frame_wrapper.initTexture();
 
@@ -300,6 +335,7 @@ int main(int argc, char** argv)
         startNewFrame();
 
         menuBar();
+        connectionWindow();
         clientScreenWindow();
 
         guiRendering();
@@ -308,7 +344,8 @@ int main(int argc, char** argv)
 
     cleanImGui(imgui_wrapper);
     frame_wrapper.cleanTexture();
-    cleanSocketManager();
+    server_screen.clean();
+    cleanHypnoSocket();
 
     return 0;
 }

@@ -1,4 +1,4 @@
-#include "imgui_wrapper.h"
+#include "../include/imgui_wrapper.h"
 
 ImGuiWrapper::ImGuiWrapper(int width, int height, char* title) {
     this->window_width = width;
