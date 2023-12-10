@@ -76,9 +76,13 @@ void startButtonHandle() {
 
         server_passcode.Close();
         
-        while (!client_passcode.Connect(host, (char*)PORT_P, "TCP"));
+        while (!client_passcode.Connect(host, (char*)PORT_C, "UDP"));
+
+        while (!client_passcode.sendData("1", 1));
 
         client_passcode.Close();
+
+        // ---------------------------------------------------
 
         server_mouse.Listen((char*)PORT_M, "TCP");
 
@@ -206,7 +210,7 @@ void startButtonHandle() {
 
             while (!quit)
             {
-                printf("START SEND\n"); fflush(stdout);
+                // printf("START SEND\n"); fflush(stdout);
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!frame_box_queue.size()) {
                     mtx_screen.unlock();
@@ -227,7 +231,7 @@ void startButtonHandle() {
                 // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
                 printf("packets.size() = %lu\n", box.packets.size());
-                printf("END SEND\n"); fflush(stdout);
+                // printf("END SEND\n"); fflush(stdout);
             }
 
         });

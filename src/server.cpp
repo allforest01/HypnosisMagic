@@ -15,6 +15,7 @@ ServerManager server_screen;
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
 std::mutex mtx_mouse, mtx_keyboard;
+std::vector<std::string> client_hosts;
 
 bool quit = false, connected = false;
 
@@ -63,15 +64,28 @@ void connectButtonHandle() {
     {
         broadcastMessage(PORT_P, SECRET, 7, inet_addr(host));
 
-        server_passcode.Listen(PORT_P, "TCP");
+        server_passcode.Listen(PORT_C, "UDP");
 
-        char ipv4[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
-        strcpy(host, ipv4);
-        printf("host = %s\n", host);
-        fflush(stdout);
+        server_passcode.setService(
+            [&](SOCKET sock, char data[], int size, char host[]) {
+                client_hosts.push_back(std::string(host, host + INET_ADDRSTRLEN));
+                printf("host = %s\n", client_hosts.back().c_str());
+                printf("data = %s\n", data);
+                fflush(stdout);
+            }
+        );
+
+        while (true) {
+            server_passcode.receiveData(1);
+            if (client_hosts.size()) break;
+        }
 
         server_passcode.Close();
+
+        strcpy(host, client_hosts[0].c_str());
+        printf("[host] = %s\n", host);
+
+        // ---------------------------------------------------
 
         printf("Start thread_mouse\n");
 
@@ -226,14 +240,14 @@ void menuBar() {
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
-        if (ImGui::Button("Connect")) connectButtonHandle();
+        if (ImGui::Button("Connect")) connectButtonHandle();    
         ImGui::EndPopup();
     }
 }
 
 void clientScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
-    ImGui::SetNextWindowSize(ImVec2(1100, 690));
+    ImGui::SetNextWindowSize(ImVec2(1000, 630));
 
     ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
@@ -286,10 +300,21 @@ void guiRendering() {
     SDL_Delay(16);
 }
 
+void clientList() {
+    ImGui::SetNextWindowPos(ImVec2(1020, 30));
+    ImGui::SetNextWindowSize(ImVec2(230, 630));
+    ImGui::Begin("Client List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    ImGui::Text("Client 1");
+    int scaled_width = ImGui::GetContentRegionAvail().x - 6;
+    int scaled_height = frame_wrapper.scaled_height * scaled_width / frame_wrapper.scaled_width;
+    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+    ImGui::End();
+}
+
 int main(int argc, char** argv)
 {
     initSocketManager();
-    imgui_wrapper = ImGuiWrapper(1260, 730, (char*)"Server");
+    imgui_wrapper = ImGuiWrapper(1260, 670, (char*)"Server");
     initImGui(imgui_wrapper);
     frame_wrapper.initTexture();
 
@@ -299,6 +324,7 @@ int main(int argc, char** argv)
 
         menuBar();
         clientScreenWindow();
+        clientList();
 
         guiRendering();
         handleEvents();

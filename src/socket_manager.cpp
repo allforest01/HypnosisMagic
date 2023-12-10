@@ -103,7 +103,7 @@ void ServerManager::UDPListen(char* port) {
     err = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
     freeaddrinfo(result);
     if (err) {
-        printf("bind failed: %d\n", err);
+        perror("bind failed");
         closesocket(ListenSocket);
         return;
     }
