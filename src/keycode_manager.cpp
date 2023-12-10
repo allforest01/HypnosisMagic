@@ -1,4 +1,4 @@
-#include "hypno_keycode.h"
+#include "keycode_manager.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 

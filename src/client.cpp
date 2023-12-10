@@ -1,22 +1,16 @@
-#define SECRET "aBcXyZ"
-
-#define PORT_P "50300"
-#define PORT_M "50301"
-#define PORT_K "50302"
-#define PORT_S "50303"
-
-#include "../include/client.h"
+#include "constant.h"
+#include "client.h"
 
 char host[16] = "255.255.255.255";
 char debug[256] = "Debug message";
 
 ImGuiWrapper imgui_wrapper;
 
-HypnoServer server_passcode;
-HypnoClient client_passcode;
-HypnoServer server_mouse;
-HypnoServer server_keyboard;
-ClientConnectionManager client_screen;
+ServerManager server_passcode;
+ClientManager client_passcode;
+ServerManager server_mouse;
+ServerManager server_keyboard;
+ClientManager client_screen;
 
 std::queue<KeyboardEvent> keyboard_events;
 std::queue<PacketBox> frame_box_queue;
@@ -74,34 +68,21 @@ void startButtonHandle() {
             }
         );
 
-        server_passcode.hypnoListen((char*)PORT_P, "UDP");
+        server_passcode.Listen((char*)PORT_P, "UDP");
         
         while (!quit && waiting) {
             server_passcode.receiveData(7);
         }
 
-        server_passcode.hypnoClose();
+        server_passcode.Close();
         
-        while (!client_passcode.hypnoConnect(host, (char*)PORT_P, "TCP"));
+        while (!client_passcode.Connect(host, (char*)PORT_P, "TCP"));
 
-        client_passcode.hypnoClose();
+        client_passcode.Close();
 
-        server_mouse.hypnoListen((char*)PORT_M, "UDP");
+        server_mouse.Listen((char*)PORT_M, "TCP");
 
-        printf("Done mouse listen!\n");
-
-        server_keyboard.hypnoListen((char*)PORT_K, "UDP");
-
-        printf("Done keyboard listen!\n");
-
-        printf("PORT_S = %s\n", (char*) PORT_S);
-        printf("atoi(PORT_S) = %d\n", atoi((char*)PORT_S));
-
-        client_screen.connect(host, atoi((char*)PORT_S), "UDP", 4);
-
-        printf("Done screen connect!\n");
-
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        server_keyboard.Listen((char*)PORT_K, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -114,16 +95,16 @@ void startButtonHandle() {
                 {
                     MouseEvent &me = *(MouseEvent*)buf.data();
                     
-                    int x = round(me.x * HypnoEvent::getInstance().width);
-                    int y = round(me.y * HypnoEvent::getInstance().height);
+                    int x = round(me.x * EventsManager::getInstance().width);
+                    int y = round(me.y * EventsManager::getInstance().height);
 
                     snprintf(debug, 256, "Send Mouse %d %d\n", x, y);
 
-                    if (me.type == LDown) HypnoEvent::getInstance().emitLDown(x, y);
-                    else if (me.type == LUp) HypnoEvent::getInstance().emitLUp(x, y);
-                    else if (me.type == RDown) HypnoEvent::getInstance().emitRDown(x, y);
-                    else if (me.type == RUp) HypnoEvent::getInstance().emitRUp(x, y);
-                    else if (me.type == MouseMove) HypnoEvent::getInstance().emitMove(x, y);
+                    if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
+                    else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
+                    else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
+                    else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
+                    else if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
                 }
             });
 
@@ -177,8 +158,8 @@ void startButtonHandle() {
                 KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
                 mtx_keyboard.unlock();
                 
-                if (ke.type == KeyDown) HypnoEvent::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                else if (ke.type == KeyUp) HypnoEvent::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+                if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
             }
         });
 
@@ -186,11 +167,12 @@ void startButtonHandle() {
 
         std::thread thread_screen_socket([&]() {
 
+            while (!client_screen.Connect(host, (char*)PORT_S, "UDP"));
+
             while (!quit)
             {
-                // if (frame_box_queue.size()) continue;
-
-                cv::Mat mat = HypnoEvent::getInstance().captureScreen();
+                printf("START PUSH\n"); fflush(stdout);
+                cv::Mat mat = EventsManager::getInstance().captureScreen();
                 // resize(mat, mat, cv::Size(), 1, 1);
 
                 std::vector<uchar> frame;
@@ -214,6 +196,7 @@ void startButtonHandle() {
                 frame_box_queue.push(box);
                 // printf("frame_box_queue = %d", frame_box_queue.size());
                 mtx_screen.unlock();
+                printf("END PUSH\n"); fflush(stdout);
 
                 // printf("END BUG HERE\n"); fflush(stdout);
                 // break;
@@ -227,6 +210,7 @@ void startButtonHandle() {
 
             while (!quit)
             {
+                printf("START SEND\n"); fflush(stdout);
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!frame_box_queue.size()) {
                     mtx_screen.unlock();
@@ -236,24 +220,18 @@ void startButtonHandle() {
                 PacketBox box = frame_box_queue.front(); frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                static int cnt = 0;
-
-                auto start = std::chrono::high_resolution_clock::now();
-
-                printf("START SEND!\n");
-                client_screen.send(box);
-                printf("END SEND!\n");
-
-                auto end = std::chrono::high_resolution_clock::now();
-                std::chrono::duration<double> duration = end - start;
-
-                printf("client_screen.send = %lf\n", duration.count());
-                printf("cnt = %d\n", ++cnt);
-                fflush(stdout);
-
+                // auto start = std::chrono::high_resolution_clock::now();
+                for (int i = 0; i < (int) box.packets.size(); i++) {
+                    client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                }
+                // auto end = std::chrono::high_resolution_clock::now();
+                // std::chrono::duration<double> duration = end - start;
+                // printf("client_screen = %lf\n", duration.count());
+                
                 // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
-                // break;
+                printf("packets.size() = %lu\n", box.packets.size());
+                printf("END SEND\n"); fflush(stdout);
             }
 
         });
@@ -266,43 +244,48 @@ void startButtonHandle() {
 }
 
 void listeningWindow() {
-    ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(270, 80));
-    ImGui::Begin("Port");
-    // Open UDP socket to waiting for connect from server
-    ImGui::Text("Open a port to waiting for a connection");
-    ImGui::PushItemWidth(200);
-    ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
-    ImGui::PopItemWidth();
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(200, 80));
 
-    ImGui::SameLine();
-    if (ImGui::Button("Start")) startButtonHandle();
+    ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    // Open UDP socket to waiting for connect from server
+    // ImGui::Text("Open a port to waiting for a connection");
+    // ImGui::PushItemWidth(200);
+    // ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
+    // ImGui::PopItemWidth();
+
+    // ImGui::SameLine();
+    ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
+    if (ImGui::Button("Start", buttonSize)) startButtonHandle();
+    if (ImGui::Button("Exit", buttonSize)) { quit = true; }
+
     ImGui::End();
 }
 
 void waitingWindow() {
-    ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(270, 80));
-    ImGui::Begin("Port");
-    // waitinging for a connection from server
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(200, 80));
+    ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
+    // waiting for a connection from server
+
     ImGui::PushItemWidth(-1);
-    ImGui::ProgressBar(ImGui::GetTime() * -0.2f, ImVec2(0, 0), "waitinging for a connection");
+    ImGui::ProgressBar(ImGui::GetTime() * -0.2f, ImVec2(0, 0), "");
     ImGui::PopItemWidth();
 
-    ImGui::SetCursorPos(ImVec2(9, 53));
-    ImGui::Text("Code: %s", SECRET);
-    ImGui::SetCursorPos(ImVec2(211, 50));
+    // ImGui::SetCursorPos(ImVec2(9, 53));
+    // ImGui::Text("Code: %s", SECRET);
+    // ImGui::SetCursorPos(ImVec2(211, 50));
 
-    if (ImGui::Button("Cancel")) {
-        waiting = false;
-    }
+    ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
+    if (ImGui::Button("Cancel", buttonSize)) { waiting = false; }
+
     ImGui::End();
 }
 
 void connectedWindow() {
-    ImGui::SetNextWindowPos(ImVec2(20, 20));
-    ImGui::SetNextWindowSize(ImVec2(270, 80));
-    ImGui::Begin("Port");
+    ImGui::SetNextWindowPos(ImVec2(0, 0));
+    ImGui::SetNextWindowSize(ImVec2(200, 80));
+    ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     // When client is connected from server
     ImGui::Text("%s", debug);
@@ -311,8 +294,8 @@ void connectedWindow() {
 
 int main(int argc, char** argv)
 {
-    initHypnoSocket();
-    imgui_wrapper = ImGuiWrapper(310, 120, (char*)"Client");
+    initSocketManager();
+    imgui_wrapper = ImGuiWrapper(200, 60, (char*)"Client");
     initImGui(imgui_wrapper);
 
     while (!quit)
@@ -328,8 +311,7 @@ int main(int argc, char** argv)
     }
 
     cleanImGui(imgui_wrapper);
-    client_screen.clean();
-    cleanHypnoSocket();
+    cleanSocketManager();
 
     return 0;
 }

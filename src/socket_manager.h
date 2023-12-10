@@ -22,38 +22,38 @@
     #define closesocket close
 #endif
 
-void initHypnoSocket();
-void cleanHypnoSocket();
+void initSocketManager();
+void cleanSocketManager();
 
-class HypnoServer {
+class ServerManager {
 private:
     SOCKET listen_socket;
     bool isTCPServer;
-    std::function<void(SOCKET, char[], int, char[])> handleReceive;
+    std::function<void(SOCKET, char[], int, char[])> service;
 public:
     struct sockaddr_in client_address;
-    HypnoServer(): listen_socket(0), isTCPServer(false), handleReceive(nullptr) {}
+    ServerManager(): listen_socket(0), isTCPServer(false), service(nullptr) {}
     void TCPListen(char*);
     void UDPListen(char*);
-    void hypnoListen(char*, const char*);
-    void hypnoClose();
-    void setCallback(std::function<void(SOCKET, char[], int, char[])>);
-    int TCPReceive(int);
-    int UDPReceive(int);
-    int receiveData(int);
+    void Listen(char*, const char*);
+    void Close();
+    void setService(std::function<void(SOCKET, char[], int, char[])>);
+    void TCPReceive(int);
+    void UDPReceive(int);
+    void receiveData(int);
 };
 
-class HypnoClient {
+class ClientManager {
 private:
     SOCKET connect_socket;
     struct addrinfo *server_address;
 public:
-    HypnoClient(): connect_socket(0), server_address(nullptr) {}
+    ClientManager(): connect_socket(0), server_address(nullptr) {}
     bool TCPConnect(char*, char*);
     bool UDPConnect(char*, char*);
-    bool hypnoConnect(char*, char*, const char*);
-    void hypnoClose();
-    int sendData(char*, int);
+    bool Connect(char*, char*, const char*);
+    void Close();
+    bool sendData(char*, int);
 };
 
 bool broadcastMessage(char*, char*, int, int host);

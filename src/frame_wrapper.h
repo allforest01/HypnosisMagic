@@ -3,7 +3,7 @@
 #include <queue>
 #include <GL/glew.h>
 #include <imgui.h>
-#include "../lib/hypno/hypno_image.h"
+#include "image_manager.h"
 
 typedef unsigned char uchar;
 
