@@ -1,6 +1,6 @@
-#include "hypno_socket.h"
+#include "socket_manager.h"
 
-void initHypnoSocket() {
+void initSocketManager() {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     WSADATA wsaData;
     int err = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -17,13 +17,13 @@ void initHypnoSocket() {
 #endif
 }
 
-void cleanHypnoSocket() {   
+void cleanSocketManager() {   
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     WSACleanup();
 #endif
 }
 
-void HypnoServer::TCPListen(char* port) {
+void ServerManager::TCPListen(char* port) {
     isTCPServer = true;
 
     struct addrinfo *result = NULL, hints;
@@ -80,7 +80,7 @@ void HypnoServer::TCPListen(char* port) {
     }
 }
 
-void HypnoServer::UDPListen(char* port) {
+void ServerManager::UDPListen(char* port) {
     isTCPServer = false;
 
     struct addrinfo *result = NULL, hints;
@@ -122,23 +122,23 @@ void HypnoServer::UDPListen(char* port) {
     }
 }
 
-void HypnoServer::hypnoListen(char* port, const char* type) {
+void ServerManager::Listen(char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) this->TCPListen(port);
     else if (strcmp(type, "UDP") == 0) this->UDPListen(port);
     else { printf("type error!\n"); return; }
 }
 
-void HypnoServer::hypnoClose() {
+void ServerManager::Close() {
     closesocket(this->listen_socket);
     listen_socket = 0;
     this->service = nullptr;
 }
 
-void HypnoServer::setService(std::function<void(SOCKET, char[], int, char[])> service) {
+void ServerManager::setService(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
-void HypnoServer::TCPReceive(int max_bytes) {
+void ServerManager::TCPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
@@ -151,7 +151,7 @@ void HypnoServer::TCPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-void HypnoServer::UDPReceive(int max_bytes) {
+void ServerManager::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
@@ -169,12 +169,12 @@ void HypnoServer::UDPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-void HypnoServer::receiveData(int max_bytes) {
+void ServerManager::receiveData(int max_bytes) {
     if (this->isTCPServer) TCPReceive(max_bytes);
     else UDPReceive(max_bytes);
 }
 
-bool HypnoClient::TCPConnect(char* host, char* port) {
+bool ClientManager::TCPConnect(char* host, char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -206,7 +206,7 @@ bool HypnoClient::TCPConnect(char* host, char* port) {
     return true;
 }
 
-bool HypnoClient::UDPConnect(char* host, char* port) {
+bool ClientManager::UDPConnect(char* host, char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -231,20 +231,20 @@ bool HypnoClient::UDPConnect(char* host, char* port) {
     return true;
 }
 
-bool HypnoClient::hypnoConnect(char* host, char* port, const char* type) {
+bool ClientManager::Connect(char* host, char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) return this->TCPConnect(host, port);
     else if (strcmp(type, "UDP") == 0) return this->UDPConnect(host, port);
     else { printf("type error!\n"); return false; }
 }
 
-void HypnoClient::hypnoClose() {
+void ClientManager::Close() {
     closesocket(this->connect_socket);
     freeaddrinfo(this->server_address);
     connect_socket = 0;
     this->server_address = nullptr;
 }
 
-bool HypnoClient::sendData(char* data, int size) {
+bool ClientManager::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {

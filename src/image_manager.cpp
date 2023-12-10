@@ -1,6 +1,6 @@
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_RESIZE2_IMPLEMENTATION
-#include "hypno_image.h"
+#include "image_manager.h"
 
 void MatToTexture(const cv::Mat& bgrImage, GLuint& textureID) {
     glBindTexture(GL_TEXTURE_2D, textureID);

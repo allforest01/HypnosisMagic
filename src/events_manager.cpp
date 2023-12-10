@@ -1,4 +1,4 @@
-#include "hypno_event.h"
+#include "events_manager.h"
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
 
@@ -21,7 +21,7 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
     return bi;
 }
 
-HypnoEvent::HypnoEvent() {
+EventsManager::EventsManager() {
     screen_x = GetSystemMetrics(SM_XVIRTUALSCREEN);
     screen_y = GetSystemMetrics(SM_YVIRTUALSCREEN);
     width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
@@ -36,10 +36,10 @@ cv::Mat captureScreenMat(HWND hwnd)
     HDC hwindowCompatibleDC = CreateCompatibleDC(hwindowDC);
     SetStretchBltMode(hwindowCompatibleDC, COLORONCOLOR);
 
-    int screen_x = HypnoEvent::getInstance().screen_x;
-    int screen_y = HypnoEvent::getInstance().screen_y;
-    int width  = HypnoEvent::getInstance().width;
-    int height = HypnoEvent::getInstance().height;
+    int screen_x = EventsManager::getInstance().screen_x;
+    int screen_y = EventsManager::getInstance().screen_y;
+    int width  = EventsManager::getInstance().width;
+    int height = EventsManager::getInstance().height;
 
     img.create(height, width, CV_8UC4);
     bgrim.create(height, width, CV_8UC3);
@@ -60,11 +60,11 @@ cv::Mat captureScreenMat(HWND hwnd)
     return bgrim;
 }
 
-cv::Mat HypnoEvent::captureScreen() {
+cv::Mat EventsManager::captureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
-void HypnoEvent::emitKeyDown(int keyCode) {
+void EventsManager::emitKeyDown(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -72,7 +72,7 @@ void HypnoEvent::emitKeyDown(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::emitKeyUp(int keyCode) {
+void EventsManager::emitKeyUp(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
     input.ki.wVk = keyCode;
@@ -80,12 +80,12 @@ void HypnoEvent::emitKeyUp(int keyCode) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::toScreenCoord(int &x, int &y) {
-    x = (long long)(x * 65536) / HypnoEvent::getInstance().width;
-    y = (long long)(y * 65536) / HypnoEvent::getInstance().height;
+void EventsManager::toScreenCoord(int &x, int &y) {
+    x = (long long)(x * 65536) / EventsManager::getInstance().width;
+    y = (long long)(y * 65536) / EventsManager::getInstance().height;
 }
 
-void HypnoEvent::emitLDown(int x, int y) {
+void EventsManager::emitLDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -98,7 +98,7 @@ void HypnoEvent::emitLDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::emitRDown(int x, int y) {
+void EventsManager::emitRDown(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -111,7 +111,7 @@ void HypnoEvent::emitRDown(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::emitLUp(int x, int y) {
+void EventsManager::emitLUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -124,7 +124,7 @@ void HypnoEvent::emitLUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::emitRUp(int x, int y) {
+void EventsManager::emitRUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -137,7 +137,7 @@ void HypnoEvent::emitRUp(int x, int y) {
     SendInput(1, &input, sizeof(INPUT));
 }
 
-void HypnoEvent::emitMove(int x, int y) {
+void EventsManager::emitMove(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
@@ -152,15 +152,15 @@ void HypnoEvent::emitMove(int x, int y) {
 
 #else
 
-HypnoEvent::HypnoEvent() {
+EventsManager::EventsManager() {
     width = CGDisplayPixelsWide(CGMainDisplayID());
     height = CGDisplayPixelsHigh(CGMainDisplayID());
 }
 
-cv::Mat HypnoEvent::captureScreen()
+cv::Mat EventsManager::captureScreen()
 {
-    size_t width = HypnoEvent::getInstance().width;
-    size_t height = HypnoEvent::getInstance().height;
+    size_t width = EventsManager::getInstance().width;
+    size_t height = EventsManager::getInstance().height;
 
     cv::Mat im(cv::Size(width,height), CV_8UC4);
     cv::Mat bgrim(cv::Size(width,height), CV_8UC3);
@@ -179,21 +179,21 @@ cv::Mat HypnoEvent::captureScreen()
     return bgrim;
 }
 
-void HypnoEvent::emitKeyDown(int keyCode) {
+void EventsManager::emitKeyDown(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyDown);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void HypnoEvent::emitKeyUp(int keyCode) {
+void EventsManager::emitKeyUp(int keyCode) {
     CGEventRef keyEvent = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventSetType(keyEvent, kCGEventKeyUp);
     CGEventPost(kCGHIDEventTap, keyEvent);
     CFRelease(keyEvent);
 }
 
-void HypnoEvent::emitLDown(int x, int y) {
+void EventsManager::emitLDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -201,7 +201,7 @@ void HypnoEvent::emitLDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void HypnoEvent::emitLUp(int x, int y) {
+void EventsManager::emitLUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventLeftMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -209,7 +209,7 @@ void HypnoEvent::emitLUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void HypnoEvent::emitRDown(int x, int y) {
+void EventsManager::emitRDown(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseDown);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -217,7 +217,7 @@ void HypnoEvent::emitRDown(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void HypnoEvent::emitRUp(int x, int y) {
+void EventsManager::emitRUp(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventRightMouseUp);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
@@ -225,7 +225,7 @@ void HypnoEvent::emitRUp(int x, int y) {
     CFRelease(mouseEvent);
 }
 
-void HypnoEvent::emitMove(int x, int y) {
+void EventsManager::emitMove(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventMouseMoved);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
