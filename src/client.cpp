@@ -56,7 +56,7 @@ void startButtonHandle() {
     waiting = true;
 
     std::thread thread_passcode([&](){
-        server_passcode.setService(
+        server_passcode.setCallback(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
                 if (!strcmp(data, SECRET) || !strcmp(data, "ABCXYZ")) {
                     strcpy(host, ipv4);
@@ -108,7 +108,7 @@ void startButtonHandle() {
                 }
             });
 
-            server_mouse.setService(
+            server_mouse.setCallback(
                 [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_mouse.addPacketToBox(buf);
@@ -128,14 +128,14 @@ void startButtonHandle() {
                 std::vector<uchar> buf;
                 PacketBoxToBuf(box, buf);
                 if (box.type == 'K')
-                {
+                {   
                     std::unique_lock<std::mutex> lock(mtx_keyboard);
                     keyboard_events.push(*(KeyboardEvent*)buf.data());
                     mtx_keyboard.unlock();
                 }
             });
 
-            server_keyboard.setService(
+            server_keyboard.setCallback(
                 [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_keyboard.addPacketToBox(buf);
@@ -177,6 +177,7 @@ void startButtonHandle() {
 
                 std::vector<uchar> frame;
                 // auto start1 = std::chrono::high_resolution_clock::now();
+                // printf("START BUG HERE\n"); fflush(stdout);
                 compressImage(mat, frame, 90);
                 // auto end1 = std::chrono::high_resolution_clock::now();
                 // std::chrono::duration<double> duration1 = end1 - start1;
@@ -193,9 +194,12 @@ void startButtonHandle() {
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 frame_box_queue.push(box);
+                // printf("frame_box_queue = %d", frame_box_queue.size());
                 mtx_screen.unlock();
                 printf("END PUSH\n"); fflush(stdout);
 
+                // printf("END BUG HERE\n"); fflush(stdout);
+                // break;
             }
 
         });

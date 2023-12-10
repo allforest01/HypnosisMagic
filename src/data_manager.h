@@ -10,7 +10,7 @@ typedef unsigned char uchar;
 class PacketBox {
 public:
     short id; char type; short size;
-    std::vector<std::vector<uchar>> packets;
+    std::vector<std::vector<uchar>> data;
     PacketBox(): id(-1), type(-1), size(-1) {}
     ~PacketBox();
     void addPacket(std::vector<uchar>&);

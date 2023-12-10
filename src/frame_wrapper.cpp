@@ -8,9 +8,7 @@ void FrameWrapper::cleanTexture() {
     glDeleteTextures(1, &this->image_texture);
 }
 
-void FrameWrapper::pushToTexture() {
-    auto frame = this->frame_queue.front(); this->frame_queue.pop();
-
+void FrameWrapper::pushToTexture(std::vector<uchar> frame) {
     unsigned char* imageData = stbi_load_from_memory(frame.data(), frame.size(), &this->width, &this->height, &this->channels, 3);
 
     if (!this->scale_calculated) {

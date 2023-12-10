@@ -14,7 +14,7 @@ ServerManager server_screen;
 
 std::queue<MouseEvent> mouse_events;
 std::queue<KeyboardEvent> keyboard_events;
-std::mutex mtx_mouse, mtx_keyboard;
+std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
 
 bool quit = false, connected = false;
 
@@ -73,12 +73,10 @@ void connectButtonHandle() {
 
         server_passcode.Close();
 
-        printf("Start thread_mouse\n");
-
         // client_mouse send mouse events
         while (!client_mouse.Connect(host, PORT_M, "TCP"));
 
-        printf("Start thread_keyboard\n");
+        printf("Done mouse connect!\n");
 
         // client_mouse send mouse events
         while (!client_keyboard.Connect(host, PORT_K, "TCP"));
@@ -108,8 +106,8 @@ void connectButtonHandle() {
                 PacketBox box;
                 BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                for (int i = 0; i < (int) box.data.size(); i++) {
+                    client_mouse.sendData((char*)box.data[i].data(), box.data[i].size());
                 }
             }
         });
@@ -137,8 +135,8 @@ void connectButtonHandle() {
                 PacketBox box;
                 BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                for (int i = 0; i < (int) box.data.size(); i++) {
+                    client_keyboard.sendData((char*)box.data[i].data(), box.data[i].size());
                 }
             }
         });
@@ -149,16 +147,18 @@ void connectButtonHandle() {
         std::thread thread_screen([&]()
         {
             printf("Start thread_screen\n");
+            fflush(stdout);
 
-            BoxManager boxman_screen;
-
-            boxman_screen.setCompleteCallback([](PacketBox& box) {
-                // printf("%d\n", box.packets.size());
+            server_screen.setCompleteCallback([](PacketBox& box) {
                 std::vector<uchar> image_data;
+                box.sort();
                 PacketBoxToBuf(box, image_data);
-                if (box.type == 'I') {
+                if (box.type == 'I')
+                {
                     // if (frame_wrapper.frame_queue.size() <= 2)
+                    std::unique_lock<std::mutex> lock_frame(mtx_frame);
                     frame_wrapper.frame_queue.push(image_data);
+                    lock_frame.unlock();
                 }
             });
 
@@ -238,12 +238,14 @@ void clientScreenWindow() {
     ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     if (frame_wrapper.frame_queue.size()) {
-        frame_wrapper.pushToTexture();
-        static int cnt = 0;
-        printf("cnt = %d\n", ++cnt);
+        std::unique_lock<std::mutex> lock_frame(mtx_frame);
+        auto frame = frame_wrapper.frame_queue.front(); frame_wrapper.frame_queue.pop();
+        lock_frame.unlock();
+
+        frame_wrapper.pushToTexture(frame);
     }
 
-    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
+    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.width, frame_wrapper.height));
 
     frame_wrapper.is_hovered = ImGui::IsItemHovered();
     frame_wrapper.is_focused = ImGui::IsItemFocused();
