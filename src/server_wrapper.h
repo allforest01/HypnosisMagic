@@ -4,6 +4,8 @@
 #include "events_manager.h"
 
 struct ServerWrapper {
+    std::string PORT_S, PORT_M, PORT_K;
+
     ClientSocketManager client_mouse;
     ClientSocketManager client_keyboard;
     ServerSocketManager server_screen;

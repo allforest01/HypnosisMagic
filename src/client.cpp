@@ -4,15 +4,17 @@
 char host[16] = "255.255.255.255";
 char debug[256] = "Debug message";
 
-ImGuiWrapper imgui_wrapper;
-
-ClientWrapper client_wrapper;
+std::mutex mtx_keyboard, mtx_screen;
 
 ClientSocketManager client_passcode;
 ServerSocketManager server_passcode;
-std::mutex mtx_keyboard, mtx_screen;
 
-bool quit = false, waiting = false, connected = false;
+ImGuiWrapper imgui_wrapper;
+ClientWrapper client_wrapper;
+
+bool quit = false;
+bool waiting = false;
+bool connected = false;
 
 void handleEvents() {
     // SDL poll event
@@ -52,7 +54,7 @@ void startButtonHandle() {
     waiting = true;
 
     std::thread thread_passcode([&](){
-        server_passcode.setService(
+        server_passcode.setCallback(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
                 if (!strcmp(data, SECRET) || !strcmp(data, "ABCXYZ")) {
                     strcpy(host, ipv4);
@@ -71,18 +73,58 @@ void startButtonHandle() {
         }
 
         server_passcode.Close();
+
+        // ------------------
         
         while (!client_passcode.Connect(host, (char*)PORT_C, "UDP"));
 
-        while (!client_passcode.sendData("1", 1));
+        while (!client_passcode.sendData(SECRET, 1));
 
         client_passcode.Close();
 
+        // ------------------
+
+        server_passcode.Listen((char*)PORT_C, "TCP");
+
+        server_passcode.setCallback(
+            [&](SOCKET sock, char data[], int size, char host[]) {
+                client_wrapper.PORT_S = std::string(data, data + 4);
+            }
+        );
+
+        while (server_passcode.receiveData(4) <= 0);
+
+        server_passcode.setCallback(
+            [&](SOCKET sock, char data[], int size, char host[]) {
+                client_wrapper.PORT_M = std::string(data, data + 4);
+            }
+        );
+
+        while (server_passcode.receiveData(4) <= 0);
+
+        server_passcode.setCallback(
+            [&](SOCKET sock, char data[], int size, char host[]) {
+                client_wrapper.PORT_K = std::string(data, data + 4);
+            }
+        );
+
+        while (server_passcode.receiveData(4) <= 0);
+
+        printf("[server_host] = %s\n", host);
+        printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
+        printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
+        printf("PORT_K = %s\n", client_wrapper.PORT_K.c_str());
+
         // ---------------------------------------------------
 
-        client_wrapper.server_mouse.Listen((char*)PORT_M, "TCP");
+        client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP");
+        printf("Mouse connected!\n");
 
-        client_wrapper.server_keyboard.Listen((char*)PORT_K, "TCP");
+        client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP");
+        printf("Keyboard connected\n");
+
+        while (!client_wrapper.client_screen.Connect(host, (char*)client_wrapper.PORT_S.c_str(), "UDP"));
+        printf("Screen connected\n");
 
         std::thread thread_mouse([&]()
         {
@@ -108,7 +150,7 @@ void startButtonHandle() {
                 }
             });
 
-            client_wrapper.server_mouse.setService(
+            client_wrapper.server_mouse.setCallback(
                 [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_mouse.addPacketToBox(buf);
@@ -135,7 +177,7 @@ void startButtonHandle() {
                 }
             });
 
-            client_wrapper.server_keyboard.setService(
+            client_wrapper.server_keyboard.setCallback(
                 [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_keyboard.addPacketToBox(buf);
@@ -167,11 +209,10 @@ void startButtonHandle() {
 
         std::thread thread_screen_socket([&]() {
 
-            while (!client_wrapper.client_screen.Connect(host, (char*)PORT_S, "UDP"));
-
             while (!quit)
             {
-                printf("START PUSH\n"); fflush(stdout);
+                // printf("START PUSH\n"); fflush(stdout);
+
                 cv::Mat mat = EventsManager::getInstance().captureScreen();
                 // resize(mat, mat, cv::Size(), 1, 1);
 
@@ -194,7 +235,8 @@ void startButtonHandle() {
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 client_wrapper.frame_box_queue.push(box);
                 mtx_screen.unlock();
-                printf("END PUSH\n"); fflush(stdout);
+
+                // printf("END PUSH\n"); fflush(stdout);
 
             }
 
@@ -207,6 +249,7 @@ void startButtonHandle() {
             while (!quit)
             {
                 // printf("START SEND\n"); fflush(stdout);
+                
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!client_wrapper.frame_box_queue.size()) {
                     mtx_screen.unlock();
@@ -226,7 +269,8 @@ void startButtonHandle() {
                 
                 // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
-                printf("packets.size() = %lu\n", box.packets.size());
+                // printf("packets.size() = %lu\n", box.packets.size());
+
                 // printf("END SEND\n"); fflush(stdout);
             }
 

@@ -3,18 +3,20 @@
 
 char host[16] = "10.211.55.255";
 
-ImGuiWrapper imgui_wrapper;
-FrameWrapper frame_wrapper;
 std::mutex mtx_mouse, mtx_keyboard;
 
-std::vector<ServerWrapper> server_wrappers;
-
 ServerSocketManager server_passcode;
+ClientSocketManager client_passcode;
 
+ImGuiWrapper imgui_wrapper;
+FrameWrapper frame_wrapper;
+
+std::vector<ServerWrapper> server_wrappers;
 std::vector<std::string> client_hosts;
 
 int active_id = 0;
-bool quit = false, connected = false;
+bool quit = false;
+bool connected = false;
 
 void pushMouseEvent(MouseEvent me) {
     std::unique_lock<std::mutex> lock(mtx_mouse);
@@ -61,9 +63,11 @@ void handleConnectButton() {
     {
         broadcastMessage(PORT_P, SECRET, 7, inet_addr(host));
 
+        // ------------------
+
         server_passcode.Listen(PORT_C, "UDP");
 
-        server_passcode.setService(
+        server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
                 client_hosts.push_back(std::string(host, host + INET_ADDRSTRLEN));
                 printf("host = %s\n", client_hosts.back().c_str());
@@ -73,29 +77,43 @@ void handleConnectButton() {
         );
 
         while (true) {
-            server_passcode.receiveData(1);
+            server_passcode.receiveData(7);
             if (client_hosts.size()) break;
         }
 
         server_passcode.Close();
 
+        // ------------------
+
         strcpy(host, client_hosts[0].c_str());
-        printf("[host] = %s\n", host);
 
         ServerWrapper server_wrapper;
         server_wrappers.push_back(ServerWrapper());
+        server_wrappers.back().PORT_S = std::to_string(atoi(PORT_P) + server_wrappers.size() * 3);
+        server_wrappers.back().PORT_M = std::to_string(atoi(PORT_P) + server_wrappers.size() * 3 + 1);
+        server_wrappers.back().PORT_K = std::to_string(atoi(PORT_P) + server_wrappers.size() * 3 + 2);
+
+        client_passcode.Connect(host, (char*)PORT_C, "TCP");
+
+        client_passcode.sendData((char*)server_wrappers.back().PORT_S.data(), 4);
+        client_passcode.sendData((char*)server_wrappers.back().PORT_M.data(), 4);
+        client_passcode.sendData((char*)server_wrappers.back().PORT_K.data(), 4);
+
+        printf("[client_host] = %s\n", host);
+        printf("PORT_S = %s\n", server_wrappers.back().PORT_S.c_str());
+        printf("PORT_M = %s\n", server_wrappers.back().PORT_M.c_str());
+        printf("PORT_K = %s\n", server_wrappers.back().PORT_K.c_str());
 
         // ---------------------------------------------------
 
-        printf("Start thread_mouse\n");
+        while (!server_wrappers[active_id].client_mouse.Connect(host, (char*)server_wrappers[active_id].PORT_M.c_str(), "TCP"));
+        printf("Mouse connected!\n");
 
-        // server_wrappers[active_id].client_mouse send mouse events
-        while (!server_wrappers[active_id].client_mouse.Connect(host, PORT_M, "TCP"));
+        while (!server_wrappers[active_id].client_keyboard.Connect(host, (char*)server_wrappers[active_id].PORT_K.c_str(), "TCP"));
+        printf("Keyboard connected\n");
 
-        printf("Start thread_keyboard\n");
-
-        // server_wrappers[active_id].client_mouse send mouse events
-        while (!server_wrappers[active_id].client_keyboard.Connect(host, PORT_K, "TCP"));
+        server_wrappers[active_id].server_screen.Listen((char*)server_wrappers[active_id].PORT_S.c_str(), "UDP");
+        printf("Screen connected\n");
 
         std::thread thread_mouse([&](){
             while (!quit) {
@@ -176,7 +194,7 @@ void handleConnectButton() {
                 }
             });
 
-            server_wrappers[active_id].server_screen.setService(
+            server_wrappers[active_id].server_screen.setCallback(
                 [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
                     // short id = *(data);
                     // short num = *(short*)(data + 3);
@@ -185,8 +203,6 @@ void handleConnectButton() {
                     boxman_screen.addPacketToBox(image_data);
                 }
             );
-
-            server_wrappers[active_id].server_screen.Listen(PORT_S, "UDP");
 
             while (!quit) server_wrappers[active_id].server_screen.receiveData(1440);
         });
@@ -253,8 +269,8 @@ void clientScreenWindow() {
 
     if (frame_wrapper.frame_queue.size()) {
         frame_wrapper.pushToTexture();
-        static int cnt = 0;
-        printf("cnt = %d\n", ++cnt);
+        // static int cnt = 0;
+        // printf("cnt = %d\n", ++cnt);
     }
 
     ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));

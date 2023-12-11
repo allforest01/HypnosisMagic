@@ -134,24 +134,25 @@ void ServerSocketManager::Close() {
     this->service = nullptr;
 }
 
-void ServerSocketManager::setService(std::function<void(SOCKET, char[], int, char[])> service) {
+void ServerSocketManager::setCallback(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
-void ServerSocketManager::TCPReceive(int max_bytes) {
+int ServerSocketManager::TCPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
     if (bytesRead <= 0) {
         delete[] buffer;
-        return;
+        return bytesRead;
     }
     // printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, NULL);
     delete[] buffer;
+    return bytesRead;
 }
 
-void ServerSocketManager::UDPReceive(int max_bytes) {
+int ServerSocketManager::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
@@ -162,16 +163,17 @@ void ServerSocketManager::UDPReceive(int max_bytes) {
     // printf("ipv4 = %s\n", ipv4);
     if (bytesRead <= 0) {
         delete[] buffer;
-        return;
+        return bytesRead;
     }
     // printf("bytesRead = %d\n", bytesRead);
     this->service(listen_socket, buffer, bytesRead, ipv4);
     delete[] buffer;
+    return bytesRead;
 }
 
-void ServerSocketManager::receiveData(int max_bytes) {
-    if (this->isTCPServer) TCPReceive(max_bytes);
-    else UDPReceive(max_bytes);
+int ServerSocketManager::receiveData(int max_bytes) {
+    if (this->isTCPServer) return TCPReceive(max_bytes);
+    else return UDPReceive(max_bytes);
 }
 
 bool ClientSocketManager::TCPConnect(char* host, char* port) {

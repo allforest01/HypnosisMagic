@@ -37,10 +37,10 @@ public:
     void UDPListen(char*);
     void Listen(char*, const char*);
     void Close();
-    void setService(std::function<void(SOCKET, char[], int, char[])>);
-    void TCPReceive(int);
-    void UDPReceive(int);
-    void receiveData(int);
+    void setCallback(std::function<void(SOCKET, char[], int, char[])>);
+    int TCPReceive(int);
+    int UDPReceive(int);
+    int receiveData(int);
 };
 
 class ClientSocketManager {
