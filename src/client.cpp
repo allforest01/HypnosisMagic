@@ -1,7 +1,8 @@
 #define SECRET "aBcXyZ"
 
-#define PORT_P "33330"
-#define PORT_C "33331"
+#define PORT_A "63340"
+#define PORT_B "63341"
+#define PORT_C "63342"
 
 #include "client.h"
 
@@ -69,7 +70,7 @@ void startButtonHandle() {
             }
         );
 
-        server_passcode.Listen((char*)PORT_P, "UDP");
+        while (!server_passcode.Listen((char*)PORT_A, "UDP"));
         
         while (!quit && waiting) {
             server_passcode.receiveData(7);
@@ -79,39 +80,26 @@ void startButtonHandle() {
 
         // ------------------
         
-        while (!client_passcode.Connect(host, (char*)PORT_C, "UDP"));
+        while (!client_passcode.Connect(host, (char*)PORT_B, "UDP"));
 
-        while (!client_passcode.sendData(SECRET, 7));
+        while (!client_passcode.sendData((char*)SECRET, 7));
 
         client_passcode.Close();
 
         // ------------------
 
-        server_passcode.Listen((char*)PORT_C, "TCP");
+        printf("PORT_C = %s\n", PORT_C);
+        while (!server_passcode.Listen((char*)PORT_C, "TCP"));
 
         server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
                 client_wrapper.PORT_S = std::string(data, data + 5);
+                client_wrapper.PORT_M = std::string(data + 5, data + 10);
+                client_wrapper.PORT_K = std::string(data + 10, data + 15);
             }
         );
 
-        while (server_passcode.receiveData(5) <= 0);
-
-        server_passcode.setCallback(
-            [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_M = std::string(data, data + 5);
-            }
-        );
-
-        while (server_passcode.receiveData(5) <= 0);
-
-        server_passcode.setCallback(
-            [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_K = std::string(data, data + 5);
-            }
-        );
-
-        while (server_passcode.receiveData(5) <= 0);
+        while (server_passcode.receiveData(15) <= 0);
 
         printf("[server_host] = %s\n", host);
         printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
@@ -120,11 +108,11 @@ void startButtonHandle() {
 
         // ---------------------------------------------------
 
-        client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP");
+        while (!client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP"));
         printf("Mouse connected!\n");
 
-        client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP");
-        printf("Keyboard connected\n");
+        while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
+        // printf("Keyboard connected\n");
 
         while (!client_wrapper.client_screen.Connect(host, (char*)client_wrapper.PORT_S.c_str(), "UDP"));
         printf("Screen connected\n");
@@ -214,33 +202,20 @@ void startButtonHandle() {
 
             while (!quit)
             {
-                // printf("START PUSH\n"); fflush(stdout);
-
                 cv::Mat mat = EventsManager::getInstance().captureScreen();
                 // resize(mat, mat, cv::Size(), 1, 1);
 
                 std::vector<uchar> frame;
-                // auto start1 = std::chrono::high_resolution_clock::now();
                 compressImage(mat, frame, 90);
-                // auto end1 = std::chrono::high_resolution_clock::now();
-                // std::chrono::duration<double> duration1 = end1 - start1;
-                // printf("compressImage = %lf\n", duration1.count());
 
                 static int id = 0;
 
                 PacketBox box;
-                // auto start = std::chrono::high_resolution_clock::now();
                 BufToPacketBox(frame, box, ++id, 'I', 1440);
-                // auto end = std::chrono::high_resolution_clock::now();
-                // std::chrono::duration<double> duration = end - start;
-                // printf("BufToPacketBox = %lf\n", duration.count());
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 client_wrapper.frame_box_queue.push(box);
                 mtx_screen.unlock();
-
-                // printf("END PUSH\n"); fflush(stdout);
-
             }
 
         });
@@ -251,30 +226,15 @@ void startButtonHandle() {
 
             while (!quit)
             {
-                // printf("START SEND\n"); fflush(stdout);
-
                 std::unique_lock<std::mutex> lock(mtx_screen);
-                if (!client_wrapper.frame_box_queue.size()) {
-                    mtx_screen.unlock();
-                    continue;
-                }
+                if (!client_wrapper.frame_box_queue.size()) continue;
 
                 PacketBox box = client_wrapper.frame_box_queue.front(); client_wrapper.frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                // auto start = std::chrono::high_resolution_clock::now();
                 for (int i = 0; i < (int) box.packets.size(); i++) {
                     client_wrapper.client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
-                // auto end = std::chrono::high_resolution_clock::now();
-                // std::chrono::duration<double> duration = end - start;
-                // printf("client_wrapper.client_screen = %lf\n", duration.count());
-                
-                // std::this_thread::sleep_for(std::chrono::milliseconds(16));
-
-                // printf("packets.size() = %lu\n", box.packets.size());
-
-                // printf("END SEND\n"); fflush(stdout);
             }
 
         });
@@ -294,7 +254,7 @@ void listeningWindow() {
     // Open UDP socket to waiting for connect from server
     // ImGui::Text("Open a port to waiting for a connection");
     // ImGui::PushItemWidth(200);
-    // ImGui::InputText("##PORT_P", (char*)PORT_P, 6);
+    // ImGui::InputText("##PORT_A", (char*)PORT_A, 6);
     // ImGui::PopItemWidth();
 
     // ImGui::SameLine();

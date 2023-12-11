@@ -23,7 +23,7 @@ void cleanSocketManager() {
 #endif
 }
 
-void ServerSocketManager::TCPListen(char* port) {
+bool ServerSocketManager::TCPListen(char* port) {
     isTCPServer = true;
 
     struct addrinfo *result = NULL, hints;
@@ -34,26 +34,26 @@ void ServerSocketManager::TCPListen(char* port) {
     hints.ai_flags = AI_PASSIVE;
     int err = getaddrinfo(NULL, port, &hints, &result);
     if (err) {
-        printf("getaddrinfo failed: %d\n", err);
-        return;
+        // printf("getaddrinfo failed: %d\n", err);
+        return false;
     }
     SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
         printf("socket failed!\n");
         freeaddrinfo(result);
-        return;
+        return false;
     }
     err = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
     freeaddrinfo(result);
     if (err) {
         printf("bind failed: %d\n", err);
         closesocket(ListenSocket);
-        return;
+        return false;
     }
     if (listen(ListenSocket, SOMAXCONN) == SOCKET_ERROR) {
         printf("listen failed!");
         closesocket(ListenSocket);
-        return;
+        return false;
     }
     printf("Listening port %s...\n", port);
     SOCKET ClientSocket;
@@ -62,7 +62,7 @@ void ServerSocketManager::TCPListen(char* port) {
     if (ClientSocket == INVALID_SOCKET) {
         printf("accept failed!\n");
         closesocket(ListenSocket);
-        return;
+        return false;
     }
     printf("Client connected!\n");
     this->listen_socket = ClientSocket;
@@ -76,11 +76,12 @@ void ServerSocketManager::TCPListen(char* port) {
     int flag = 1;
     if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
         printf("setsockopt failed!\n");
-        return;
+        return false;
     }
+    return true;
 }
 
-void ServerSocketManager::UDPListen(char* port) {
+bool ServerSocketManager::UDPListen(char* port) {
     isTCPServer = false;
 
     struct addrinfo *result = NULL, hints;
@@ -91,21 +92,21 @@ void ServerSocketManager::UDPListen(char* port) {
     hints.ai_flags = AI_PASSIVE;
     int err = getaddrinfo(NULL, port, &hints, &result);
     if (err) {
-        printf("getaddrinfo failed: %d\n", err);
-        return;
+        // printf("getaddrinfo failed: %d\n", err);
+        return false;
     }
     SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
         printf("socket failed!\n");
         freeaddrinfo(result);
-        return;
+        return false;
     }
     err = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
     freeaddrinfo(result);
     if (err) {
         perror("bind failed");
         closesocket(ListenSocket);
-        return;
+        return false;
     }
     printf("UDP Socket is created!\n");
     this->listen_socket = ListenSocket;
@@ -118,19 +119,20 @@ void ServerSocketManager::UDPListen(char* port) {
     #endif
     if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
         printf("setsockopt failed!\n");
-        return;
+        return false;
     }
+    return true;
 }
 
-void ServerSocketManager::Listen(char* port, const char* type) {
-    if (strcmp(type, "TCP") == 0) this->TCPListen(port);
-    else if (strcmp(type, "UDP") == 0) this->UDPListen(port);
-    else { printf("type error!\n"); return; }
+bool ServerSocketManager::Listen(char* port, const char* type) {
+    if (strcmp(type, "TCP") == 0) return this->TCPListen(port);
+    else if (strcmp(type, "UDP") == 0) return this->UDPListen(port);
+    else { printf("type error!\n"); return false; }
 }
 
 void ServerSocketManager::Close() {
     closesocket(this->listen_socket);
-    listen_socket = 0;
+    this->listen_socket = 0;
     this->service = nullptr;
 }
 
@@ -184,7 +186,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     hints.ai_protocol = IPPROTO_TCP;
     int err = getaddrinfo(host, port, &hints, &result);
     if (err) {
-        // perror("getaddrinfo failed");
+        printf("getaddrinfo failed: %d\n", err);
         return false;
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
@@ -198,7 +200,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        // perror("connect failed");
+        printf("connect failed: %d\n", err);
         // printf("to address = %s\n", ipv4);
         closesocket(connect_socket);
         return false;

@@ -33,9 +33,9 @@ private:
 public:
     struct sockaddr_in client_address;
     ServerSocketManager(): listen_socket(0), isTCPServer(false), service(nullptr) {}
-    void TCPListen(char*);
-    void UDPListen(char*);
-    void Listen(char*, const char*);
+    bool TCPListen(char*);
+    bool UDPListen(char*);
+    bool Listen(char*, const char*);
     void Close();
     void setCallback(std::function<void(SOCKET, char[], int, char[])>);
     int TCPReceive(int);

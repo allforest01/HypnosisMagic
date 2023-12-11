@@ -1,7 +1,8 @@
 #define SECRET "aBcXyZ"
 
-#define PORT_P "33330"
-#define PORT_C "33331"
+#define PORT_A "63340"
+#define PORT_B "63341"
+#define PORT_C "63342"
 
 #include "server.h"
 
@@ -62,11 +63,11 @@ void handleConnectButton() {
     // Send SECRET
     std::thread thread_passcode([&]()
     {
-        broadcastMessage(PORT_P, SECRET, 7, inet_addr(host));
+        broadcastMessage(PORT_A, SECRET, 7, inet_addr(host));
 
         // ------------------
 
-        server_passcode.Listen(PORT_C, "UDP");
+        server_passcode.Listen(PORT_B, "UDP");
 
         server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
@@ -80,7 +81,7 @@ void handleConnectButton() {
 
         while (true) {
             server_passcode.receiveData(7);
-            if (server_wrappers.size()) break;
+            if (server_wrappers.size() == 1) break;
         }
 
         server_passcode.Close();
@@ -90,32 +91,35 @@ void handleConnectButton() {
 
         for (int i = 0; i < (int) server_wrappers.size(); i++)
         {
-            server_wrappers[i].PORT_S = std::to_string(atoi(PORT_P) + (i + 1) * 3);
-            server_wrappers[i].PORT_M = std::to_string(atoi(PORT_P) + (i + 1) * 3 + 1);
-            server_wrappers[i].PORT_K = std::to_string(atoi(PORT_P) + (i + 1) * 3 + 2);
+            server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 3);
+            server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 3 + 1);
+            server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 3 + 2);
 
-            client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP");
+            printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
+            while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
-            client_passcode.sendData((char*)server_wrappers[i].PORT_S.data(), 5);
-            client_passcode.sendData((char*)server_wrappers[i].PORT_M.data(), 5);
-            client_passcode.sendData((char*)server_wrappers[i].PORT_K.data(), 5);
+            std::string ports = server_wrappers[i].PORT_S + server_wrappers[i].PORT_M + server_wrappers[i].PORT_K;
 
-            printf("[client_host] = %s\n", host);
+            client_passcode.sendData((char*)ports.data(), 15);
+
+            client_passcode.Close();
+
+            printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
+
             printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
             printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
             printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
 
-            printf("[%s] [%s]\n",(char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str());
             fflush(stdout);
 
             while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-            printf("Mouse connected!\n");
+            printf("Mouse connected!\n"); fflush(stdout);
 
             while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-            printf("Keyboard connected\n");
+            printf("Keyboard connected\n"); fflush(stdout);
 
             server_wrappers[i].server_screen.Listen((char*)server_wrappers[i].PORT_S.c_str(), "UDP");
-            printf("Screen connected\n");
+            printf("Screen connected\n"); fflush(stdout);
         }
 
         std::thread thread_mouse([&](){
@@ -196,8 +200,8 @@ void handleConnectButton() {
                 std::vector<uchar> image_data;
                 PacketBoxToBuf(box, image_data);
                 if (box.type == 'I') {
-                    // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
-                    server_wrappers[active_id].frame_wrapper.frame_queue.push(image_data);
+                    if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
+                        server_wrappers[active_id].frame_wrapper.frame_queue.push(image_data);
                 }
             });
 
@@ -335,12 +339,14 @@ void clientListWindow() {
     ImGui::SetNextWindowSize(ImVec2(230, 630));
     ImGui::Begin("Client List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-    for (int i = 0; i < (int) server_wrappers.size(); i++) {
-        ImGui::Text("%s", server_wrappers[i].client_host.c_str());
-        int scaled_width = ImGui::GetContentRegionAvail().x - 6;
-        int scaled_height = server_wrappers[active_id].frame_wrapper.scaled_height * scaled_width / server_wrappers[active_id].frame_wrapper.scaled_width;
-        if (!server_wrappers[active_id].frame_wrapper.isTextureGenerated()) server_wrappers[active_id].frame_wrapper.generateTexture();
-        ImGui::ImageButton((void*)(intptr_t)server_wrappers[active_id].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+    if (active_id < server_wrappers.size()) {
+        for (int i = 0; i < (int) server_wrappers.size(); i++) {
+            ImGui::Text("%s", server_wrappers[i].client_host.c_str());
+            int scaled_width = ImGui::GetContentRegionAvail().x - 6;
+            int scaled_height = server_wrappers[active_id].frame_wrapper.scaled_height * scaled_width / server_wrappers[active_id].frame_wrapper.scaled_width;
+            if (!server_wrappers[active_id].frame_wrapper.isTextureGenerated()) server_wrappers[active_id].frame_wrapper.generateTexture();
+            ImGui::ImageButton((void*)(intptr_t)server_wrappers[active_id].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+        }
     }
 
     ImGui::End();
