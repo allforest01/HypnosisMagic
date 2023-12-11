@@ -23,7 +23,7 @@ void cleanSocketManager() {
 #endif
 }
 
-void ServerManager::TCPListen(char* port) {
+void ServerSocketManager::TCPListen(char* port) {
     isTCPServer = true;
 
     struct addrinfo *result = NULL, hints;
@@ -80,7 +80,7 @@ void ServerManager::TCPListen(char* port) {
     }
 }
 
-void ServerManager::UDPListen(char* port) {
+void ServerSocketManager::UDPListen(char* port) {
     isTCPServer = false;
 
     struct addrinfo *result = NULL, hints;
@@ -122,23 +122,23 @@ void ServerManager::UDPListen(char* port) {
     }
 }
 
-void ServerManager::Listen(char* port, const char* type) {
+void ServerSocketManager::Listen(char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) this->TCPListen(port);
     else if (strcmp(type, "UDP") == 0) this->UDPListen(port);
     else { printf("type error!\n"); return; }
 }
 
-void ServerManager::Close() {
+void ServerSocketManager::Close() {
     closesocket(this->listen_socket);
     listen_socket = 0;
     this->service = nullptr;
 }
 
-void ServerManager::setService(std::function<void(SOCKET, char[], int, char[])> service) {
+void ServerSocketManager::setService(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
-void ServerManager::TCPReceive(int max_bytes) {
+void ServerSocketManager::TCPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
@@ -151,7 +151,7 @@ void ServerManager::TCPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-void ServerManager::UDPReceive(int max_bytes) {
+void ServerSocketManager::UDPReceive(int max_bytes) {
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
     struct sockaddr_in client_address;
@@ -169,12 +169,12 @@ void ServerManager::UDPReceive(int max_bytes) {
     delete[] buffer;
 }
 
-void ServerManager::receiveData(int max_bytes) {
+void ServerSocketManager::receiveData(int max_bytes) {
     if (this->isTCPServer) TCPReceive(max_bytes);
     else UDPReceive(max_bytes);
 }
 
-bool ClientManager::TCPConnect(char* host, char* port) {
+bool ClientSocketManager::TCPConnect(char* host, char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -206,7 +206,7 @@ bool ClientManager::TCPConnect(char* host, char* port) {
     return true;
 }
 
-bool ClientManager::UDPConnect(char* host, char* port) {
+bool ClientSocketManager::UDPConnect(char* host, char* port) {
     struct addrinfo *result = NULL, hints;
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
@@ -231,20 +231,20 @@ bool ClientManager::UDPConnect(char* host, char* port) {
     return true;
 }
 
-bool ClientManager::Connect(char* host, char* port, const char* type) {
+bool ClientSocketManager::Connect(char* host, char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) return this->TCPConnect(host, port);
     else if (strcmp(type, "UDP") == 0) return this->UDPConnect(host, port);
     else { printf("type error!\n"); return false; }
 }
 
-void ClientManager::Close() {
+void ClientSocketManager::Close() {
     closesocket(this->connect_socket);
     freeaddrinfo(this->server_address);
     connect_socket = 0;
     this->server_address = nullptr;
 }
 
-bool ClientManager::sendData(char* data, int size) {
+bool ClientSocketManager::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {

@@ -120,7 +120,7 @@ CREDITS:
    Alan Hickman           -    TGA RLE
    Emmanuel Julien        -    initial file IO callback implementation
    Jon Olick              -    original jo_jpeg.cpp code
-   Daniel Gibson          -    integrate JPEG, allow external zlib
+   Daniel Gibson          -    integrate JPEG, allow lib zlib
    Aarni Koskela          -    allow choosing PNG filter
 
    bugfixes:
@@ -1642,7 +1642,7 @@ STBIWDEF int stbi_write_jpg(char const *filename, int x, int y, int comp, const 
       1.09  (2018-02-11)
              fix typo in zlib quality API, improve STB_I_W_STATIC in C++
       1.08  (2018-01-29)
-             add stbi__flip_vertically_on_write, external zlib, zlib quality, choose PNG filter
+             add stbi__flip_vertically_on_write, lib zlib, zlib quality, choose PNG filter
       1.07  (2017-07-24)
              doc fix
       1.06 (2017-07-23)

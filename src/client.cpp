@@ -6,14 +6,10 @@ char debug[256] = "Debug message";
 
 ImGuiWrapper imgui_wrapper;
 
-ServerManager server_passcode;
-ClientManager client_passcode;
-ServerManager server_mouse;
-ServerManager server_keyboard;
-ClientManager client_screen;
+ClientWrapper client_wrapper;
 
-std::queue<KeyboardEvent> keyboard_events;
-std::queue<PacketBox> frame_box_queue;
+ClientSocketManager client_passcode;
+ServerSocketManager server_passcode;
 std::mutex mtx_keyboard, mtx_screen;
 
 bool quit = false, waiting = false, connected = false;
@@ -84,9 +80,9 @@ void startButtonHandle() {
 
         // ---------------------------------------------------
 
-        server_mouse.Listen((char*)PORT_M, "TCP");
+        client_wrapper.server_mouse.Listen((char*)PORT_M, "TCP");
 
-        server_keyboard.Listen((char*)PORT_K, "TCP");
+        client_wrapper.server_keyboard.Listen((char*)PORT_K, "TCP");
 
         std::thread thread_mouse([&]()
         {
@@ -112,14 +108,14 @@ void startButtonHandle() {
                 }
             });
 
-            server_mouse.setService(
+            client_wrapper.server_mouse.setService(
                 [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_mouse.addPacketToBox(buf);
                 }
             );
 
-            while (!quit) server_mouse.receiveData(sizeof(MouseEvent) + 7);
+            while (!quit) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent) + 7);
         });
 
         thread_mouse.detach();
@@ -134,19 +130,19 @@ void startButtonHandle() {
                 if (box.type == 'K')
                 {
                     std::unique_lock<std::mutex> lock(mtx_keyboard);
-                    keyboard_events.push(*(KeyboardEvent*)buf.data());
+                    client_wrapper.keyboard_events.push(*(KeyboardEvent*)buf.data());
                     mtx_keyboard.unlock();
                 }
             });
 
-            server_keyboard.setService(
+            client_wrapper.server_keyboard.setService(
                 [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_keyboard.addPacketToBox(buf);
                 }
             );
 
-            while (!quit) server_keyboard.receiveData(sizeof(KeyboardEvent) + 7);
+            while (!quit) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent) + 7);
         });
 
         thread_keyboard_socket.detach();
@@ -154,12 +150,12 @@ void startButtonHandle() {
         std::thread thread_keyboard_events([&]() {
             while (!quit) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!keyboard_events.size()) {
+                if (!client_wrapper.keyboard_events.size()) {
                     mtx_keyboard.unlock();
                     continue;
                 }
                 
-                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                KeyboardEvent ke = client_wrapper.keyboard_events.front(); client_wrapper.keyboard_events.pop();
                 mtx_keyboard.unlock();
                 
                 if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
@@ -171,7 +167,7 @@ void startButtonHandle() {
 
         std::thread thread_screen_socket([&]() {
 
-            while (!client_screen.Connect(host, (char*)PORT_S, "UDP"));
+            while (!client_wrapper.client_screen.Connect(host, (char*)PORT_S, "UDP"));
 
             while (!quit)
             {
@@ -196,7 +192,7 @@ void startButtonHandle() {
                 // printf("BufToPacketBox = %lf\n", duration.count());
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
-                frame_box_queue.push(box);
+                client_wrapper.frame_box_queue.push(box);
                 mtx_screen.unlock();
                 printf("END PUSH\n"); fflush(stdout);
 
@@ -212,21 +208,21 @@ void startButtonHandle() {
             {
                 // printf("START SEND\n"); fflush(stdout);
                 std::unique_lock<std::mutex> lock(mtx_screen);
-                if (!frame_box_queue.size()) {
+                if (!client_wrapper.frame_box_queue.size()) {
                     mtx_screen.unlock();
                     continue;
                 }
 
-                PacketBox box = frame_box_queue.front(); frame_box_queue.pop();
+                PacketBox box = client_wrapper.frame_box_queue.front(); client_wrapper.frame_box_queue.pop();
                 mtx_screen.unlock();
 
                 // auto start = std::chrono::high_resolution_clock::now();
                 for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    client_wrapper.client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
                 // auto end = std::chrono::high_resolution_clock::now();
                 // std::chrono::duration<double> duration = end - start;
-                // printf("client_screen = %lf\n", duration.count());
+                // printf("client_wrapper.client_screen = %lf\n", duration.count());
                 
                 // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 

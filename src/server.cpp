@@ -3,31 +3,28 @@
 
 char host[16] = "10.211.55.255";
 
-FrameWrapper frame_wrapper;
 ImGuiWrapper imgui_wrapper;
-
-ClientManager client_passcode;
-ServerManager server_passcode;
-ClientManager client_mouse;
-ClientManager client_keyboard;
-ServerManager server_screen;
-
-std::queue<MouseEvent> mouse_events;
-std::queue<KeyboardEvent> keyboard_events;
+FrameWrapper frame_wrapper;
 std::mutex mtx_mouse, mtx_keyboard;
+
+std::vector<ServerWrapper> server_wrappers;
+
+ServerSocketManager server_passcode;
+
 std::vector<std::string> client_hosts;
 
+int active_id = 0;
 bool quit = false, connected = false;
 
 void pushMouseEvent(MouseEvent me) {
     std::unique_lock<std::mutex> lock(mtx_mouse);
-    mouse_events.push(me);
+    server_wrappers[active_id].mouse_events.push(me);
     mtx_mouse.unlock();
 }
 
 void pushKeyboardEvent(KeyboardEvent ke) {
     std::unique_lock<std::mutex> lock(mtx_keyboard);
-    keyboard_events.push(ke);
+    server_wrappers[active_id].keyboard_events.push(ke);
     mtx_keyboard.unlock();
 }
 
@@ -58,7 +55,7 @@ void handleEvents() {
     }
 }
 
-void connectButtonHandle() {
+void handleConnectButton() {
     // Send SECRET
     std::thread thread_passcode([&]()
     {
@@ -85,27 +82,30 @@ void connectButtonHandle() {
         strcpy(host, client_hosts[0].c_str());
         printf("[host] = %s\n", host);
 
+        ServerWrapper server_wrapper;
+        server_wrappers.push_back(ServerWrapper());
+
         // ---------------------------------------------------
 
         printf("Start thread_mouse\n");
 
-        // client_mouse send mouse events
-        while (!client_mouse.Connect(host, PORT_M, "TCP"));
+        // server_wrappers[active_id].client_mouse send mouse events
+        while (!server_wrappers[active_id].client_mouse.Connect(host, PORT_M, "TCP"));
 
         printf("Start thread_keyboard\n");
 
-        // client_mouse send mouse events
-        while (!client_keyboard.Connect(host, PORT_K, "TCP"));
+        // server_wrappers[active_id].client_mouse send mouse events
+        while (!server_wrappers[active_id].client_keyboard.Connect(host, PORT_K, "TCP"));
 
         std::thread thread_mouse([&](){
             while (!quit) {
                 std::unique_lock<std::mutex> lock(mtx_mouse);
-                if (!mouse_events.size()) {
+                if (!server_wrappers[active_id].mouse_events.size()) {
                     mtx_mouse.unlock();
                     continue;
                 }
 
-                MouseEvent me = mouse_events.front(); mouse_events.pop();
+                MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
                 mtx_mouse.unlock();
     
                 me.x /= frame_wrapper.scaled_width;
@@ -123,7 +123,7 @@ void connectButtonHandle() {
                 BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
 
                 for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    server_wrappers[active_id].client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
             }
         });
@@ -133,12 +133,12 @@ void connectButtonHandle() {
         std::thread thread_keyboard([&](){
             while (!quit) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!keyboard_events.size()) {
+                if (!server_wrappers[active_id].keyboard_events.size()) {
                     mtx_keyboard.unlock();
                     continue;
                 }
 
-                KeyboardEvent ke = keyboard_events.front(); keyboard_events.pop();
+                KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
                 mtx_keyboard.unlock();
 
                 // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
@@ -152,7 +152,7 @@ void connectButtonHandle() {
                 BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
 
                 for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    server_wrappers[active_id].client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
                 }
             }
         });
@@ -176,7 +176,7 @@ void connectButtonHandle() {
                 }
             });
 
-            server_screen.setService(
+            server_wrappers[active_id].server_screen.setService(
                 [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
                     // short id = *(data);
                     // short num = *(short*)(data + 3);
@@ -186,9 +186,9 @@ void connectButtonHandle() {
                 }
             );
 
-            server_screen.Listen(PORT_S, "UDP");
+            server_wrappers[active_id].server_screen.Listen(PORT_S, "UDP");
 
-            while (!quit) server_screen.receiveData(1440);
+            while (!quit) server_wrappers[active_id].server_screen.receiveData(1440);
         });
 
         thread_screen.detach();
@@ -240,7 +240,7 @@ void menuBar() {
         ImGui::PopItemWidth();
 
         ImGui::SameLine();
-        if (ImGui::Button("Connect")) connectButtonHandle();    
+        if (ImGui::Button("Connect")) handleConnectButton();    
         ImGui::EndPopup();
     }
 }
@@ -259,20 +259,23 @@ void clientScreenWindow() {
 
     ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(frame_wrapper.scaled_width, frame_wrapper.scaled_height));
 
-    frame_wrapper.is_hovered = ImGui::IsItemHovered();
-    frame_wrapper.is_focused = ImGui::IsItemFocused();
+    if (active_id)
+    {
+        frame_wrapper.is_hovered = ImGui::IsItemHovered();
+        frame_wrapper.is_focused = ImGui::IsItemFocused();
 
-    frame_wrapper.start_x = ImGui::GetItemRectMin().x;
-    frame_wrapper.start_y = ImGui::GetItemRectMin().y;
+        frame_wrapper.start_x = ImGui::GetItemRectMin().x;
+        frame_wrapper.start_y = ImGui::GetItemRectMin().y;
 
-    if (!frame_wrapper.is_hovered || !frame_wrapper.is_focused) {
-        std::unique_lock<std::mutex> lock_mouse(mtx_mouse);
-        std::queue<MouseEvent>().swap(mouse_events);
-        lock_mouse.unlock();
+        if (!frame_wrapper.is_hovered || !frame_wrapper.is_focused) {
+            std::unique_lock<std::mutex> lock_mouse(mtx_mouse);
+            std::queue<MouseEvent>().swap(server_wrappers[active_id].mouse_events);
+            lock_mouse.unlock();
 
-        std::unique_lock<std::mutex> lock_keyboard(mtx_mouse);
-        std::queue<KeyboardEvent>().swap(keyboard_events);
-        lock_keyboard.unlock();
+            std::unique_lock<std::mutex> lock_keyboard(mtx_mouse);
+            std::queue<KeyboardEvent>().swap(server_wrappers[active_id].keyboard_events);
+            lock_keyboard.unlock();
+        }
     }
 
     ImGui::End();
@@ -300,14 +303,18 @@ void guiRendering() {
     SDL_Delay(16);
 }
 
-void clientList() {
+void clientListWindow() {
     ImGui::SetNextWindowPos(ImVec2(1020, 30));
     ImGui::SetNextWindowSize(ImVec2(230, 630));
     ImGui::Begin("Client List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-    ImGui::Text("Client 1");
-    int scaled_width = ImGui::GetContentRegionAvail().x - 6;
-    int scaled_height = frame_wrapper.scaled_height * scaled_width / frame_wrapper.scaled_width;
-    ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+
+    for (int i = 0; i < (int) client_hosts.size(); i++) {
+        ImGui::Text("%s", client_hosts[i].c_str());
+        int scaled_width = ImGui::GetContentRegionAvail().x - 6;
+        int scaled_height = frame_wrapper.scaled_height * scaled_width / frame_wrapper.scaled_width;
+        ImGui::ImageButton((void*)(intptr_t)frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+    }
+
     ImGui::End();
 }
 
@@ -324,7 +331,7 @@ int main(int argc, char** argv)
 
         menuBar();
         clientScreenWindow();
-        clientList();
+        clientListWindow();
 
         guiRendering();
         handleEvents();

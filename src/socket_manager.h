@@ -25,14 +25,14 @@
 void initSocketManager();
 void cleanSocketManager();
 
-class ServerManager {
+class ServerSocketManager {
 private:
     SOCKET listen_socket;
     bool isTCPServer;
     std::function<void(SOCKET, char[], int, char[])> service;
 public:
     struct sockaddr_in client_address;
-    ServerManager(): listen_socket(0), isTCPServer(false), service(nullptr) {}
+    ServerSocketManager(): listen_socket(0), isTCPServer(false), service(nullptr) {}
     void TCPListen(char*);
     void UDPListen(char*);
     void Listen(char*, const char*);
@@ -43,12 +43,12 @@ public:
     void receiveData(int);
 };
 
-class ClientManager {
+class ClientSocketManager {
 private:
     SOCKET connect_socket;
     struct addrinfo *server_address;
 public:
-    ClientManager(): connect_socket(0), server_address(nullptr) {}
+    ClientSocketManager(): connect_socket(0), server_address(nullptr) {}
     bool TCPConnect(char*, char*);
     bool UDPConnect(char*, char*);
     bool Connect(char*, char*, const char*);

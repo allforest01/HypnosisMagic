@@ -1,7 +1,7 @@
 # Cross Platform Makefile
 # Compatible with MSYS2/MINGW and Mac OS X
 
-IMGUI_DIR = external/imgui/
+IMGUI_DIR = lib/imgui/
 
 EXE = src/$(BUILD_TYPE)
 SOURCES = $(BUILD_TYPE).cpp
