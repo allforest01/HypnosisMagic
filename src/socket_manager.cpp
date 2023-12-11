@@ -184,7 +184,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     hints.ai_protocol = IPPROTO_TCP;
     int err = getaddrinfo(host, port, &hints, &result);
     if (err) {
-        printf("getaddrinfo failed: %d\n", err);
+        // perror("getaddrinfo failed");
         return false;
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
@@ -198,7 +198,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        printf("connect failed: %d\n", err);
+        // perror("connect failed");
         // printf("to address = %s\n", ipv4);
         closesocket(connect_socket);
         return false;

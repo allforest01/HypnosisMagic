@@ -2,9 +2,13 @@
 
 #include "socket_manager.h"
 #include "events_manager.h"
+#include "frame_wrapper.h"
 
 struct ServerWrapper {
+    std::string client_host;
     std::string PORT_S, PORT_M, PORT_K;
+
+    FrameWrapper frame_wrapper;
 
     ClientSocketManager client_mouse;
     ClientSocketManager client_keyboard;

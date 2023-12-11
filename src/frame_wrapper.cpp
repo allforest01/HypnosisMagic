@@ -1,11 +1,17 @@
 #include "frame_wrapper.h"
 
-void FrameWrapper::initTexture() {
+bool FrameWrapper::isTextureGenerated() {
+    return this->textureGenerated;
+}
+
+void FrameWrapper::generateTexture() {
     glGenTextures(1, &this->image_texture);
+    this->textureGenerated = true;
 }
 
 void FrameWrapper::cleanTexture() {
     glDeleteTextures(1, &this->image_texture);
+    this->textureGenerated = false;
 }
 
 void FrameWrapper::pushToTexture() {

@@ -1,8 +1,11 @@
-#include "constant.h"
+#define SECRET "aBcXyZ"
+
+#define PORT_P "33330"
+#define PORT_C "33331"
+
 #include "client.h"
 
-char host[16] = "255.255.255.255";
-char debug[256] = "Debug message";
+char host[16], debug[256];
 
 std::mutex mtx_keyboard, mtx_screen;
 
@@ -78,7 +81,7 @@ void startButtonHandle() {
         
         while (!client_passcode.Connect(host, (char*)PORT_C, "UDP"));
 
-        while (!client_passcode.sendData(SECRET, 1));
+        while (!client_passcode.sendData(SECRET, 7));
 
         client_passcode.Close();
 
@@ -88,27 +91,27 @@ void startButtonHandle() {
 
         server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_S = std::string(data, data + 4);
+                client_wrapper.PORT_S = std::string(data, data + 5);
             }
         );
 
-        while (server_passcode.receiveData(4) <= 0);
+        while (server_passcode.receiveData(5) <= 0);
 
         server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_M = std::string(data, data + 4);
+                client_wrapper.PORT_M = std::string(data, data + 5);
             }
         );
 
-        while (server_passcode.receiveData(4) <= 0);
+        while (server_passcode.receiveData(5) <= 0);
 
         server_passcode.setCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_K = std::string(data, data + 4);
+                client_wrapper.PORT_K = std::string(data, data + 5);
             }
         );
 
-        while (server_passcode.receiveData(4) <= 0);
+        while (server_passcode.receiveData(5) <= 0);
 
         printf("[server_host] = %s\n", host);
         printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
@@ -249,7 +252,7 @@ void startButtonHandle() {
             while (!quit)
             {
                 // printf("START SEND\n"); fflush(stdout);
-                
+
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!client_wrapper.frame_box_queue.size()) {
                     mtx_screen.unlock();
