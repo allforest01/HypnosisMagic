@@ -227,28 +227,40 @@ void startButtonHandle() {
 
             while (!quit)
             {
+                // printf("START POP!\n");
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!frame_box_queue.size()) {
                     mtx_screen.unlock();
+
+                    // printf("END POP1!\n");
+                    
                     continue;
                 }
 
                 PacketBox box = frame_box_queue.front(); frame_box_queue.pop();
                 mtx_screen.unlock();
 
+                // printf("END POP2!\n");
+
                 static int cnt = 0;
 
                 auto start = std::chrono::high_resolution_clock::now();
 
-                printf("START SEND!\n");
+                // printf("START SEND!\n");
+
                 client_screen.send(box);
-                printf("END SEND!\n");
+
+                // printf("END SEND!\n");
 
                 auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> duration = end - start;
 
                 printf("client_screen.send = %lf\n", duration.count());
                 printf("cnt = %d\n", ++cnt);
+
                 fflush(stdout);
 
                 // std::this_thread::sleep_for(std::chrono::milliseconds(16));
