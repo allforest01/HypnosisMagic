@@ -38,7 +38,7 @@ bool ServerSocketManager::TCPListen(char* port) {
     hints.ai_flags = AI_PASSIVE;
     int err = getaddrinfo(NULL, port, &hints, &result);
     if (err) {
-        printf("getaddrinfo failed: %d\n", err);
+        // printf("getaddrinfo failed: %d\n", err);
         return false;
     }
     SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
@@ -199,7 +199,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     hints.ai_protocol = IPPROTO_TCP;
     int err = getaddrinfo(host, port, &hints, &result);
     if (err) {
-        printf("getaddrinfo failed: %d\n", err);
+        // printf("getaddrinfo failed: %d\n", err);
         return false;
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);

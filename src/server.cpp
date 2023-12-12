@@ -1,12 +1,3 @@
-#define SECRET "aBcXyZ"
-
-#define PORT_A "63640"
-#define PORT_B "63641"
-#define PORT_C "63642"
-
-#define SCREEN_STREAM_TYPE "UDP"
-#define NUM_OF_THREADS 1
-
 #include "server.h"
 
 char host[16] = "10.211.55.255";
@@ -66,7 +57,7 @@ void handleConnectButton() {
     // Send SECRET
     std::thread thread_passcode([&]()
     {
-        broadcastMessage(PORT_A, SECRET, 7, inet_addr(host));
+        broadcastMessage(PORT_A, SECRET, 6, inet_addr(host));
 
         // ------------------
 
@@ -83,14 +74,13 @@ void handleConnectButton() {
         );
 
         while (true) {
-            server_passcode.receiveData(7);
-            if (server_wrappers.size() == 1) break;
+            server_passcode.receiveData(6);
+            if (server_wrappers.size() == 2) break;
         }
 
         server_passcode.Close();
 
         // ------------------
-    
 
         for (int i = 0; i < (int) server_wrappers.size(); i++)
         {
@@ -116,13 +106,13 @@ void handleConnectButton() {
             fflush(stdout);
 
             while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-            printf("[Mouse connected]\n"); fflush(stdout);
+            printf("[Mouse connected for %d]\n", i); fflush(stdout);
 
             while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-            printf("[Keyboard connected]\n"); fflush(stdout);
+            printf("[Keyboard connected for %d]\n", i); fflush(stdout);
 
             server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
-            printf("[Screen connected]\n"); fflush(stdout);
+            printf("[Screen connected for %d]\n", i); fflush(stdout);
         }
 
         std::thread thread_mouse([&](){
@@ -191,34 +181,39 @@ void handleConnectButton() {
 
         thread_keyboard.detach();
 
-        // Receive screen capture
-        std::thread thread_screen([&]()
+        for (int i = 0; i < (int) server_wrappers.size(); i++)
         {
-            server_wrappers[active_id].server_screen.setCompleteCallback([](PacketBox& box) {
-                std::vector<uchar> image_data;
-                box.sort();
-                PacketBoxToBuf(box, image_data);
-                if (box.type == 'I') {
-                    // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
-                    {
-                        std::unique_lock<std::mutex> lock_frame(mtx_frame);
-                        server_wrappers[active_id].frame_wrapper.frame_queue.push(image_data);
-                        lock_frame.unlock();
+            // Receive screen capture
+            std::thread thread_screen([&, i]()
+            {
+                server_wrappers[i].server_screen.setCompleteCallback([i](PacketBox& box) {
+                    std::vector<uchar> image_data;
+                    box.sort();
+                    PacketBoxToBuf(box, image_data);
+                    if (box.type == 'I') {
+                        // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
+                        {
+                            std::unique_lock<std::mutex> lock_frame(mtx_frame);
+                            server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
+                            lock_frame.unlock();
+                        }
                     }
+                });
+
+                while (!quit) {
+                    server_wrappers[i].server_screen.receive();
+
+                    printf("Receive [%d]\n", i); fflush(stdout);
                 }
             });
 
-            while (!quit) {
-                if (active_id < server_wrappers.size()) {
-                    server_wrappers[active_id].server_screen.receive();
-                }
-            }
-        });
-
-        thread_screen.detach();
+            thread_screen.detach();
+        }
 
         // Connected
         connected = true;
+
+        // Default active id
         active_id = 0;
     });
 
@@ -278,13 +273,28 @@ void clientScreenWindow() {
 
     if (active_id < server_wrappers.size())
     {
-        if (server_wrappers[active_id].frame_wrapper.frame_queue.size()) {
-            std::unique_lock<std::mutex> lock_frame(mtx_frame);
-            server_wrappers[active_id].frame_wrapper.pushToTexture();
-            lock_frame.unlock();
+        if (server_wrappers[active_id].frame_wrapper.isTexturePushed() && !server_wrappers[active_id].frame_wrapper.scale_calculated) {
+            server_wrappers[active_id].frame_wrapper.scale_calculated = true;
+            
+            ImVec2 window_avail_size = ImGui::GetContentRegionAvail();
+            window_avail_size.y -= 6;
+
+            float window_aspect = window_avail_size.x / window_avail_size.y;
+            float image_aspect = (float) server_wrappers[active_id].frame_wrapper.width / server_wrappers[active_id].frame_wrapper.height;
+
+            float scale;
+            if (window_aspect > image_aspect) {
+                // imgui_wrapper.window is wider than the image
+                scale = window_avail_size.y / server_wrappers[active_id].frame_wrapper.height;
+            } else {
+                // imgui_wrapper.window is narrower than the image
+                scale = window_avail_size.x / server_wrappers[active_id].frame_wrapper.width;
+            }
+
+            server_wrappers[active_id].frame_wrapper.scaled_width = server_wrappers[active_id].frame_wrapper.width * scale;
+            server_wrappers[active_id].frame_wrapper.scaled_height = server_wrappers[active_id].frame_wrapper.height * scale;
         }
 
-        if (!server_wrappers[active_id].frame_wrapper.isTextureGenerated()) server_wrappers[active_id].frame_wrapper.generateTexture();
         ImGui::ImageButton((void*)(intptr_t)server_wrappers[active_id].frame_wrapper.image_texture, ImVec2(server_wrappers[active_id].frame_wrapper.scaled_width, server_wrappers[active_id].frame_wrapper.scaled_height));
 
         server_wrappers[active_id].frame_wrapper.is_hovered = ImGui::IsItemHovered();
@@ -334,13 +344,20 @@ void clientListWindow() {
     ImGui::SetNextWindowSize(ImVec2(230, 630));
     ImGui::Begin("Client List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-    if (active_id < server_wrappers.size()) {
+    if (connected) {
         for (int i = 0; i < (int) server_wrappers.size(); i++) {
             ImGui::Text("%s", server_wrappers[i].client_host.c_str());
+
+            if (server_wrappers[i].frame_wrapper.frame_queue.size()) {
+                std::unique_lock<std::mutex> lock_frame(mtx_frame);
+                server_wrappers[i].frame_wrapper.pushToTexture();
+                lock_frame.unlock();
+            }
+
             int scaled_width = ImGui::GetContentRegionAvail().x - 6;
-            int scaled_height = server_wrappers[active_id].frame_wrapper.scaled_height * scaled_width / server_wrappers[active_id].frame_wrapper.scaled_width;
-            if (!server_wrappers[active_id].frame_wrapper.isTextureGenerated()) server_wrappers[active_id].frame_wrapper.generateTexture();
-            ImGui::ImageButton((void*)(intptr_t)server_wrappers[active_id].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+            int scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
+
+            ImGui::ImageButton((void*)(intptr_t)server_wrappers[i].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
         }
     }
 

@@ -1,13 +1,3 @@
-#define SECRET "aBcXyZ"
-
-#define PORT_A "63640"
-#define PORT_B "63641"
-#define PORT_C "63642"
-
-#define SCREEN_STREAM_TYPE "UDP"
-#define NUM_OF_THREADS 1
-#define PACKET_SIZE 1468
-
 #include "client.h"
 
 char host[16], debug[256];
@@ -64,7 +54,7 @@ void startButtonHandle() {
     std::thread thread_passcode([&](){
         server_passcode.setReceiveCallback(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
-                if (!strcmp(data, SECRET) || !strcmp(data, "ABCXYZ")) {
+                if (!strcmp(data, SECRET)) {
                     strcpy(host, ipv4);
                     printf("host = %s\n", host);
                     fflush(stdout);
@@ -77,7 +67,7 @@ void startButtonHandle() {
         while (!server_passcode.Listen((char*)PORT_A, "UDP"));
         
         while (!quit && waiting) {
-            server_passcode.receiveData(7);
+            server_passcode.receiveData(6);
         }
 
         server_passcode.Close();
@@ -86,7 +76,7 @@ void startButtonHandle() {
         
         while (!client_passcode.Connect(host, (char*)PORT_B, "UDP"));
 
-        while (!client_passcode.sendData((char*)SECRET, 7));
+        while (!client_passcode.sendData((char*)SECRET, 6));
 
         client_passcode.Close();
 
@@ -239,6 +229,8 @@ void startButtonHandle() {
                 mtx_screen.unlock();
 
                 client_wrapper.client_screen.send(box);
+
+                printf("Sent!\n"); fflush(stdout);
             }
 
         });
@@ -278,10 +270,6 @@ void waitingWindow() {
     ImGui::PushItemWidth(-1);
     ImGui::ProgressBar(ImGui::GetTime() * -0.2f, ImVec2(0, 0), "");
     ImGui::PopItemWidth();
-
-    // ImGui::SetCursorPos(ImVec2(9, 53));
-    // ImGui::Text("Code: %s", SECRET);
-    // ImGui::SetCursorPos(ImVec2(211, 50));
 
     ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
     if (ImGui::Button("Cancel", buttonSize)) { waiting = false; }
