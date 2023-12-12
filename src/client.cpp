@@ -123,14 +123,9 @@ void startButtonHandle() {
 
         std::thread thread_mouse([&]()
         {
-            BoxManager boxman_mouse;
-
-            boxman_mouse.setCompleteCallback([](PacketBox& box) {
-                std::vector<uchar> buf;
-                PacketBoxToBuf(box, buf);
-                if (box.type == 'M')
-                {
-                    MouseEvent &me = *(MouseEvent*)buf.data();
+            client_wrapper.server_mouse.setReceiveCallback(
+                [&](SOCKET sock, char data[], int size, char host[]) {
+                    MouseEvent &me = *(MouseEvent*)data;
                     
                     int x = round(me.x * EventsManager::getInstance().width);
                     int y = round(me.y * EventsManager::getInstance().height);
@@ -143,43 +138,24 @@ void startButtonHandle() {
                     else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
                     else if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
                 }
-            });
-
-            client_wrapper.server_mouse.setReceiveCallback(
-                [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
-                    std::vector<uchar> buf(data, data + size);
-                    boxman_mouse.addPacketToBox(buf);
-                }
             );
 
-            while (!quit) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent) + 7);
+            while (!quit) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
         });
 
         thread_mouse.detach();
 
         std::thread thread_keyboard_socket([&]()
         {
-            BoxManager boxman_keyboard;
-
-            boxman_keyboard.setCompleteCallback([](PacketBox& box) {
-                std::vector<uchar> buf;
-                PacketBoxToBuf(box, buf);
-                if (box.type == 'K')
-                {
-                    std::unique_lock<std::mutex> lock(mtx_keyboard);
-                    client_wrapper.keyboard_events.push(*(KeyboardEvent*)buf.data());
-                    mtx_keyboard.unlock();
-                }
-            });
-
             client_wrapper.server_keyboard.setReceiveCallback(
-                [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
-                    std::vector<uchar> buf(data, data + size);
-                    boxman_keyboard.addPacketToBox(buf);
+                [&](SOCKET sock, char data[], int size, char host[]) {
+                    std::unique_lock<std::mutex> lock(mtx_keyboard);
+                    client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
+                    mtx_keyboard.unlock();
                 }
             );
 
-            while (!quit) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent) + 7);
+            while (!quit) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
         });
 
         thread_keyboard_socket.detach();
@@ -257,11 +233,6 @@ void listeningWindow() {
     ImGui::SetNextWindowSize(ImVec2(200, 80));
 
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-    // Open UDP socket to waiting for connect from server
-    // ImGui::Text("Open a port to waiting for a connection");
-    // ImGui::PushItemWidth(200);
-    // ImGui::InputText("##PORT_A", (char*)PORT_A, 6);
-    // ImGui::PopItemWidth();
 
     // ImGui::SameLine();
     ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);

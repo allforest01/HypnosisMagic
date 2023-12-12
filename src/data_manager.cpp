@@ -26,16 +26,6 @@ void PacketBoxToBuf(PacketBox &box, std::vector<uchar> &buf) {
     }
 }
 
-PacketBox::~PacketBox() {
-   this->data.clear(); 
-}
-
-void PacketBox::addPacket(std::vector<uchar> &packet) {
-    this->data.push_back(packet);
-    this->type = *(packet.data() + 2);
-    this->size = *(short*)(packet.data() + 3);
-}
-
 void PacketBox::sort() {
     std::sort(data.begin(), data.end(), [](std::vector<uchar> a, std::vector<uchar> b){
         int a_order = *(short*)(a.data() + 5);
@@ -44,23 +34,6 @@ void PacketBox::sort() {
     });
 }
 
-void BoxManager::addPacketToBox(std::vector<uchar> &packet) {
-    short id = *(packet.data());
-    short num = *(short*)(packet.data() + 3);
-    if (!this->boxs.count(id)) {
-        this->boxs[id] = PacketBox();
-    }
-    // printf("Hehe!");
-    this->boxs[id].addPacket(packet);
-    if (num == this->boxs[id].data.size()) {
-        // printf("num = %d\n", num);
-        // printf("size = %d\n", this->boxs[id].data.size());
-        this->boxs[id].sort();
-        this->onComplete(this->boxs[id]);
-        this->boxs.erase(id);
-    }
-}
-
-void BoxManager::setCompleteCallback(std::function<void(PacketBox&)> onComplete) {
-    this->onComplete = onComplete;
+PacketBox::~PacketBox() {
+   this->data.clear(); 
 }

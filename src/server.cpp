@@ -143,16 +143,9 @@ void handleConnectButton() {
 
                     // printf("Mouse event %lf %lf\n", me.x, me.y);
 
-                    std::vector<uchar> image_data((char*)&me, (char*)(&me) + sizeof(me));
-
                     static int id = 0;
 
-                    PacketBox box;
-                    BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
-
-                    for (int i = 0; i < (int) box.data.size(); i++) {
-                        server_wrappers[active_id].client_mouse.sendData((char*)box.data[i].data(), box.data[i].size());
-                    }
+                    server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
                 }
             }
         });
@@ -174,16 +167,9 @@ void handleConnectButton() {
                     // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
                     // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
 
-                    std::vector<uchar> image_data((char*)&ke, (char*)(&ke) + sizeof(ke));
-
                     static int id = 0;
 
-                    PacketBox box;
-                    BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
-
-                    for (int i = 0; i < (int) box.data.size(); i++) {
-                        server_wrappers[active_id].client_keyboard.sendData((char*)box.data[i].data(), box.data[i].size());
-                    }
+                    server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
                 }
             }
         });
