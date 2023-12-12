@@ -6388,18 +6388,18 @@ static void stbi__copyval(int channel,stbi_uc *dest,const stbi_uc *src)
 
 static stbi_uc *stbi__pic_load_core(stbi__context *s,int width,int height,int *comp, stbi_uc *result)
 {
-   int act_comp=0,num_packets=0,y,chained;
-   stbi__pic_packet packets[10];
+   int act_comp=0,num_data=0,y,chained;
+   stbi__pic_packet data[10];
 
    // this will (should...) cater for even some bizarre stuff like having data
-    // for the same channel in multiple packets.
+    // for the same channel in multiple data.
    do {
       stbi__pic_packet *packet;
 
-      if (num_packets==sizeof(packets)/sizeof(packets[0]))
-         return stbi__errpuc("bad format","too many packets");
+      if (num_data==sizeof(data)/sizeof(data[0]))
+         return stbi__errpuc("bad format","too many data");
 
-      packet = &packets[num_packets++];
+      packet = &data[num_data++];
 
       chained = stbi__get8(s);
       packet->size    = stbi__get8(s);
@@ -6408,7 +6408,7 @@ static stbi_uc *stbi__pic_load_core(stbi__context *s,int width,int height,int *c
 
       act_comp |= packet->channel;
 
-      if (stbi__at_eof(s))          return stbi__errpuc("bad file","file too short (reading packets)");
+      if (stbi__at_eof(s))          return stbi__errpuc("bad file","file too short (reading data)");
       if (packet->size != 8)  return stbi__errpuc("bad format","packet isn't 8bpp");
    } while (chained);
 
@@ -6417,8 +6417,8 @@ static stbi_uc *stbi__pic_load_core(stbi__context *s,int width,int height,int *c
    for(y=0; y<height; ++y) {
       int packet_idx;
 
-      for(packet_idx=0; packet_idx < num_packets; ++packet_idx) {
-         stbi__pic_packet *packet = &packets[packet_idx];
+      for(packet_idx=0; packet_idx < num_data; ++packet_idx) {
+         stbi__pic_packet *packet = &data[packet_idx];
          stbi_uc *dest = result+y*width*4;
 
          switch (packet->type) {
@@ -7421,8 +7421,8 @@ static int stbi__psd_is16(stbi__context *s)
 #ifndef STBI_NO_PIC
 static int stbi__pic_info(stbi__context *s, int *x, int *y, int *comp)
 {
-   int act_comp=0,num_packets=0,chained,dummy;
-   stbi__pic_packet packets[10];
+   int act_comp=0,num_data=0,chained,dummy;
+   stbi__pic_packet data[10];
 
    if (!x) x = &dummy;
    if (!y) y = &dummy;
@@ -7451,10 +7451,10 @@ static int stbi__pic_info(stbi__context *s, int *x, int *y, int *comp)
    do {
       stbi__pic_packet *packet;
 
-      if (num_packets==sizeof(packets)/sizeof(packets[0]))
+      if (num_data==sizeof(data)/sizeof(data[0]))
          return 0;
 
-      packet = &packets[num_packets++];
+      packet = &data[num_data++];
       chained = stbi__get8(s);
       packet->size    = stbi__get8(s);
       packet->type    = stbi__get8(s);

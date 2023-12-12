@@ -58,7 +58,7 @@ void startButtonHandle() {
     waiting = true;
 
     std::thread thread_passcode([&](){
-        server_passcode.setCallback(
+        server_passcode.setReceiveCallback(
             [](SOCKET sock, char data[], int size, char ipv4[]) {
                 if (!strcmp(data, SECRET) || !strcmp(data, "ABCXYZ")) {
                     strcpy(host, ipv4);
@@ -91,31 +91,31 @@ void startButtonHandle() {
         printf("PORT_C = %s\n", PORT_C);
         while (!server_passcode.Listen((char*)PORT_C, "TCP"));
 
-        server_passcode.setCallback(
+        server_passcode.setReceiveCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
-                client_wrapper.PORT_S = std::string(data, data + 5);
-                client_wrapper.PORT_M = std::string(data + 5, data + 10);
-                client_wrapper.PORT_K = std::string(data + 10, data + 15);
+                client_wrapper.PORT_M = std::string(data +  0, data +  5);
+                client_wrapper.PORT_K = std::string(data +  5, data + 10);
+                client_wrapper.PORT_S = std::string(data + 10, data + 15);
             }
         );
 
         while (server_passcode.receiveData(15) <= 0);
 
         printf("[server_host] = %s\n", host);
-        printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
         printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
         printf("PORT_K = %s\n", client_wrapper.PORT_K.c_str());
+        printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
 
         // ---------------------------------------------------
 
         while (!client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP"));
-        printf("Mouse connected!\n");
+        printf("[Mouse connected]\n");
 
         while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
-        // printf("Keyboard connected\n");
+        printf("[Keyboard connected]\n");
 
-        while (!client_wrapper.client_screen.Connect(host, (char*)client_wrapper.PORT_S.c_str(), "UDP"));
-        printf("Screen connected\n");
+        client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), "UDP", 1);
+        printf("[Screen connected]\n");
 
         std::thread thread_mouse([&]()
         {
@@ -141,7 +141,7 @@ void startButtonHandle() {
                 }
             });
 
-            client_wrapper.server_mouse.setCallback(
+            client_wrapper.server_mouse.setReceiveCallback(
                 [&boxman_mouse](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_mouse.addPacketToBox(buf);
@@ -168,7 +168,7 @@ void startButtonHandle() {
                 }
             });
 
-            client_wrapper.server_keyboard.setCallback(
+            client_wrapper.server_keyboard.setReceiveCallback(
                 [&boxman_keyboard](SOCKET sock, char data[], int size, char host[]) {
                     std::vector<uchar> buf(data, data + size);
                     boxman_keyboard.addPacketToBox(buf);
@@ -232,9 +232,7 @@ void startButtonHandle() {
                 PacketBox box = client_wrapper.frame_box_queue.front(); client_wrapper.frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                for (int i = 0; i < (int) box.packets.size(); i++) {
-                    client_wrapper.client_screen.sendData((char*)box.packets[i].data(), box.packets[i].size());
-                }
+                client_wrapper.client_screen.send(box);
             }
 
         });

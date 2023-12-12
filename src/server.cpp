@@ -8,7 +8,7 @@
 
 char host[16] = "10.211.55.255";
 
-std::mutex mtx_mouse, mtx_keyboard;
+std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
 
 ServerSocketManager server_passcode;
 ClientSocketManager client_passcode;
@@ -69,7 +69,7 @@ void handleConnectButton() {
 
         server_passcode.Listen(PORT_B, "UDP");
 
-        server_passcode.setCallback(
+        server_passcode.setReceiveCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
                 server_wrappers.push_back(ServerWrapper());
                 server_wrappers.back().client_host = std::string(host, host + INET_ADDRSTRLEN);
@@ -91,14 +91,14 @@ void handleConnectButton() {
 
         for (int i = 0; i < (int) server_wrappers.size(); i++)
         {
-            server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 3);
-            server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 3 + 1);
-            server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 3 + 2);
+            server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 0);
+            server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
+            server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
 
             printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
             while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
-            std::string ports = server_wrappers[i].PORT_S + server_wrappers[i].PORT_M + server_wrappers[i].PORT_K;
+            std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
 
             client_passcode.sendData((char*)ports.data(), 15);
 
@@ -106,20 +106,20 @@ void handleConnectButton() {
 
             printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
 
-            printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
             printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
             printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
+            printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
 
             fflush(stdout);
 
             while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-            printf("Mouse connected!\n"); fflush(stdout);
+            printf("[Mouse connected]\n"); fflush(stdout);
 
             while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-            printf("Keyboard connected\n"); fflush(stdout);
+            printf("[Keyboard connected]\n"); fflush(stdout);
 
-            server_wrappers[i].server_screen.Listen((char*)server_wrappers[i].PORT_S.c_str(), "UDP");
-            printf("Screen connected\n"); fflush(stdout);
+            server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), "UDP", 1);
+            printf("[Screen connected]\n"); fflush(stdout);
         }
 
         std::thread thread_mouse([&](){
@@ -148,8 +148,8 @@ void handleConnectButton() {
                     PacketBox box;
                     BufToPacketBox(image_data, box, ++id, 'M', image_data.size() + 7);
 
-                    for (int i = 0; i < (int) box.packets.size(); i++) {
-                        server_wrappers[active_id].client_mouse.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    for (int i = 0; i < (int) box.data.size(); i++) {
+                        server_wrappers[active_id].client_mouse.sendData((char*)box.data[i].data(), box.data[i].size());
                     }
                 }
             }
@@ -179,8 +179,8 @@ void handleConnectButton() {
                     PacketBox box;
                     BufToPacketBox(image_data, box, ++id, 'K', image_data.size() + 7);
 
-                    for (int i = 0; i < (int) box.packets.size(); i++) {
-                        server_wrappers[active_id].client_keyboard.sendData((char*)box.packets[i].data(), box.packets[i].size());
+                    for (int i = 0; i < (int) box.data.size(); i++) {
+                        server_wrappers[active_id].client_keyboard.sendData((char*)box.data[i].data(), box.data[i].size());
                     }
                 }
             }
@@ -193,31 +193,23 @@ void handleConnectButton() {
         {
             printf("Start thread_screen\n");
 
-            BoxManager boxman_screen;
-
-            boxman_screen.setCompleteCallback([](PacketBox& box) {
-                // printf("%d\n", box.packets.size());
+            server_wrappers[active_id].server_screen.setCompleteCallback([](PacketBox& box) {
                 std::vector<uchar> image_data;
+                box.sort();
                 PacketBoxToBuf(box, image_data);
                 if (box.type == 'I') {
-                    if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
+                    // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
+                    {
+                        std::unique_lock<std::mutex> lock_frame(mtx_frame);
                         server_wrappers[active_id].frame_wrapper.frame_queue.push(image_data);
+                        lock_frame.unlock();
+                    }
                 }
             });
 
-            server_wrappers[active_id].server_screen.setCallback(
-                [&boxman_screen](SOCKET sock, char data[], int size, char host[]) {
-                    // short id = *(data);
-                    // short num = *(short*)(data + 3);
-                    // printf("id = %d, num = %d\n", id, num);
-                    std::vector<uchar> image_data(data, data + size);
-                    boxman_screen.addPacketToBox(image_data);
-                }
-            );
-
             while (!quit) {
                 if (active_id < server_wrappers.size()) {
-                    server_wrappers[active_id].server_screen.receiveData(1440);
+                    server_wrappers[active_id].server_screen.receive();
                 }
             }
         });
@@ -286,7 +278,9 @@ void clientScreenWindow() {
     if (active_id < server_wrappers.size())
     {
         if (server_wrappers[active_id].frame_wrapper.frame_queue.size()) {
+            std::unique_lock<std::mutex> lock_frame(mtx_frame);
             server_wrappers[active_id].frame_wrapper.pushToTexture();
+            lock_frame.unlock();
         }
 
         if (!server_wrappers[active_id].frame_wrapper.isTextureGenerated()) server_wrappers[active_id].frame_wrapper.generateTexture();

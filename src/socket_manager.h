@@ -37,7 +37,7 @@ public:
     bool UDPListen(char*);
     bool Listen(char*, const char*);
     void Close();
-    void setCallback(std::function<void(SOCKET, char[], int, char[])>);
+    void setReceiveCallback(std::function<void(SOCKET, char[], int, char[])>);
     int TCPReceive(int);
     int UDPReceive(int);
     int receiveData(int);

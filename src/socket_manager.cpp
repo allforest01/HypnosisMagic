@@ -136,7 +136,7 @@ void ServerSocketManager::Close() {
     this->service = nullptr;
 }
 
-void ServerSocketManager::setCallback(std::function<void(SOCKET, char[], int, char[])> service) {
+void ServerSocketManager::setReceiveCallback(std::function<void(SOCKET, char[], int, char[])> service) {
     this->service = service;
 }
 
