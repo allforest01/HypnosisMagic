@@ -313,7 +313,7 @@ void clientListWindow() {
         for (int i = 0; i < (int) server_wrappers.size(); i++) {
             ImGui::Text("%s", server_wrappers[i].client_host.c_str());
 
-            if (server_wrappers[i].frame_wrapper.frame_queue.size()) {
+            if ((i == active_id || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
                 server_wrappers[i].frame_wrapper.pushToTexture();
                 lock_frame.unlock();
