@@ -199,21 +199,26 @@ void connectButtonHandle() {
 
 void listeningWindow() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 80));
+    ImGui::SetNextWindowSize(ImVec2(200, 64));
 
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-    // ImGui::SameLine();
-    ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
-    if (ImGui::Button("Connect", buttonSize)) connectButtonHandle();
-    if (ImGui::Button("Exit", buttonSize)) { quit = true; }
+    ImGui::PushItemWidth(-1);
+    ImGui::InputText("Broadcast", host, sizeof(host));
+
+    ImGui::SetCursorPos(ImVec2(8, 34));
+
+    if (ImGui::Button("Connect", ImVec2(130, 20))) connectButtonHandle();
+    ImGui::SameLine();
+
+    if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionAvail().x - 1, 20))) { quit = true; }
 
     ImGui::End();
 }
 
 void connectedWindow() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 80));
+    ImGui::SetNextWindowSize(ImVec2(200, 64));
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     // When client is connected from server
@@ -224,7 +229,7 @@ void connectedWindow() {
 int main(int argc, char** argv)
 {
     initSocketManager();
-    imgui_wrapper = ImGuiWrapper(200, 60, (char*)"Client");
+    imgui_wrapper = ImGuiWrapper(200, 64, (char*)"Client");
     initImGui(imgui_wrapper);
 
     while (!quit)
