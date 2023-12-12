@@ -1,28 +1,24 @@
 #include "client.h"
 
 #define SECRET "HYPNO"
-
 #define PORT_A "43940"
-#define PORT_B "43941"
 #define PORT_C "43942"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
 #define PACKET_SIZE 1468
 
-char host[16], debug[256];
+char host[INET_ADDRSTRLEN] = "10.211.55.255";
+char debug_message[256] = "Debug message...";
 
 std::mutex mtx_keyboard, mtx_screen;
 
-ClientSocketManager client_passcode;
 ServerSocketManager server_passcode;
 
 ImGuiWrapper imgui_wrapper;
 ClientWrapper client_wrapper;
 
-bool quit = false;
-bool waiting = false;
-bool connected = false;
+bool quit = false, connected = false;
 
 void handleEvents() {
     // SDL poll event
@@ -57,43 +53,14 @@ void guiRendering() {
     SDL_Delay(16);
 }
 
-void startButtonHandle() {
-    // waiting for a connection
-    waiting = true;
+void connectButtonHandle() {
+    std::thread thread_passcode([&]()
+    {
+        broadcastMessage(PORT_A, SECRET, 6, inet_addr(host));
 
-    std::thread thread_passcode([&](){
-        server_passcode.setReceiveCallback(
-            [](SOCKET sock, char data[], int size, char ipv4[]) {
-                if (!strcmp(data, SECRET)) {
-                    strcpy(host, ipv4);
-                    printf("host = %s\n", host);
-                    fflush(stdout);
-                    waiting = false;
-                    connected = 1;
-                }
-            }
-        );
-
-        while (!server_passcode.Listen((char*)PORT_A, "UDP"));
-        
-        while (!quit && waiting) {
-            server_passcode.receiveData(6);
-        }
-
-        server_passcode.Close();
-
-        // ------------------
-        
-        while (!client_passcode.Connect(host, (char*)PORT_B, "UDP"));
-
-        while (!client_passcode.sendData((char*)SECRET, 6));
-
-        client_passcode.Close();
-
-        // ------------------
-
-        printf("PORT_C = %s\n", PORT_C);
         while (!server_passcode.Listen((char*)PORT_C, "TCP"));
+
+        inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), host, INET_ADDRSTRLEN);
 
         server_passcode.setReceiveCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
@@ -130,7 +97,7 @@ void startButtonHandle() {
                     int x = round(me.x * EventsManager::getInstance().width);
                     int y = round(me.y * EventsManager::getInstance().height);
 
-                    snprintf(debug, 256, "Send Mouse %d %d\n", x, y);
+                    snprintf(debug_message, 256, "Send Mouse %d %d\n", x, y);
 
                     if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
                     else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
@@ -216,12 +183,14 @@ void startButtonHandle() {
 
                 client_wrapper.client_screen.send(box);
 
-                printf("Sent!\n"); fflush(stdout);
+                // printf("Sent!\n"); fflush(stdout);
             }
 
         });
 
         thread_screen_events.detach();
+
+        connected = true;
 
     });
     
@@ -236,24 +205,8 @@ void listeningWindow() {
 
     // ImGui::SameLine();
     ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
-    if (ImGui::Button("Start", buttonSize)) startButtonHandle();
+    if (ImGui::Button("Connect", buttonSize)) connectButtonHandle();
     if (ImGui::Button("Exit", buttonSize)) { quit = true; }
-
-    ImGui::End();
-}
-
-void waitingWindow() {
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 80));
-    ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
-    // waiting for a connection from server
-
-    ImGui::PushItemWidth(-1);
-    ImGui::ProgressBar(ImGui::GetTime() * -0.2f, ImVec2(0, 0), "");
-    ImGui::PopItemWidth();
-
-    ImVec2 buttonSize(ImGui::GetContentRegionAvail().x, 20);
-    if (ImGui::Button("Cancel", buttonSize)) { waiting = false; }
 
     ImGui::End();
 }
@@ -264,7 +217,7 @@ void connectedWindow() {
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     // When client is connected from server
-    ImGui::Text("%s", debug);
+    ImGui::Text("%s", debug_message);
     ImGui::End();
 }
 
@@ -278,9 +231,8 @@ int main(int argc, char** argv)
     {
         startNewFrame();
 
-        if (!waiting && !connected) listeningWindow();
-        else if (waiting) waitingWindow();
-        else if (connected) connectedWindow();
+        if (!connected) listeningWindow();
+        else connectedWindow();
 
         guiRendering();
         handleEvents();

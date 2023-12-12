@@ -1,15 +1,13 @@
 #include "server.h"
 
 #define SECRET "HYPNO"
-
 #define PORT_A "43940"
-#define PORT_B "43941"
 #define PORT_C "43942"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
 
-char host[16] = "10.211.55.255";
+char host[INET_ADDRSTRLEN];
 
 std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
 
@@ -19,8 +17,7 @@ ClientSocketManager client_passcode;
 ImGuiWrapper imgui_wrapper;
 std::vector<ServerWrapper> server_wrappers;
 
-bool quit = false;
-bool connected = false;
+bool quit = false, connected = false;
 int active_id = INT_MAX;
 
 void pushMouseEvent(MouseEvent me) {
@@ -62,157 +59,145 @@ void handleEvents() {
     }
 }
 
-void handleConnectButton() {
-    // Send SECRET
+void startListen() {
     std::thread thread_passcode([&]()
     {
-        broadcastMessage(PORT_A, SECRET, 6, inet_addr(host));
-
-        // ------------------
-
-        server_passcode.Listen(PORT_B, "UDP");
+        server_passcode.Listen(PORT_A, "UDP");
 
         server_passcode.setReceiveCallback(
-            [&](SOCKET sock, char data[], int size, char host[]) {
+            [&](SOCKET sock, char data[], int size, char host[])
+            {
+                if (strcmp(data, SECRET)) return;
+
                 server_wrappers.push_back(ServerWrapper());
                 server_wrappers.back().client_host = std::string(host, host + INET_ADDRSTRLEN);
+
                 printf("host = %s\n", server_wrappers.back().client_host.c_str());
                 printf("data = %s\n", data);
                 fflush(stdout);
-            }
-        );
 
-        while (true) {
-            server_passcode.receiveData(6);
-            if (server_wrappers.size() == 1) break;
-        }
+                int i = (int) server_wrappers.size() - 1;
 
-        server_passcode.Close();
+                server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 0);
+                server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
+                server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
 
-        // ------------------
+                printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
+                while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
-        for (int i = 0; i < (int) server_wrappers.size(); i++)
-        {
-            server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 0);
-            server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
-            server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
+                std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
 
-            printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
-            while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
+                client_passcode.sendData((char*)ports.data(), 15);
 
-            std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
+                client_passcode.Close();
 
-            client_passcode.sendData((char*)ports.data(), 15);
+                printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
 
-            client_passcode.Close();
+                printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
+                printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
+                printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
 
-            printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
+                fflush(stdout);
 
-            printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
-            printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
-            printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
+                while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
+                printf("[Mouse connected for %d]\n", i); fflush(stdout);
 
-            fflush(stdout);
+                while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
+                printf("[Keyboard connected for %d]\n", i); fflush(stdout);
 
-            while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-            printf("[Mouse connected for %d]\n", i); fflush(stdout);
+                server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
+                printf("[Screen connected for %d]\n", i); fflush(stdout);
 
-            while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-            printf("[Keyboard connected for %d]\n", i); fflush(stdout);
-
-            server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
-            printf("[Screen connected for %d]\n", i); fflush(stdout);
-        }
-
-        std::thread thread_mouse([&](){
-            while (!quit) {
-                if (active_id < server_wrappers.size()) {
-                    std::unique_lock<std::mutex> lock(mtx_mouse);
-                    if (!server_wrappers[active_id].mouse_events.size()) {
-                        mtx_mouse.unlock();
-                        continue;
-                    }
-
-                    MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
-                    mtx_mouse.unlock();
-        
-                    me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
-                    me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
-
-                    if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
-
-                    // printf("Mouse event %lf %lf\n", me.x, me.y);
-
-                    static int id = 0;
-
-                    server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
-                }
-            }
-        });
-
-        thread_mouse.detach();
-
-        std::thread thread_keyboard([&](){
-            while (!quit) {
-                if (active_id < server_wrappers.size()) {
-                    std::unique_lock<std::mutex> lock(mtx_keyboard);
-                    if (!server_wrappers[active_id].keyboard_events.size()) {
-                        mtx_keyboard.unlock();
-                        continue;
-                    }
-
-                    KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
-                    mtx_keyboard.unlock();
-
-                    // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
-                    // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
-
-                    static int id = 0;
-
-                    server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
-                }
-            }
-        });
-
-        thread_keyboard.detach();
-
-        for (int i = 0; i < (int) server_wrappers.size(); i++)
-        {
-            // Receive screen capture
-            std::thread thread_screen([&, i]()
-            {
-                server_wrappers[i].server_screen.setCompleteCallback([i](PacketBox& box) {
-                    std::vector<uchar> image_data;
-                    box.sort();
-                    PacketBoxToBuf(box, image_data);
-                    if (box.type == 'I') {
-                        // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
-                        {
-                            std::unique_lock<std::mutex> lock_frame(mtx_frame);
-                            server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
-                            lock_frame.unlock();
+                // Receive screen capture
+                std::thread thread_screen([&, i]()
+                {
+                    server_wrappers[i].server_screen.setCompleteCallback([i](PacketBox& box) {
+                        std::vector<uchar> image_data;
+                        box.sort();
+                        PacketBoxToBuf(box, image_data);
+                        if (box.type == 'I') {
+                            // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
+                            {
+                                std::unique_lock<std::mutex> lock_frame(mtx_frame);
+                                server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
+                                lock_frame.unlock();
+                            }
                         }
+                    });
+
+                    while (!quit) {
+                        server_wrappers[i].server_screen.receive();
+
+                        // printf("Receive [%d]\n", i); fflush(stdout);
                     }
                 });
 
-                while (!quit) {
-                    server_wrappers[i].server_screen.receive();
+                thread_screen.detach();
 
-                    printf("Receive [%d]\n", i); fflush(stdout);
-                }
-            });
+                // Set connected and default active id
+                connected = true;
+                active_id = i;
+            }
+        );
 
-            thread_screen.detach();
-        }
+        while (!quit) server_passcode.receiveData(6);
 
-        // Connected
-        connected = true;
-
-        // Default active id
-        active_id = 0;
+        server_passcode.Close();
     });
 
     thread_passcode.detach();
+
+    std::thread thread_mouse([&](){
+        while (!quit) {
+            if (connected && active_id < server_wrappers.size()) {
+                std::unique_lock<std::mutex> lock(mtx_mouse);
+                if (!server_wrappers[active_id].mouse_events.size()) {
+                    mtx_mouse.unlock();
+                    continue;
+                }
+
+                MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
+                mtx_mouse.unlock();
+    
+                me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
+                me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
+
+                if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
+
+                // printf("Mouse event %lf %lf\n", me.x, me.y);
+
+                static int id = 0;
+
+                server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
+            }
+        }
+    });
+
+    thread_mouse.detach();
+
+    std::thread thread_keyboard([&](){
+        while (!quit) {
+            if (connected && active_id < server_wrappers.size()) {
+                std::unique_lock<std::mutex> lock(mtx_keyboard);
+                if (!server_wrappers[active_id].keyboard_events.size()) {
+                    mtx_keyboard.unlock();
+                    continue;
+                }
+
+                KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
+                mtx_keyboard.unlock();
+
+                // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+                // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+
+                static int id = 0;
+
+                server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
+            }
+        }
+    });
+
+    thread_keyboard.detach();
 }
 
 void menuBar() {
@@ -221,9 +206,6 @@ void menuBar() {
 
     // Menu bar
     if (ImGui::BeginMainMenuBar()) {
-        if (ImGui::MenuItem("Connect")) {
-            connect_popup = true;
-        }
         if (ImGui::MenuItem("About")) {
             about_popup = true;
         }
@@ -243,21 +225,6 @@ void menuBar() {
         // ImGui::Text("Made by: allforest01");
         ImGui::EndPopup();
     }
-
-    // Connect popup
-    if (connect_popup) {
-        ImGui::OpenPopup("Connect");
-    }
-    if (ImGui::BeginPopup("Connect", ImGuiWindowFlags_AlwaysAutoResize)) {
-
-        ImGui::PushItemWidth(200);
-        ImGui::InputText("##host", (char*)host, 16);
-        ImGui::PopItemWidth();
-
-        ImGui::SameLine();
-        if (ImGui::Button("Connect")) handleConnectButton();    
-        ImGui::EndPopup();
-    }
 }
 
 void clientScreenWindow() {
@@ -266,7 +233,7 @@ void clientScreenWindow() {
 
     ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-    if (active_id < server_wrappers.size())
+    if (connected && active_id < server_wrappers.size())
     {
         if (server_wrappers[active_id].frame_wrapper.isTexturePushed() && !server_wrappers[active_id].frame_wrapper.scale_calculated) {
             server_wrappers[active_id].frame_wrapper.scale_calculated = true;
@@ -366,6 +333,8 @@ int main(int argc, char** argv)
     initSocketManager();
     imgui_wrapper = ImGuiWrapper(1260, 670, (char*)"Server");
     initImGui(imgui_wrapper);
+
+    startListen();
 
     while (!quit)
     {
