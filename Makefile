@@ -18,6 +18,7 @@ UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 CXXFLAGS += -g -Wall -Wformat
+# CXXFLAGS += -static
 
 LIBS =
 
@@ -33,21 +34,18 @@ ifeq ($(UNAME_S), Darwin) #APPLE
 	LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo `sdl2-config --libs`
 	LIBS += -framework ApplicationServices -framework Carbon
 
-	LIBS += -L/usr/local/lib
-	LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_1/lib
+	LIBS += -L/usr/lib -L/usr/local/lib
 	LIBS += -L/opt/homebrew/Cellar/glew/2.2.0_1/lib
-	# LIBS += -L/opt/homebrew/Cellar/raylib/4.5.0/lib
+	LIBS += -L/opt/homebrew/Cellar/opencv/4.8.1_1/lib
 
-	LIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_videoio
 	LIBS += -lGLEW -lSDL2 -lSDL2main
-	# LIBS += -lraylib
+	LIBS += -lopencv_core -lopencv_imgcodecs -lopencv_imgproc
 
 	CXXFLAGS += `sdl2-config --cflags`
 
 	CXXFLAGS += -I/usr/local/include -I/opt/local/include
-	CXXFLAGS += -I/opt/homebrew/Cellar/opencv/4.8.1_1/include/opencv4
 	CXXFLAGS += -I/opt/homebrew/Cellar/glew/2.2.0_1/include
-	# CXXFLAGS += -I/opt/homebrew/Cellar/raylib/4.5.0/include
+	CXXFLAGS += -I/opt/homebrew/Cellar/opencv/4.8.1_1/include/opencv4
 
 	CFLAGS = $(CXXFLAGS)
 endif
@@ -57,18 +55,15 @@ ifeq ($(OS), Windows_NT)
 
 	BUILD_DIR = $(BUILD_DIR_WIN)
 
-	# LIBS += raylib.a
-	LIBS += -LC:\msys64\ucrt64\lib
+	LIBS += -LC:/msys64/ucrt64/lib
 
-	LIBS += -lgdi32
+	LIBS += -lgdi32 -lws2_32
 	LIBS += -lopengl32 -limm32 `pkg-config --static --libs sdl2`
-	LIBS += -lopencv_core -lopencv_highgui -lopencv_imgcodecs -lopencv_imgproc -lopencv_videoio
-	LIBS += -lws2_32
-	# LIBS += -lraylib
-	# LIBS += -lwinmm
+	LIBS += C:/msys64/ucrt64/lib/libopencv_core.dll.a
+	LIBS += C:/msys64/ucrt64/lib/libopencv_imgcodecs.dll.a
+	LIBS += C:/msys64/ucrt64/lib/libopencv_imgproc.dll.a
 
 	CXXFLAGS += `pkg-config --cflags sdl2`
-	# CXXFLAGS += `pkg-config --cflags Qt6Core`
 	CXXFLAGS += -IC:/msys64/ucrt64/include/opencv4
 
 	CFLAGS = $(CXXFLAGS)

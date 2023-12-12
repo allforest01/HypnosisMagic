@@ -84,7 +84,7 @@ void handleConnectButton() {
 
         while (true) {
             server_passcode.receiveData(6);
-            if (server_wrappers.size() == 2) break;
+            if (server_wrappers.size() == 1) break;
         }
 
         server_passcode.Close();
