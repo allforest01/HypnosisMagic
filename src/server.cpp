@@ -1,5 +1,14 @@
 #include "server.h"
 
+#define SECRET "HYPNO"
+
+#define PORT_A "43940"
+#define PORT_B "43941"
+#define PORT_C "43942"
+
+#define SCREEN_STREAM_TYPE "UDP"
+#define NUM_OF_THREADS 1
+
 char host[16] = "10.211.55.255";
 
 std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
@@ -357,7 +366,9 @@ void clientListWindow() {
             int scaled_width = ImGui::GetContentRegionAvail().x - 6;
             int scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
 
-            ImGui::ImageButton((void*)(intptr_t)server_wrappers[i].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height));
+            if (ImGui::ImageButton((void*)(intptr_t)server_wrappers[i].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height))) {
+                active_id = i;
+            }
         }
     }
 

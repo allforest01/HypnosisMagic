@@ -1,5 +1,15 @@
 #include "client.h"
 
+#define SECRET "HYPNO"
+
+#define PORT_A "43940"
+#define PORT_B "43941"
+#define PORT_C "43942"
+
+#define SCREEN_STREAM_TYPE "UDP"
+#define NUM_OF_THREADS 1
+#define PACKET_SIZE 1468
+
 char host[16], debug[256];
 
 std::mutex mtx_keyboard, mtx_screen;
