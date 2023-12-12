@@ -39,13 +39,13 @@ void ServerConnectionManager::setCompleteCallback(std::function<void(PacketBox&)
     this->onComplete = onComplete;
 }
 
-void ServerConnectionManager::receive() {
-
+void ServerConnectionManager::receive()
+{
     int data_size = 0;
     int total_size = 0;
     int cur_packet_size = 0;
     this->server_checker.setReceiveCallback(
-        [&data_size, &total_size, &cur_packet_size](SOCKET sock, char data[], int size, char host[]) {
+        [&](SOCKET sock, char data[], int size, char host[]) {
             data_size = *(int*)data;
             total_size = *(int*)((char*) data + 4);
             cur_packet_size = *(int*)((char*) data + 8);

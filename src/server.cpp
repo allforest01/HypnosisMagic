@@ -59,84 +59,87 @@ void handleEvents() {
     }
 }
 
+void newConnectionHandle(char data[], char host[]) {
+    if (strcmp(data, SECRET)) return;
+
+    server_wrappers.push_back(ServerWrapper());
+    server_wrappers.back().client_host = std::string(host, host + INET_ADDRSTRLEN);
+
+    printf("host = %s\n", server_wrappers.back().client_host.c_str());
+    printf("data = %s\n", data);
+    fflush(stdout);
+
+    int i = (int) server_wrappers.size() - 1;
+
+    server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 0);
+    server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
+    server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
+
+    printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
+    while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
+
+    std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
+
+    client_passcode.sendData((char*)ports.data(), 15);
+
+    client_passcode.Close();
+
+    printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
+
+    printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
+    printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
+    printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
+
+    fflush(stdout);
+
+    while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
+    printf("[Mouse connected for %d]\n", i); fflush(stdout);
+
+    while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
+    printf("[Keyboard connected for %d]\n", i); fflush(stdout);
+
+    server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
+    printf("[Screen connected for %d]\n", i); fflush(stdout);
+
+    // Receive screen capture
+    std::thread thread_screen([&, i]()
+    {
+        server_wrappers[i].server_screen.setCompleteCallback([i](PacketBox& box) {
+            std::vector<uchar> image_data;
+            box.sort();
+            PacketBoxToBuf(box, image_data);
+            if (box.type == 'I') {
+                std::unique_lock<std::mutex> lock_frame(mtx_frame);
+                while (server_wrappers[i].frame_wrapper.frame_queue.size()) {
+                    server_wrappers[i].frame_wrapper.frame_queue.pop();
+                }
+                server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
+                lock_frame.unlock();
+            }
+        });
+
+        while (!quit) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            server_wrappers[i].server_screen.receive();
+        }
+    });
+
+    thread_screen.detach();
+
+    // Set connected and default active id
+    connected = true;
+    active_id = i;
+}
+
 void startListen() {
     std::thread thread_passcode([&]()
     {
         server_passcode.Listen(PORT_A, "UDP");
 
         server_passcode.setReceiveCallback(
-            [&](SOCKET sock, char data[], int size, char host[])
-            {
-                if (strcmp(data, SECRET)) return;
-
-                server_wrappers.push_back(ServerWrapper());
-                server_wrappers.back().client_host = std::string(host, host + INET_ADDRSTRLEN);
-
-                printf("host = %s\n", server_wrappers.back().client_host.c_str());
-                printf("data = %s\n", data);
-                fflush(stdout);
-
-                int i = (int) server_wrappers.size() - 1;
-
-                server_wrappers[i].PORT_M = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 0);
-                server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
-                server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
-
-                printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
-                while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
-
-                std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
-
-                client_passcode.sendData((char*)ports.data(), 15);
-
-                client_passcode.Close();
-
-                printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
-
-                printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
-                printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
-                printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
-
-                fflush(stdout);
-
-                while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-                printf("[Mouse connected for %d]\n", i); fflush(stdout);
-
-                while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-                printf("[Keyboard connected for %d]\n", i); fflush(stdout);
-
-                server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
-                printf("[Screen connected for %d]\n", i); fflush(stdout);
-
-                // Receive screen capture
-                std::thread thread_screen([&, i]()
-                {
-                    server_wrappers[i].server_screen.setCompleteCallback([i](PacketBox& box) {
-                        std::vector<uchar> image_data;
-                        box.sort();
-                        PacketBoxToBuf(box, image_data);
-                        if (box.type == 'I') {
-                            // if (server_wrappers[active_id].frame_wrapper.frame_queue.size() <= 2)
-                            {
-                                std::unique_lock<std::mutex> lock_frame(mtx_frame);
-                                server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
-                                lock_frame.unlock();
-                            }
-                        }
-                    });
-
-                    while (!quit) {
-                        server_wrappers[i].server_screen.receive();
-
-                        // printf("Receive [%d]\n", i); fflush(stdout);
-                    }
-                });
-
-                thread_screen.detach();
-
-                // Set connected and default active id
-                connected = true;
-                active_id = i;
+            [](SOCKET sock, char data[], int size, char host[]) {
+                std::thread threadNewConnection(newConnectionHandle, data, host);
+                threadNewConnection.join();
             }
         );
 
@@ -334,6 +337,7 @@ int main(int argc, char** argv)
     imgui_wrapper = ImGuiWrapper(1260, 670, (char*)"Server");
     initImGui(imgui_wrapper);
 
+    server_wrappers.reserve(16);
     startListen();
 
     while (!quit)
