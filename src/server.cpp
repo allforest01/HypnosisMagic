@@ -1,8 +1,8 @@
 #define SECRET "aBcXyZ"
 
-#define PORT_A "63340"
-#define PORT_B "63341"
-#define PORT_C "63342"
+#define PORT_A "63640"
+#define PORT_B "63641"
+#define PORT_C "63642"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1

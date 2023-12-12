@@ -1,12 +1,12 @@
 #define SECRET "aBcXyZ"
 
-#define PORT_A "63340"
-#define PORT_B "63341"
-#define PORT_C "63342"
+#define PORT_A "63640"
+#define PORT_B "63641"
+#define PORT_C "63642"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
-#define PACKET_SIZE 64000
+#define PACKET_SIZE 1468
 
 #include "client.h"
 
@@ -210,7 +210,7 @@ void startButtonHandle() {
                 // resize(mat, mat, cv::Size(), 1, 1);
 
                 std::vector<uchar> frame;
-                compressImage(mat, frame, 90);
+                compressImage(mat, frame, 80);
 
                 static int id = 0;
 
@@ -230,6 +230,8 @@ void startButtonHandle() {
 
             while (!quit)
             {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!client_wrapper.frame_box_queue.size()) continue;
 

@@ -20,37 +20,25 @@ void ClientConnectionManager::connect(char* host, int port, const char* type, in
     std::vector<std::thread> threads;
 
     for (int pos = 0; pos < size; pos++) {
-        // std::thread cur_thread([&]()
-        {
-            int i = pos;
-            printf("server [%d] connect\n", i, (char*) ports[i].c_str());
-            while (!clients[i].Connect(host, (char*) ports[i].c_str(), type));
-            printf("server [%d] connected\n", i);
-        }
-        // );
-        // threads.emplace_back(std::move(cur_thread));
-        // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        int i = pos;
+        printf("server [%d] connect %s\n", i, (char*) ports[i].c_str());
+        while (!clients[i].Connect(host, (char*) ports[i].c_str(), type));
+        printf("server [%d] connected\n", i);
     }
-
-    // for (int i = 0; i < size; i++) {
-    //     threads[i].join();
-    // }
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
     printf("client_checker %s\n", (char*) std::to_string(port + size).c_str());
     while (!client_checker.Connect(host, (char*) std::to_string(port + size).c_str(), "TCP"));
     printf("client_checker connected\n");
 
-    // printf("server_checker %s\n", (char*) std::to_string(port + size + 1).c_str());
-    // server_checker.Listen((char*) std::to_string(port + size + 1).c_str(), "TCP");
-    // printf("server_checker connected\n");
+    printf("server_checker %s\n", (char*) std::to_string(port + size + 1).c_str());
+    server_checker.Listen((char*) std::to_string(port + size + 1).c_str(), "TCP");
+    printf("server_checker connected\n");
 
-    // this->server_checker.setReceiveCallback(
-    //     [&](SOCKET sock, char data[], int size, char host[]) {
-    //         printf("CHECK = %d\n", size);
-    //     }
-    // );
+    this->server_checker.setReceiveCallback(
+        [&](SOCKET sock, char data[], int size, char host[]) {
+            printf("CHECK = %d\n", size);
+        }
+    );
 }
 
 void ClientConnectionManager::send(PacketBox& box) {
@@ -77,7 +65,6 @@ void ClientConnectionManager::send(PacketBox& box) {
     std::vector<std::thread> threads;
 
     for (int i = 0; i < this->size; i++) {
-        // std::thread cur_thread([&]()
         threads.emplace_back(std::thread([&, i]()
         {
             int seg_start = i * d;
@@ -85,36 +72,21 @@ void ClientConnectionManager::send(PacketBox& box) {
 
             for (int j = seg_start; j < seg_end; j++) {
 
-                // if (j == data_size - 1) {
-                //     printf("---RECV CHECK----\n");
-                //     while (this->server_checker.receiveData(1) == -1);
-                //     printf("-----------------\n");
-                // }
-                // while (this->clients[i].sendData((char*)&packet_size, 4) == -1);
+                if (j == data_size - 1) {
+                    printf("---RECV CHECK----\n");
+                    while (this->server_checker.receiveData(1) == -1);
+                    printf("-----------------\n");
+                }
 
-                // std::this_thread::sleep_for(std::chrono::milliseconds(5));
-
-                // printf("data_size packet_size = %d %d\n", data_size, packet_size); fflush(stdout);
-
-                // std::this_thread::sleep_for(std::chrono::milliseconds(16));
-
-                // printf("------SEND DATA-----\n");
                 while (this->clients[i].sendData((char*)box.data[j].data(), box.data[j].size()) == -1);
-                // printf("---------------\n");
 
             }
-            // std::this_thread::sleep_for(std::chrono::milliseconds(16));
-        }
-        // );
-        // cur_thread.join();
-        ));
+        }));
     }
 
     for (int i = 0; i < this->size; i++) {
         threads[i].join();
     }
-
-    // std::this_thread::sleep_for(std::chrono::milliseconds(16));
 
     printf("Sent!\n");
 }

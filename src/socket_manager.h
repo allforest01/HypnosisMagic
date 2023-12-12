@@ -29,10 +29,10 @@ class ServerSocketManager {
 private:
     SOCKET listen_socket;
     bool isTCPServer;
-    std::function<void(SOCKET, char[], int, char[])> service;
+    std::function<void(SOCKET, char[], int, char[])> handleReceive;
 public:
     struct sockaddr_in client_address;
-    ServerSocketManager(): listen_socket(0), isTCPServer(false), service(nullptr) {}
+    ServerSocketManager(): listen_socket(0), isTCPServer(false), handleReceive(nullptr) {}
     bool TCPListen(char*);
     bool UDPListen(char*);
     bool Listen(char*, const char*);
@@ -53,7 +53,7 @@ public:
     bool UDPConnect(char*, char*);
     bool Connect(char*, char*, const char*);
     void Close();
-    bool sendData(char*, int);
+    int sendData(char*, int);
 };
 
 bool broadcastMessage(char*, char*, int, int host);

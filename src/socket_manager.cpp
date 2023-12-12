@@ -1,4 +1,8 @@
 #include "socket_manager.h"
+#include <chrono>
+#include <thread>
+
+// #define DEBUG
 
 void initSocketManager() {
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
@@ -34,19 +38,20 @@ bool ServerSocketManager::TCPListen(char* port) {
     hints.ai_flags = AI_PASSIVE;
     int err = getaddrinfo(NULL, port, &hints, &result);
     if (err) {
-        // printf("getaddrinfo failed: %d\n", err);
+        printf("getaddrinfo failed: %d\n", err);
         return false;
     }
     SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
-        printf("socket failed!\n");
+        printf("tcp listen socket failed!\n");
         freeaddrinfo(result);
         return false;
     }
+
     err = bind(ListenSocket, result->ai_addr, (int)result->ai_addrlen);
     freeaddrinfo(result);
     if (err) {
-        printf("bind failed: %d\n", err);
+        perror("bind failed");
         closesocket(ListenSocket);
         return false;
     }
@@ -67,17 +72,18 @@ bool ServerSocketManager::TCPListen(char* port) {
     printf("Client connected!\n");
     this->listen_socket = ClientSocket;
     #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        int timeout = 500; // 500 miliseconds
+        int timeout = 60000; // 1 seconds
     #else
         struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 500000; // 500 miliseconds
+        timeout.tv_sec = 60; // 1 seconds
+        timeout.tv_usec = 0;
     #endif
     int flag = 1;
     if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
-        printf("setsockopt failed!\n");
+        printf("tcp listen setsockopt failed!\n");
         return false;
     }
+
     return true;
 }
 
@@ -127,30 +133,35 @@ bool ServerSocketManager::UDPListen(char* port) {
 bool ServerSocketManager::Listen(char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) return this->TCPListen(port);
     else if (strcmp(type, "UDP") == 0) return this->UDPListen(port);
-    else { printf("type error!\n"); return false; }
+    else { printf("type error: %s\n", type); return false; }
 }
 
 void ServerSocketManager::Close() {
     closesocket(this->listen_socket);
-    this->listen_socket = 0;
-    this->service = nullptr;
+    listen_socket = 0;
+    this->handleReceive = nullptr;
 }
 
-void ServerSocketManager::setReceiveCallback(std::function<void(SOCKET, char[], int, char[])> service) {
-    this->service = service;
+void ServerSocketManager::setReceiveCallback(std::function<void(SOCKET, char[], int, char[])> handleReceive) {
+    this->handleReceive = handleReceive;
 }
 
 int ServerSocketManager::TCPReceive(int max_bytes) {
+    // printf("TCPPPPPPPPPPPPPPP\n");
     SOCKET listen_socket = this->listen_socket;
     char* buffer = new char[max_bytes];
+    // printf("max bytes = %d\n", max_bytes);
     int bytesRead = recv(listen_socket, buffer, max_bytes, 0);
-    if (bytesRead <= 0) {
+    // printf("RECV = %d\n", max_bytes);
+    if (bytesRead == -1) {
         delete[] buffer;
-        return bytesRead;
+        return -1;
     }
-    // printf("bytesRead = %d\n", bytesRead);
-    this->service(listen_socket, buffer, bytesRead, NULL);
+    this->handleReceive(listen_socket, buffer, bytesRead, NULL);
     delete[] buffer;
+    #ifdef DEBUG
+    printf("bytesRead = %d\n", bytesRead);
+    #endif
     return bytesRead;
 }
 
@@ -163,13 +174,15 @@ int ServerSocketManager::UDPReceive(int max_bytes) {
     char ipv4[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &(client_address.sin_addr), ipv4, INET_ADDRSTRLEN);
     // printf("ipv4 = %s\n", ipv4);
-    if (bytesRead <= 0) {
+    if (bytesRead == -1) {
         delete[] buffer;
-        return bytesRead;
+        return -1;
     }
-    // printf("bytesRead = %d\n", bytesRead);
-    this->service(listen_socket, buffer, bytesRead, ipv4);
+    this->handleReceive(listen_socket, buffer, bytesRead, ipv4);
     delete[] buffer;
+    #ifdef DEBUG
+    printf("bytesRead = %d\n", bytesRead);
+    #endif
     return bytesRead;
 }
 
@@ -191,7 +204,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (connect_socket == INVALID_SOCKET) {
-        printf("socket failed!\n");
+        printf("tcp connect socket failed!\n");
         freeaddrinfo(result);
         return false;
     }
@@ -200,7 +213,9 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        printf("connect failed: %d\n", err);
+        printf("(%d) ", err);
+        fflush(stdout);
+        // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
         // printf("to address = %s\n", ipv4);
         closesocket(connect_socket);
         return false;
@@ -238,7 +253,7 @@ bool ClientSocketManager::UDPConnect(char* host, char* port) {
 bool ClientSocketManager::Connect(char* host, char* port, const char* type) {
     if (strcmp(type, "TCP") == 0) return this->TCPConnect(host, port);
     else if (strcmp(type, "UDP") == 0) return this->UDPConnect(host, port);
-    else { printf("type error!\n"); return false; }
+    else { printf("type error: %s\n", type); return false; }
 }
 
 void ClientSocketManager::Close() {
@@ -248,16 +263,20 @@ void ClientSocketManager::Close() {
     this->server_address = nullptr;
 }
 
-bool ClientSocketManager::sendData(char* data, int size) {
+int ClientSocketManager::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
         int bytesSend = send(connect_socket, data, size, 0);
-        // printf("TCP bytesSend = %d\n", bytesSend);
+        #ifdef DEBUG
+        printf("TCP bytesSend = %d\n", bytesSend);
+        #endif
         return bytesSend;
     }
     int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
-    // printf("UDP bytesSend = %d\n", bytesSend);
+    #ifdef DEBUG
+    printf("UDP bytesSend = %d\n", bytesSend);
+    #endif
     return bytesSend;
 }
 
