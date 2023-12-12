@@ -93,17 +93,29 @@ void connectButtonHandle() {
             client_wrapper.server_mouse.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
                     MouseEvent &me = *(MouseEvent*)data;
-                    
-                    int x = round(me.x * EventsManager::getInstance().width);
-                    int y = round(me.y * EventsManager::getInstance().height);
 
-                    snprintf(debug_message, 256, "Send Mouse %d %d\n", x, y);
+                    if (me.type == MouseWheel)
+                    {
+                        int x = round(me.x * 90);
+                        int y = round(me.y * 90);
 
-                    if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
-                    else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
-                    else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
-                    else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
-                    else if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
+                        printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
+
+                        EventsManager::getInstance().emitWheel(x, y);
+                    }
+                    else
+                    {
+                        int x = round(me.x * EventsManager::getInstance().width);
+                        int y = round(me.y * EventsManager::getInstance().height);
+
+                        snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
+
+                        if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
+                        else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
+                        else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
+                        else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
+                        else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
+                    }
                 }
             );
 

@@ -64,6 +64,11 @@ cv::Mat EventsManager::captureScreen() {
     return captureScreenMat(GetDesktopWindow());
 }
 
+void EventsManager::toScreenCoord(int &x, int &y) {
+    x = (long long)(x * 65536) / EventsManager::getInstance().width;
+    y = (long long)(y * 65536) / EventsManager::getInstance().height;
+}
+
 void EventsManager::emitKeyDown(int keyCode) {
     INPUT input;
     input.type = INPUT_KEYBOARD;
@@ -78,11 +83,6 @@ void EventsManager::emitKeyUp(int keyCode) {
     input.ki.wVk = keyCode;
     input.ki.dwFlags = KEYEVENTF_KEYUP;
     SendInput(1, &input, sizeof(INPUT));
-}
-
-void EventsManager::toScreenCoord(int &x, int &y) {
-    x = (long long)(x * 65536) / EventsManager::getInstance().width;
-    y = (long long)(y * 65536) / EventsManager::getInstance().height;
 }
 
 void EventsManager::emitLDown(int x, int y) {
@@ -148,6 +148,29 @@ void EventsManager::emitMove(int x, int y) {
     input.mi.dwExtraInfo = 0;
     input.mi.time = 0;
     SendInput(1, &input, sizeof(INPUT));
+}
+
+void EventsManager::emitWheel(int x, int y) {
+    if (y) {
+        INPUT input;
+        input.type = INPUT_MOUSE;
+        input.mi.dwFlags = MOUSEEVENTF_WHEEL;
+        input.mi.mouseData = y;
+        input.mi.dwExtraInfo = 0;
+        input.mi.time = 0;
+        SendInput(1, &input, sizeof(INPUT));
+        printf("MOUSEEVENTF_WHEEL\n"); fflush(stdout);
+    }
+    if (x) {
+        INPUT input;
+        input.type = INPUT_MOUSE;
+        input.mi.dwFlags = MOUSEEVENTF_HWHEEL;
+        input.mi.mouseData = x;
+        input.mi.dwExtraInfo = 0;
+        input.mi.time = 0;
+        SendInput(1, &input, sizeof(INPUT));
+        printf("MOUSEEVENTF_HWHEEL\n"); fflush(stdout);
+    }
 }
 
 #else

@@ -15,7 +15,7 @@
 #endif
 
 enum keytype { KeyDown, KeyUp };
-enum mousetype { LDown, LUp, RDown, RUp, MouseMove };
+enum mousetype { LDown, LUp, RDown, RUp, MouseMove, MouseWheel };
 
 #pragma pack(push, 1)
 struct KeyboardEvent {
@@ -27,8 +27,8 @@ struct KeyboardEvent {
 
 #pragma pack(push, 1)
 struct MouseEvent {
-    mousetype type; double x, y;
-    MouseEvent(mousetype type, double x, double y):
+    mousetype type; float x, y;
+    MouseEvent(mousetype type, float x, float y):
         type(type), x(x), y(y) {}
 };
 #pragma pack(pop)
@@ -58,4 +58,5 @@ public:
     void emitRDown(int, int);
     void emitRUp(int, int);
     void emitMove(int, int);
+    void emitWheel(int, int);
 };

@@ -43,6 +43,22 @@ void handleEvents() {
         else if (connected && active_id < server_wrappers.size() && server_wrappers[active_id].frame_wrapper.is_hovered)
         {
             if (event.type == SDL_MOUSEMOTION) pushMouseEvent(MouseEvent(MouseMove, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+            else if (event.type == SDL_MOUSEWHEEL) {
+                static int wheel_cnt = 0; 
+                static MouseEvent me(MouseWheel, 0, 0);
+
+                wheel_cnt++;
+                me.x += event.wheel.preciseX;
+                me.y += event.wheel.preciseY;
+
+                if (wheel_cnt == 3) {
+                    pushMouseEvent(me);
+                    // printf("(%f, %f)\n", me.x, me.y);
+                    wheel_cnt = 0;
+                    me.x = 0;
+                    me.y = 0;
+                }
+            }
             else if (event.type == SDL_MOUSEBUTTONDOWN)
             {
                 if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LDown, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
@@ -110,7 +126,7 @@ void newConnectionHandle(char data[], char host[]) {
             PacketBoxToBuf(box, image_data);
             if (box.type == 'I') {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
-                while (server_wrappers[i].frame_wrapper.frame_queue.size()) {
+                if (server_wrappers[i].frame_wrapper.frame_queue.size()) {
                     server_wrappers[i].frame_wrapper.frame_queue.pop();
                 }
                 server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
@@ -121,6 +137,7 @@ void newConnectionHandle(char data[], char host[]) {
         while (!quit) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             server_wrappers[i].server_screen.receive();
+            printf("frame_queue_size = %d\n", server_wrappers[i].frame_wrapper.frame_queue.size());
         }
     });
 
@@ -161,11 +178,14 @@ void startListen() {
 
                 MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
                 mtx_mouse.unlock();
-    
-                me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
-                me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
 
-                if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
+                if (me.type != MouseWheel)
+                {
+                    me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
+                    me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
+
+                    if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
+                }
 
                 // printf("Mouse event %lf %lf\n", me.x, me.y);
 
