@@ -128,8 +128,8 @@ void EventsManager::emitRUp(int x, int y) {
     toScreenCoord(x, y);
     INPUT input;
     input.type = INPUT_MOUSE;
-    input.mi.dx = x;
-    input.mi.dy = y;
+    input.mi.dx = x * 120;
+    input.mi.dy = y * 120;
     input.mi.dwFlags = MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE | MOUSEEVENTF_RIGHTUP;
     input.mi.mouseData = 0;
     input.mi.dwExtraInfo = 0;
@@ -252,6 +252,15 @@ void EventsManager::emitMove(int x, int y) {
     CGEventRef mouseEvent = CGEventCreate(nullptr);
     CGEventSetType(mouseEvent, kCGEventMouseMoved);
     CGEventSetLocation(mouseEvent, CGPointMake(x, y));
+    CGEventPost(kCGHIDEventTap, mouseEvent);
+    CFRelease(mouseEvent);
+}
+
+void EventsManager::emitWheel(int x, int y) {
+    CGEventRef mouseEvent = CGEventCreate(nullptr);
+    CGEventSetType(mouseEvent, kCGEventScrollWheel);
+    CGEventSetIntegerValueField(mouseEvent, kCGScrollWheelEventDeltaAxis1, x);
+    CGEventSetIntegerValueField(mouseEvent, kCGScrollWheelEventDeltaAxis2, y);
     CGEventPost(kCGHIDEventTap, mouseEvent);
     CFRelease(mouseEvent);
 }

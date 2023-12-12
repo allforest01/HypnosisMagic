@@ -96,8 +96,8 @@ void connectButtonHandle() {
 
                     if (me.type == MouseWheel)
                     {
-                        int x = round(me.x * 90);
-                        int y = round(me.y * 90);
+                        int x = round(me.x * 40);
+                        int y = round(me.y * 40);
 
                         printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
 

@@ -32,7 +32,7 @@ ifeq ($(UNAME_S), Darwin) #APPLE
 	BUILD_DIR = $(BUILD_DIR_MAC)
 
 	LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo `sdl2-config --libs`
-	LIBS += -framework ApplicationServices -framework Carbon
+	LIBS += -framework ApplicationServices -framework Carbon -framework CoreGraphics
 
 	LIBS += -L/usr/lib -L/usr/local/lib
 	LIBS += -L/opt/homebrew/Cellar/glew/2.2.0_1/lib
