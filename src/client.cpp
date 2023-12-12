@@ -4,6 +4,10 @@
 #define PORT_B "63341"
 #define PORT_C "63342"
 
+#define SCREEN_STREAM_TYPE "UDP"
+#define NUM_OF_THREADS 1
+#define PACKET_SIZE 64000
+
 #include "client.h"
 
 char host[16], debug[256];
@@ -114,7 +118,7 @@ void startButtonHandle() {
         while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
         printf("[Keyboard connected]\n");
 
-        client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), "UDP", 1);
+        client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
         printf("[Screen connected]\n");
 
         std::thread thread_mouse([&]()
@@ -211,7 +215,7 @@ void startButtonHandle() {
                 static int id = 0;
 
                 PacketBox box;
-                BufToPacketBox(frame, box, ++id, 'I', 1440);
+                BufToPacketBox(frame, box, ++id, 'I', PACKET_SIZE);
 
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 client_wrapper.frame_box_queue.push(box);

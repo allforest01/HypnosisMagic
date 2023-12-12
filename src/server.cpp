@@ -4,6 +4,9 @@
 #define PORT_B "63341"
 #define PORT_C "63342"
 
+#define SCREEN_STREAM_TYPE "UDP"
+#define NUM_OF_THREADS 1
+
 #include "server.h"
 
 char host[16] = "10.211.55.255";
@@ -118,7 +121,7 @@ void handleConnectButton() {
             while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
             printf("[Keyboard connected]\n"); fflush(stdout);
 
-            server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), "UDP", 1);
+            server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
             printf("[Screen connected]\n"); fflush(stdout);
         }
 
@@ -191,8 +194,6 @@ void handleConnectButton() {
         // Receive screen capture
         std::thread thread_screen([&]()
         {
-            printf("Start thread_screen\n");
-
             server_wrappers[active_id].server_screen.setCompleteCallback([](PacketBox& box) {
                 std::vector<uchar> image_data;
                 box.sort();
