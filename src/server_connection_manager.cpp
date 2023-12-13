@@ -27,18 +27,18 @@ void ServerConnectionManager::listen(char* host, int port, const char* type, int
 
     for (int pos = 0; pos < size; pos++) {
         int i = pos;
-        // printf("server [%d] listen %s\n", i, (char*) ports[i].c_str());
+        printf("server [%d] listen %s\n", i, (char*) ports[i].c_str());
         servers[i].Listen((char*) ports[i].c_str(), type);
-        // printf("server [%d] connected\n", i);
+        printf("server [%d] connected\n", i);
     }
 
-    // printf("server_checker %s\n", (char*) std::to_string(port + size).c_str());
-    server_checker.Listen((char*) std::to_string(port + size).c_str(), "TCP");
-    // printf("server_checker connected\n");
+    printf("server_checker %s\n", (char*) std::to_string(port + size).c_str());
+    while (!server_checker.Listen((char*) std::to_string(port + size).c_str(), "TCP"));
+    printf("server_checker connected\n");
 
-    // printf("client_checker %s\n", (char*) std::to_string(port + size + 1).c_str());
+    printf("client_checker %s\n", (char*) std::to_string(port + size + 1).c_str());
     while (!client_checker.Connect(host, (char*) std::to_string(port + size + 1).c_str(), "TCP"));
-    // printf("client_checker connected\n");
+    printf("client_checker connected\n");
 }
 
 void ServerConnectionManager::setCompleteCallback(std::function<void(PacketBox&)> onComplete) {
@@ -57,15 +57,20 @@ void ServerConnectionManager::receive()
             cur_packet_size = *(int*)((char*) data + 8);
         }
     );
+
+    printf("-----RECEIVE SIZE------\n");
     while (this->server_checker.receiveData(12) == -1);
+    printf("-----END RCV SIZE------\n");
 
     PacketBox box;
     box.size = data_size;
 
-    // printf("-----------------------\n");
-    // printf("data_size = %d\n", (int)data_size);
-    // printf("total_size = %d\n", (int)total_size);
-    // printf("cur_packet_size = %d\n", (int)cur_packet_size);
+    static int cnt = 0;
+
+    printf("-------SESSION [%d]------\n", cnt++);
+    printf("data_size = %d\n", (int)data_size);
+    printf("total_size = %d\n", (int)total_size);
+    printf("cur_packet_size = %d\n", (int)cur_packet_size);
 
     box.data.resize(data_size);
 
@@ -84,9 +89,11 @@ void ServerConnectionManager::receive()
                 int packet_size = cur_packet_size;
 
                 if (j == data_size - 1) {
-                    // printf("---SEND CHECK----\n");
-                    while (this->client_checker.sendData((char*) "1", 1) == -1);
-                    // printf("-----------------\n");
+                    printf("------SEND CHECK-----\n");
+                    while (this->client_checker.sendData((char*) "1", 1) == -1) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                    }
+                    printf("---END SEND CHECK----\n");
                 }
 
                 this->servers[i].setReceiveCallback(
@@ -99,10 +106,10 @@ void ServerConnectionManager::receive()
                 while (packet_size) {
                     bytesRead = this->servers[i].receiveData(packet_size);
                     if (bytesRead == -1) continue;
-                    // printf("(%d) ", bytesRead);
+                    printf("(%d) ", bytesRead);
                     packet_size -= bytesRead;
                 }
-                // printf("[%d]\n", j);
+                printf("[%d] ", j); fflush(stdout);
             }
         }));
     }
@@ -111,7 +118,7 @@ void ServerConnectionManager::receive()
         threads[i].join();
     }
 
-    box.type = 'I';
+    printf("\n");
 
     int last_size = total_size % cur_packet_size;
     if (last_size == 0) last_size = cur_packet_size;
@@ -119,5 +126,5 @@ void ServerConnectionManager::receive()
 
     onComplete(box);
 
-    // printf("onComplete done!\n");
+    printf("onComplete done!\n");
 }

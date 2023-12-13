@@ -1,9 +1,9 @@
 #include "client.h"
 
 #define SECRET "HYPNO"
-#define PORT_A "43940"
-#define PORT_B "43941"
-#define PORT_C "43942"
+#define PORT_A "46940"
+#define PORT_B "46941"
+#define PORT_C "46942"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
@@ -221,6 +221,7 @@ void connectButtonHandle() {
                     BufToPacketBox(frame, box, ++id, 'I', PACKET_SIZE);
 
                     std::unique_lock<std::mutex> lock(mtx_screen);
+                    std::queue<PacketBox>().swap(client_wrapper.frame_box_queue);
                     client_wrapper.frame_box_queue.push(box);
                     mtx_screen.unlock();
                 }

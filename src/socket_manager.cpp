@@ -69,21 +69,20 @@ bool ServerSocketManager::TCPListen(char* port) {
         closesocket(ListenSocket);
         return false;
     }
-    printf("Client connected!\n");
     this->listen_socket = ClientSocket;
-    #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        int timeout = 60000; // 1 seconds
-    #else
-        struct timeval timeout;
-        timeout.tv_sec = 60; // 1 seconds
-        timeout.tv_usec = 0;
-    #endif
+    // #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+    //     int timeout = 60000; // 1 seconds
+    // #else
+    //     struct timeval timeout;
+    //     timeout.tv_sec = 60; // 1 seconds
+    //     timeout.tv_usec = 0;
+    // #endif
     int flag = 1;
     if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
         printf("tcp listen setsockopt failed!\n");
         return false;
     }
-
+    printf("Client connected!\n");
     return true;
 }
 
@@ -114,19 +113,13 @@ bool ServerSocketManager::UDPListen(char* port) {
         closesocket(ListenSocket);
         return false;
     }
-    printf("UDP Socket is created!\n");
-    this->listen_socket = ListenSocket;
-    #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        int timeout = 500; // 500 miliseconds
-    #else
-        struct timeval timeout;
-        timeout.tv_sec = 0;
-        timeout.tv_usec = 500000; // 500 miliseconds
-    #endif
-    if (setsockopt(this->listen_socket, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeout, sizeof(timeout)) < 0) {
-        printf("setsockopt failed!\n");
+    int bufferSize = 1024 * 1024; // set your desired buffer size
+    if (setsockopt(ListenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&bufferSize, sizeof(bufferSize)) < 0) {
+        printf("udp listen setsockopt failed!\n");
         return false;
     }
+    this->listen_socket = ListenSocket;
+    printf("UDP Socket is created!\n");
     return true;
 }
 
@@ -219,15 +212,12 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        printf("(%d) ", err);
-        fflush(stdout);
-        // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-        // printf("to address = %s\n", ipv4);
+        printf("(%d) ", err); fflush(stdout);
         closesocket(connect_socket);
         return false;
     }
-    printf("Connect successful!\n");
     this->connect_socket = connect_socket;
+    printf("Connect successful!\n");
     return true;
 }
 
@@ -248,11 +238,18 @@ bool ClientSocketManager::UDPConnect(char* host, char* port) {
         freeaddrinfo(result);
         return false;
     }
+    int sendBufferSize = 1024 * 1024; // set your desired send buffer size
+    if (setsockopt(connect_socket, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufferSize, sizeof(sendBufferSize)) < 0) {
+        printf("udp connect setsockopt failed!\n");
+        closesocket(connect_socket);
+        freeaddrinfo(result);
+        return false;
+    }
     char ipv4[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     this->server_address = result;
-    printf("Socket created for UDP communication!\n");
     this->connect_socket = connect_socket;
+    printf("Socket created for %s\n", ipv4);
     return true;
 }
 

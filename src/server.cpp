@@ -1,9 +1,9 @@
 #include "server.h"
 
 #define SECRET "HYPNO"
-#define PORT_A "43940"
-#define PORT_B "43941"
-#define PORT_C "43942"
+#define PORT_A "46940"
+#define PORT_B "46941"
+#define PORT_C "46942"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
@@ -111,14 +111,11 @@ void newConnectionHandle(char data[], char host[]) {
             std::vector<uchar> image_data;
             box.sort();
             PacketBoxToBuf(box, image_data);
-            if (box.type == 'I') {
-                std::unique_lock<std::mutex> lock_frame(mtx_frame);
-                if (server_wrappers[i].frame_wrapper.frame_queue.size()) {
-                    server_wrappers[i].frame_wrapper.frame_queue.pop();
-                }
-                server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
-                lock_frame.unlock();
-            }
+            std::unique_lock<std::mutex> lock_frame(mtx_frame);
+            std::queue<std::vector<uchar>>().swap(server_wrappers[i].frame_wrapper.frame_queue);
+            server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
+            printf("[PUSHED] "); fflush(stdout);
+            lock_frame.unlock();
         });
 
         while (!quit) {
@@ -357,6 +354,7 @@ void clientListWindow() {
             if ((i == active_id || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
                 server_wrappers[i].frame_wrapper.pushToTexture();
+                printf("[POPED] "); fflush(stdout);
                 lock_frame.unlock();
             }
 
