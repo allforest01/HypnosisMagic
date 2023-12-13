@@ -16,6 +16,7 @@ private:
     ClientSocketManager client_checker;
     std::function<void(PacketBox&)> onComplete;
 public:
+    ~ServerConnectionManager();
     void clean();
     void listen(char*, int, const char*, int);
     void receive();

@@ -33,6 +33,7 @@ private:
 public:
     struct sockaddr_in client_address;
     ServerSocketManager(): listen_socket(0), isTCPServer(false), handleReceive(nullptr) {}
+    ~ServerSocketManager();
     bool TCPListen(char*);
     bool UDPListen(char*);
     bool Listen(char*, const char*);
@@ -49,6 +50,7 @@ private:
     struct addrinfo *server_address;
 public:
     ClientSocketManager(): connect_socket(0), server_address(nullptr) {}
+    ~ClientSocketManager();
     bool TCPConnect(char*, char*);
     bool UDPConnect(char*, char*);
     bool Connect(char*, char*, const char*);

@@ -2,6 +2,7 @@
 
 #define SECRET "HYPNO"
 #define PORT_A "43940"
+#define PORT_B "43941"
 #define PORT_C "43942"
 
 #define SCREEN_STREAM_TYPE "UDP"
@@ -14,11 +15,13 @@ char debug_message[256] = "Debug message...";
 std::mutex mtx_keyboard, mtx_screen;
 
 ServerSocketManager server_passcode;
+ServerSocketManager server_keep_alive;
 
 ImGuiWrapper imgui_wrapper;
 ClientWrapper client_wrapper;
 
 bool quit = false, connected = false;
+bool alive = true;
 
 void handleEvents() {
     // SDL poll event
@@ -72,6 +75,8 @@ void connectButtonHandle() {
 
         while (server_passcode.receiveData(15) <= 0);
 
+        server_passcode.Close();
+
         printf("[server_host] = %s\n", host);
         printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
         printf("PORT_K = %s\n", client_wrapper.PORT_K.c_str());
@@ -88,100 +93,144 @@ void connectButtonHandle() {
         client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
         printf("[Screen connected]\n");
 
+        // std::thread thread_keep_alive([&](){
+        //     server_keep_alive.Listen((char*)PORT_B, "UDP");
+        //     server_keep_alive.setReceiveCallback(
+        //         [&](SOCKET sock, char data[], int size, char host[]) {
+        //             if (data[0] == 'q') {
+        //                 quit = true;
+        //                 connected = false;
+        //                 alive = false;
+        //                 server_keep_alive.Close();
+        //                 printf("QUIT\n"); fflush(stdout);
+        //             }
+        //             else if (data[0] == 'a') {
+        //                 alive = true;
+        //                 printf("ALIVE\n"); fflush(stdout);
+        //             }
+        //             else if (data[0] == 'd') {
+        //                 alive = false;
+        //                 printf("DEAD\n"); fflush(stdout);
+        //             }
+        //         }
+        //     );
+        //     while (!quit) {
+        //         server_keep_alive.receiveData(1);
+        //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        //     }
+        // });
+
+        // thread_keep_alive.detach();
+
         std::thread thread_mouse([&]()
         {
             client_wrapper.server_mouse.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
-                    MouseEvent &me = *(MouseEvent*)data;
+                    if (alive) {
+                        MouseEvent &me = *(MouseEvent*)data;
 
-                    if (me.type == MouseWheel)
-                    {
-                        int x = round(me.x * 40);
-                        int y = round(me.y * 40);
+                        if (me.type == MouseWheel)
+                        {
+                            int x = round(me.x * 40);
+                            int y = round(me.y * 40);
 
-                        printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
+                            printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
 
-                        EventsManager::getInstance().emitWheel(x, y);
-                    }
-                    else
-                    {
-                        int x = round(me.x * EventsManager::getInstance().width);
-                        int y = round(me.y * EventsManager::getInstance().height);
+                            EventsManager::getInstance().emitWheel(x, y);
+                        }
+                        else
+                        {
+                            int x = round(me.x * EventsManager::getInstance().width);
+                            int y = round(me.y * EventsManager::getInstance().height);
 
-                        snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
+                            snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
 
-                        if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
-                        else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
-                        else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
-                        else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
-                        else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
+                            if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
+                            else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
+                            else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
+                            else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
+                            else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
+                        }
                     }
                 }
             );
 
-            while (!quit) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
+            while (!quit) {
+                if (alive) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
+            }
         });
 
         thread_mouse.detach();
 
-        std::thread thread_keyboard_socket([&]()
-        {
-            client_wrapper.server_keyboard.setReceiveCallback(
-                [&](SOCKET sock, char data[], int size, char host[]) {
-                    std::unique_lock<std::mutex> lock(mtx_keyboard);
-                    client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
-                    mtx_keyboard.unlock();
-                }
-            );
-
-            while (!quit) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
-        });
-
-        thread_keyboard_socket.detach();
-
         std::thread thread_keyboard_events([&]() {
-            while (!quit) {
+            while (!quit)
+            {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
                 if (!client_wrapper.keyboard_events.size()) {
                     mtx_keyboard.unlock();
                     continue;
                 }
-                
+
                 KeyboardEvent ke = client_wrapper.keyboard_events.front(); client_wrapper.keyboard_events.pop();
                 mtx_keyboard.unlock();
-                
-                if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+
+                if (alive)
+                {
+                    if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                    else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+                }
             }
         });
 
         thread_keyboard_events.detach();
 
-        std::thread thread_screen_socket([&]() {
+        std::thread thread_keyboard_socket([&]()
+        {
+            client_wrapper.server_keyboard.setReceiveCallback(
+                [&](SOCKET sock, char data[], int size, char host[]) {
+                    if (alive) {
+                        std::unique_lock<std::mutex> lock(mtx_keyboard);
+                        client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
+                        mtx_keyboard.unlock();
+                    }
+                }
+            );
+
+            while (!quit) {
+                if (alive) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
+            }
+        });
+
+        thread_keyboard_socket.detach();
+
+        std::thread thread_screen_events([&]() {
 
             while (!quit)
             {
-                cv::Mat mat = EventsManager::getInstance().captureScreen();
-                // resize(mat, mat, cv::Size(), 1, 1);
+                if (alive)
+                {
+                    cv::Mat mat = EventsManager::getInstance().captureScreen();
+                    // resize(mat, mat, cv::Size(), 1, 1);
 
-                std::vector<uchar> frame;
-                compressImage(mat, frame, 80);
+                    std::vector<uchar> frame;
+                    compressImage(mat, frame, 80);
 
-                static int id = 0;
+                    static int id = 0;
 
-                PacketBox box;
-                BufToPacketBox(frame, box, ++id, 'I', PACKET_SIZE);
+                    PacketBox box;
+                    BufToPacketBox(frame, box, ++id, 'I', PACKET_SIZE);
 
-                std::unique_lock<std::mutex> lock(mtx_screen);
-                client_wrapper.frame_box_queue.push(box);
-                mtx_screen.unlock();
+                    std::unique_lock<std::mutex> lock(mtx_screen);
+                    client_wrapper.frame_box_queue.push(box);
+                    mtx_screen.unlock();
+                }
             }
 
         });
 
-        thread_screen_socket.detach();
+        thread_screen_events.detach();
 
-        std::thread thread_screen_events([&]() {
+        std::thread thread_screen_socket([&]() {
 
             while (!quit)
             {
@@ -193,14 +242,16 @@ void connectButtonHandle() {
                 PacketBox box = client_wrapper.frame_box_queue.front(); client_wrapper.frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                client_wrapper.client_screen.send(box);
-
-                // printf("Sent!\n"); fflush(stdout);
+                if (alive)
+                {
+                    client_wrapper.client_screen.send(box);
+                    // printf("Sent!\n"); fflush(stdout);
+                }
             }
 
         });
 
-        thread_screen_events.detach();
+        thread_screen_socket.detach();
 
         connected = true;
 
@@ -209,7 +260,7 @@ void connectButtonHandle() {
     thread_passcode.detach();
 }
 
-void listeningWindow() {
+void startWindow() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2(200, 64));
 
@@ -248,7 +299,7 @@ int main(int argc, char** argv)
     {
         startNewFrame();
 
-        if (!connected) listeningWindow();
+        if (!connected) startWindow();
         else connectedWindow();
 
         guiRendering();

@@ -136,12 +136,6 @@ bool ServerSocketManager::Listen(char* port, const char* type) {
     else { printf("type error: %s\n", type); return false; }
 }
 
-void ServerSocketManager::Close() {
-    closesocket(this->listen_socket);
-    listen_socket = 0;
-    this->handleReceive = nullptr;
-}
-
 void ServerSocketManager::setReceiveCallback(std::function<void(SOCKET, char[], int, char[])> handleReceive) {
     this->handleReceive = handleReceive;
 }
@@ -189,6 +183,18 @@ int ServerSocketManager::UDPReceive(int max_bytes) {
 int ServerSocketManager::receiveData(int max_bytes) {
     if (this->isTCPServer) return TCPReceive(max_bytes);
     else return UDPReceive(max_bytes);
+}
+
+void ServerSocketManager::Close() {
+    if (this->listen_socket) {
+        closesocket(this->listen_socket);
+        this->listen_socket = 0;
+        this->handleReceive = nullptr;
+    }
+}
+
+ServerSocketManager::~ServerSocketManager() {
+    this->Close();
 }
 
 bool ClientSocketManager::TCPConnect(char* host, char* port) {
@@ -256,13 +262,6 @@ bool ClientSocketManager::Connect(char* host, char* port, const char* type) {
     else { printf("type error: %s\n", type); return false; }
 }
 
-void ClientSocketManager::Close() {
-    closesocket(this->connect_socket);
-    freeaddrinfo(this->server_address);
-    connect_socket = 0;
-    this->server_address = nullptr;
-}
-
 int ClientSocketManager::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
@@ -278,6 +277,19 @@ int ClientSocketManager::sendData(char* data, int size) {
     printf("UDP bytesSend = %d\n", bytesSend);
     #endif
     return bytesSend;
+}
+
+void ClientSocketManager::Close() {
+    if (this->connect_socket) {
+        closesocket(this->connect_socket);
+        freeaddrinfo(this->server_address);
+        this->connect_socket = 0;
+        this->server_address = nullptr;
+    }
+}
+
+ClientSocketManager::~ClientSocketManager() {
+    this->Close();
 }
 
 bool broadcastMessage(char* port, char* message, int size, int host = INADDR_BROADCAST) {

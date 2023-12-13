@@ -18,7 +18,7 @@ UNAME_S := $(shell uname -s)
 
 CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
 CXXFLAGS += -g -Wall -Wformat
-# CXXFLAGS += -static
+# CXXFLAGS += -static-libstdc++ -static-libgcc -O3
 
 LIBS =
 

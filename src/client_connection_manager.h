@@ -15,6 +15,7 @@ private:
     ClientSocketManager client_checker;
     ServerSocketManager server_checker;
 public:
+    ~ClientConnectionManager();
     void clean();
     void connect(char*, int, const char*, int);
     void send(PacketBox&);

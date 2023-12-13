@@ -2,6 +2,7 @@
 
 #define SECRET "HYPNO"
 #define PORT_A "43940"
+#define PORT_B "43941"
 #define PORT_C "43942"
 
 #define SCREEN_STREAM_TYPE "UDP"
@@ -13,6 +14,7 @@ std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
 
 ServerSocketManager server_passcode;
 ClientSocketManager client_passcode;
+ClientSocketManager client_keep_alive;
 
 ImGuiWrapper imgui_wrapper;
 std::vector<ServerWrapper> server_wrappers;
@@ -151,6 +153,40 @@ void startListen() {
     });
 
     thread_passcode.detach();
+
+    // std::thread thread_keep_alive([&]()
+    // {
+    //     int cur_active_id = INT_MAX;
+
+    //     while (!quit) {
+    //         if (active_id == INT_MAX) continue;
+
+    //         if (cur_active_id != active_id) {
+    //             if (cur_active_id != INT_MAX) {
+    //                 client_keep_alive.sendData("d", 1);
+    //                 client_keep_alive.Close();
+    //             }
+    //             client_keep_alive.Connect((char*)server_wrappers[active_id].client_host.c_str(), (char*)PORT_B, "UDP");
+    //             cur_active_id = active_id;
+    //         }
+
+    //         if (!client_keep_alive.sendData("a", 1)) {
+    //             cur_active_id = active_id = INT_MAX;
+    //         }
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     }
+
+    //     if (cur_active_id != INT_MAX) client_keep_alive.Close();
+
+    //     for (int i = 0; i < (int) server_wrappers.size(); i++) {
+    //         if (client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
+    //             client_keep_alive.sendData("q", 1);
+    //             client_keep_alive.Close();
+    //         }
+    //     }
+    // });
+
+    // thread_keep_alive.detach();
 
     std::thread thread_mouse([&](){
         while (!quit) {
@@ -324,8 +360,10 @@ void clientListWindow() {
                 lock_frame.unlock();
             }
 
-            int scaled_width = ImGui::GetContentRegionAvail().x - 6;
-            int scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
+            if (server_wrappers[i].frame_wrapper.isTexturePushed()) {
+                int scaled_width = ImGui::GetContentRegionAvail().x - 6;
+                int scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
+            }
 
             if (ImGui::ImageButton((void*)(intptr_t)server_wrappers[i].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height))) {
                 active_id = i;

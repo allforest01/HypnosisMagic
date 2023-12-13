@@ -6,6 +6,12 @@ void ClientConnectionManager::clean() {
         clients[i].Close();
     }
     clients.clear();
+    client_checker.Close();
+    server_checker.Close();
+}
+
+ClientConnectionManager::~ClientConnectionManager() {
+    this->clean();
 }
 
 void ClientConnectionManager::connect(char* host, int port, const char* type, int size) {
