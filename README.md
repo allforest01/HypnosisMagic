@@ -2,7 +2,7 @@
 
 ## Requirements
 
-### Mac OS X
+### macOS
 ```
 brew install gcc
 brew install make
@@ -11,7 +11,7 @@ brew install sdl2
 brew install glew
 ```
 
-### MSYS2
+### Windows (MSYS2/UCRT)
 ```
 pacman -S mingw-w64-ucrt-x86_64-toolchain
 pacman -S mingw-w64-ucrt-x86_64-make
@@ -22,8 +22,18 @@ pacman -S mingw-w64-ucrt-x86_64-glew
 
 ## Build and run
 
-### Server
-`make BUILD_TYPE=server && ./src/server`
+### macOS
+```
+make BUILD_TYPE=server && ./build/macOS/server
+```
+```
+make BUILD_TYPE=client && ./build/macOS/client
+```
 
-### Client
-`make BUILD_TYPE=client && ./src/client`
+### Windows (MSYS2/UCRT)
+```
+make BUILD_TYPE=server && ./build/Windows/server.exe
+```
+```
+make BUILD_TYPE=client && ./build/Windows/client.exe
+```

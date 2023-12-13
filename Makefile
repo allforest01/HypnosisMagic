@@ -3,22 +3,31 @@
 
 IMGUI_DIR = lib/imgui/
 
-EXE = src/$(BUILD_TYPE)
-SOURCES = $(BUILD_TYPE).cpp
+UNAME_S := $(shell uname -s)
+
+ifeq ($(UNAME_S), Darwin)
+	BUILD_DIR = build/macOS/
+else
+	BUILD_DIR = build/Windows/
+endif
+
+EXE = $(BUILD_DIR)/$(BUILD_TYPE)
+SOURCES = src/$(BUILD_TYPE)/$(BUILD_TYPE).cpp
 
 SOURCES += $(IMGUI_DIR)/imgui.cpp $(IMGUI_DIR)/imgui_demo.cpp $(IMGUI_DIR)/imgui_draw.cpp $(IMGUI_DIR)/imgui_tables.cpp $(IMGUI_DIR)/imgui_widgets.cpp
 SOURCES += $(IMGUI_DIR)/backends/imgui_impl_sdl2.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl2.cpp
-SOURCES += src/socket_manager.cpp src/events_manager.cpp src/keycode_manager.cpp src/image_manager.cpp src/data_manager.cpp
-SOURCES += src/imgui_wrapper.cpp src/frame_wrapper.cpp src/server_connection_manager.cpp src/client_connection_manager.cpp
+SOURCES += src/common/socket_manager.cpp src/common/events_manager.cpp src/common/image_manager.cpp src/common/data_manager.cpp src/common/imgui_wrapper.cpp
 
-BUILD_DIR_MAC = build_mac/
-BUILD_DIR_WIN = build_win/
+ifeq ($(BUILD_TYPE), server)
+	SOURCES += src/server/frame_wrapper.cpp src/server/server_connection_manager.cpp
+else
+	SOURCES += src/client/keycode_manager.cpp src/client/client_connection_manager.cpp
+endif
 
-UNAME_S := $(shell uname -s)
-
-CXXFLAGS = -std=c++11 -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends
-CXXFLAGS += -g -Wall -Wformat
-# CXXFLAGS += -static-libstdc++ -static-libgcc -O3
+CXXFLAGS = -I$(IMGUI_DIR) -I$(IMGUI_DIR)/backends -Isrc/common -I$(BUILD_TYPE)
+CXXFLAGS += -std=c++11 -O3
+CXXFLAGS += -Wall -Wformat -g
+# CXXFLAGS += -static-libstdc++ -static-libgcc
 
 LIBS =
 
@@ -28,8 +37,6 @@ LIBS =
 
 ifeq ($(UNAME_S), Darwin) #APPLE
 	ECHO_MESSAGE = "Mac OS X"
-
-	BUILD_DIR = $(BUILD_DIR_MAC)
 
 	LIBS += -framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo `sdl2-config --libs`
 	LIBS += -framework ApplicationServices -framework Carbon -framework CoreGraphics
@@ -53,15 +60,11 @@ endif
 ifeq ($(OS), Windows_NT)
 	ECHO_MESSAGE = "MinGW"
 
-	BUILD_DIR = $(BUILD_DIR_WIN)
-
 	LIBS += -LC:/msys64/ucrt64/lib
 
 	LIBS += -lgdi32 -lws2_32
 	LIBS += -lopengl32 -limm32 `pkg-config --static --libs sdl2`
-	LIBS += C:/msys64/ucrt64/lib/libopencv_core.dll.a
-	LIBS += C:/msys64/ucrt64/lib/libopencv_imgcodecs.dll.a
-	LIBS += C:/msys64/ucrt64/lib/libopencv_imgproc.dll.a
+	LIBS += -lopencv_core -lopencv_imgcodecs -lopencv_imgproc
 
 	CXXFLAGS += `pkg-config --cflags sdl2`
 	CXXFLAGS += -IC:/msys64/ucrt64/include/opencv4
@@ -69,24 +72,28 @@ ifeq ($(OS), Windows_NT)
 	CFLAGS = $(CXXFLAGS)
 endif
 
-OBJS = $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
+OBJS = $(addprefix $(BUILD_DIR)/obj/, $(addsuffix .o, $(basename $(notdir $(SOURCES)))))
 
 ##---------------------------------------------------------------------
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
+$(shell mkdir -p build)
+
 $(shell mkdir -p $(BUILD_DIR))
 
-$(BUILD_DIR)/%.o:src/%.cpp
+$(shell mkdir -p $(BUILD_DIR)/obj)
+
+$(BUILD_DIR)/obj/%.o:$(IMGUI_DIR)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o:$(IMGUI_DIR)/%.cpp
+$(BUILD_DIR)/obj/%.o:$(IMGUI_DIR)/backends/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o:$(IMGUI_DIR)/backends/%.cpp
+$(BUILD_DIR)/obj/%.o:src/common/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/%.o:$(HYPNO_DIR)/%.cpp
+$(BUILD_DIR)/obj/%.o:src/$(BUILD_TYPE)/%.cpp
 	$(CXX) $(CXXFLAGS) -c -o $@ $<
 
 all: $(EXE)
