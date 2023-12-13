@@ -42,23 +42,23 @@ void handleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && active_id < server_wrappers.size() && server_wrappers[active_id].frame_wrapper.is_hovered)
-        {
-            if (event.type == SDL_MOUSEMOTION) pushMouseEvent(MouseEvent(MouseMove, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
-            else if (event.type == SDL_MOUSEWHEEL) pushMouseEvent(MouseEvent(MouseWheel, event.wheel.preciseX, event.wheel.preciseY));
-            else if (event.type == SDL_MOUSEBUTTONDOWN)
-            {
-                if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LDown, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RDown, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
-            }
-            else if (event.type == SDL_MOUSEBUTTONUP)
-            {
-                if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LUp, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
-                else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RUp, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
-            }
-            else if (event.type == SDL_KEYDOWN) pushKeyboardEvent(KeyboardEvent(KeyDown, event.key.keysym.sym));
-            else if (event.type == SDL_KEYUP) pushKeyboardEvent(KeyboardEvent(KeyUp, event.key.keysym.sym));
-        }
+        // else if (connected && active_id < server_wrappers.size() && server_wrappers[active_id].frame_wrapper.is_hovered)
+        // {
+        //     if (event.type == SDL_MOUSEMOTION) pushMouseEvent(MouseEvent(MouseMove, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+        //     else if (event.type == SDL_MOUSEWHEEL) pushMouseEvent(MouseEvent(MouseWheel, event.wheel.preciseX, event.wheel.preciseY));
+        //     else if (event.type == SDL_MOUSEBUTTONDOWN)
+        //     {
+        //         if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LDown, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+        //         else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RDown, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+        //     }
+        //     else if (event.type == SDL_MOUSEBUTTONUP)
+        //     {
+        //         if (event.button.button == SDL_BUTTON_LEFT) pushMouseEvent(MouseEvent(LUp, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+        //         else if (event.button.button == SDL_BUTTON_RIGHT) pushMouseEvent(MouseEvent(RUp, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
+        //     }
+        //     else if (event.type == SDL_KEYDOWN) pushKeyboardEvent(KeyboardEvent(KeyDown, event.key.keysym.sym));
+        //     else if (event.type == SDL_KEYUP) pushKeyboardEvent(KeyboardEvent(KeyUp, event.key.keysym.sym));
+        // }
     }
 }
 
@@ -95,11 +95,11 @@ void newConnectionHandle(char data[], char host[]) {
 
     fflush(stdout);
 
-    while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-    printf("[Mouse connected for %d]\n", i); fflush(stdout);
+    // while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
+    // printf("[Mouse connected for %d]\n", i); fflush(stdout);
 
-    while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-    printf("[Keyboard connected for %d]\n", i); fflush(stdout);
+    // while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
+    // printf("[Keyboard connected for %d]\n", i); fflush(stdout);
 
     server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
     printf("[Screen connected for %d]\n", i); fflush(stdout);
@@ -188,60 +188,60 @@ void startListen() {
 
     // thread_keep_alive.detach();
 
-    std::thread thread_mouse([&](){
-        while (!quit) {
-            if (connected && active_id < server_wrappers.size()) {
-                std::unique_lock<std::mutex> lock(mtx_mouse);
-                if (!server_wrappers[active_id].mouse_events.size()) {
-                    mtx_mouse.unlock();
-                    continue;
-                }
+    // std::thread thread_mouse([&](){
+    //     while (!quit) {
+    //         if (connected && active_id < server_wrappers.size()) {
+    //             std::unique_lock<std::mutex> lock(mtx_mouse);
+    //             if (!server_wrappers[active_id].mouse_events.size()) {
+    //                 mtx_mouse.unlock();
+    //                 continue;
+    //             }
 
-                MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
-                mtx_mouse.unlock();
+    //             MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
+    //             mtx_mouse.unlock();
 
-                if (me.type != MouseWheel)
-                {
-                    me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
-                    me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
+    //             if (me.type != MouseWheel)
+    //             {
+    //                 me.x /= server_wrappers[active_id].frame_wrapper.scaled_width;
+    //                 me.y /= server_wrappers[active_id].frame_wrapper.scaled_height;
 
-                    if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
-                }
+    //                 if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
+    //             }
 
-                // printf("Mouse event %lf %lf\n", me.x, me.y);
+    //             // printf("Mouse event %lf %lf\n", me.x, me.y);
 
-                static int id = 0;
+    //             static int id = 0;
 
-                server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
-            }
-        }
-    });
+    //             server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
+    //         }
+    //     }
+    // });
 
-    thread_mouse.detach();
+    // thread_mouse.detach();
 
-    std::thread thread_keyboard([&](){
-        while (!quit) {
-            if (connected && active_id < server_wrappers.size()) {
-                std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!server_wrappers[active_id].keyboard_events.size()) {
-                    mtx_keyboard.unlock();
-                    continue;
-                }
+    // std::thread thread_keyboard([&](){
+    //     while (!quit) {
+    //         if (connected && active_id < server_wrappers.size()) {
+    //             std::unique_lock<std::mutex> lock(mtx_keyboard);
+    //             if (!server_wrappers[active_id].keyboard_events.size()) {
+    //                 mtx_keyboard.unlock();
+    //                 continue;
+    //             }
 
-                KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
-                mtx_keyboard.unlock();
+    //             KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
+    //             mtx_keyboard.unlock();
 
-                // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
-                // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+    //             // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
+    //             // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
 
-                static int id = 0;
+    //             static int id = 0;
 
-                server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
-            }
-        }
-    });
+    //             server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
+    //         }
+    //     }
+    // });
 
-    thread_keyboard.detach();
+    // thread_keyboard.detach();
 }
 
 void menuBar() {
@@ -360,9 +360,12 @@ void clientListWindow() {
                 lock_frame.unlock();
             }
 
+            int scaled_width = 0;
+            int scaled_height = 0;
+
             if (server_wrappers[i].frame_wrapper.isTexturePushed()) {
-                int scaled_width = ImGui::GetContentRegionAvail().x - 6;
-                int scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
+                scaled_width = ImGui::GetContentRegionAvail().x - 6;
+                scaled_height = server_wrappers[i].frame_wrapper.height * scaled_width / server_wrappers[i].frame_wrapper.width;
             }
 
             if (ImGui::ImageButton((void*)(intptr_t)server_wrappers[i].frame_wrapper.image_texture, ImVec2(scaled_width, scaled_height))) {

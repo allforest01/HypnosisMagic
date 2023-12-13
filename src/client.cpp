@@ -84,11 +84,11 @@ void connectButtonHandle() {
 
         // ---------------------------------------------------
 
-        while (!client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP"));
-        printf("[Mouse connected]\n");
+        // while (!client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP"));
+        // printf("[Mouse connected]\n");
 
-        while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
-        printf("[Keyboard connected]\n");
+        // while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
+        // printf("[Keyboard connected]\n");
 
         client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
         printf("[Screen connected]\n");
@@ -122,86 +122,86 @@ void connectButtonHandle() {
 
         // thread_keep_alive.detach();
 
-        std::thread thread_mouse([&]()
-        {
-            client_wrapper.server_mouse.setReceiveCallback(
-                [&](SOCKET sock, char data[], int size, char host[]) {
-                    if (alive) {
-                        MouseEvent &me = *(MouseEvent*)data;
+        // std::thread thread_mouse([&]()
+        // {
+        //     client_wrapper.server_mouse.setReceiveCallback(
+        //         [&](SOCKET sock, char data[], int size, char host[]) {
+        //             if (alive) {
+        //                 MouseEvent &me = *(MouseEvent*)data;
 
-                        if (me.type == MouseWheel)
-                        {
-                            int x = round(me.x * 40);
-                            int y = round(me.y * 40);
+        //                 if (me.type == MouseWheel)
+        //                 {
+        //                     int x = round(me.x * 40);
+        //                     int y = round(me.y * 40);
 
-                            printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
+        //                     printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
 
-                            EventsManager::getInstance().emitWheel(x, y);
-                        }
-                        else
-                        {
-                            int x = round(me.x * EventsManager::getInstance().width);
-                            int y = round(me.y * EventsManager::getInstance().height);
+        //                     EventsManager::getInstance().emitWheel(x, y);
+        //                 }
+        //                 else
+        //                 {
+        //                     int x = round(me.x * EventsManager::getInstance().width);
+        //                     int y = round(me.y * EventsManager::getInstance().height);
 
-                            snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
+        //                     snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
 
-                            if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
-                            else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
-                            else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
-                            else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
-                            else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
-                        }
-                    }
-                }
-            );
+        //                     if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
+        //                     else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
+        //                     else if (me.type == LUp) EventsManager::getInstance().emitLUp(x, y);
+        //                     else if (me.type == RDown) EventsManager::getInstance().emitRDown(x, y);
+        //                     else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
+        //                 }
+        //             }
+        //         }
+        //     );
 
-            while (!quit) {
-                if (alive) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
-            }
-        });
+        //     while (!quit) {
+        //         if (alive) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
+        //     }
+        // });
 
-        thread_mouse.detach();
+        // thread_mouse.detach();
 
-        std::thread thread_keyboard_events([&]() {
-            while (!quit)
-            {
-                std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!client_wrapper.keyboard_events.size()) {
-                    mtx_keyboard.unlock();
-                    continue;
-                }
+        // std::thread thread_keyboard_events([&]() {
+        //     while (!quit)
+        //     {
+        //         std::unique_lock<std::mutex> lock(mtx_keyboard);
+        //         if (!client_wrapper.keyboard_events.size()) {
+        //             mtx_keyboard.unlock();
+        //             continue;
+        //         }
 
-                KeyboardEvent ke = client_wrapper.keyboard_events.front(); client_wrapper.keyboard_events.pop();
-                mtx_keyboard.unlock();
+        //         KeyboardEvent ke = client_wrapper.keyboard_events.front(); client_wrapper.keyboard_events.pop();
+        //         mtx_keyboard.unlock();
 
-                if (alive)
-                {
-                    if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                    else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
-                }
-            }
-        });
+        //         if (alive)
+        //         {
+        //             if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+        //             else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
+        //         }
+        //     }
+        // });
 
-        thread_keyboard_events.detach();
+        // thread_keyboard_events.detach();
 
-        std::thread thread_keyboard_socket([&]()
-        {
-            client_wrapper.server_keyboard.setReceiveCallback(
-                [&](SOCKET sock, char data[], int size, char host[]) {
-                    if (alive) {
-                        std::unique_lock<std::mutex> lock(mtx_keyboard);
-                        client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
-                        mtx_keyboard.unlock();
-                    }
-                }
-            );
+        // std::thread thread_keyboard_socket([&]()
+        // {
+        //     client_wrapper.server_keyboard.setReceiveCallback(
+        //         [&](SOCKET sock, char data[], int size, char host[]) {
+        //             if (alive) {
+        //                 std::unique_lock<std::mutex> lock(mtx_keyboard);
+        //                 client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
+        //                 mtx_keyboard.unlock();
+        //             }
+        //         }
+        //     );
 
-            while (!quit) {
-                if (alive) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
-            }
-        });
+        //     while (!quit) {
+        //         if (alive) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
+        //     }
+        // });
 
-        thread_keyboard_socket.detach();
+        // thread_keyboard_socket.detach();
 
         std::thread thread_screen_events([&]() {
 
