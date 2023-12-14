@@ -22,14 +22,19 @@ BITMAPINFOHEADER createBitmapHeader(int width, int height)
 }
 
 EventsManager::EventsManager() {
+    // UINT dpi = GetDpiForSystem();
+
     screen_x = GetSystemMetrics(SM_XVIRTUALSCREEN);
     screen_y = GetSystemMetrics(SM_YVIRTUALSCREEN);
     width  = GetSystemMetrics(SM_CXVIRTUALSCREEN);
     height = GetSystemMetrics(SM_CYVIRTUALSCREEN);
+
+    // printf("dpi = %d\n", dpi);
 }
 
-cv::Mat captureScreenMat(HWND hwnd)
-{
+cv::Mat EventsManager::captureScreen() {
+    HWND hwnd = GetDesktopWindow();
+
     cv::Mat img, bgrim;
 
     HDC hwindowDC = GetDC(hwnd);
@@ -58,10 +63,6 @@ cv::Mat captureScreenMat(HWND hwnd)
     ReleaseDC(hwnd, hwindowDC);
 
     return bgrim;
-}
-
-cv::Mat EventsManager::captureScreen() {
-    return captureScreenMat(GetDesktopWindow());
 }
 
 void EventsManager::toScreenCoord(int &x, int &y) {

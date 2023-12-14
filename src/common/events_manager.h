@@ -3,7 +3,9 @@
 #include <functional>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    #include <windows.h>
+    #define WINVER 0x0605
+    #include <Windows.h>
+    #include <WinUser.h>
     #include <opencv2/opencv.hpp>
 #else
     #include <unistd.h>

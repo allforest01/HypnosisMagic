@@ -83,7 +83,9 @@ void newConnectionHandle(char data[], char host[]) {
 
     std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
 
-    client_passcode.sendData((char*)ports.data(), 15);
+    printf("----------- start send ports info -----------------\n"); fflush(stdout);
+    while (client_passcode.sendData((char*)ports.data(), 15) == -1);
+    printf("------------- end send ports info -----------------\n"); fflush(stdout);
 
     client_passcode.Close();
 
@@ -151,49 +153,49 @@ void startListen() {
 
     thread_passcode.detach();
 
-    std::thread thread_keep_alive([&]()
-    {
-        int cur_active_id = INT_MAX;
+    // std::thread thread_keep_alive([&]()
+    // {
+    //     int cur_active_id = INT_MAX;
 
-        while (!quit)
-        {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //     while (!quit)
+    //     {
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-            const int const_active_id = active_id;
+    //         const int const_active_id = active_id;
 
-            if (const_active_id < 0 || const_active_id >= (int)server_wrappers.size()) continue;
+    //         if (const_active_id < 0 || const_active_id >= (int)server_wrappers.size()) continue;
 
-            if (cur_active_id != const_active_id) {
-                printf("[Changed]\n"); fflush(stdout);
-                if (cur_active_id != INT_MAX) {
-                    while (client_keep_alive.sendData("d", 1) == -1);
-                    client_keep_alive.Close();
-                }
-                printf("client_keep_alive start connect!\n"); fflush(stdout);
-                while (!client_keep_alive.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
-                printf("client_keep_alive connect successful!\n"); fflush(stdout);
-                cur_active_id = const_active_id;
-            }
+    //         if (cur_active_id != const_active_id) {
+    //             printf("[Changed]\n"); fflush(stdout);
+    //             if (cur_active_id != INT_MAX) {
+    //                 while (client_keep_alive.sendData("d", 1) == -1);
+    //                 client_keep_alive.Close();
+    //             }
+    //             printf("client_keep_alive start connect!\n"); fflush(stdout);
+    //             while (!client_keep_alive.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
+    //             printf("client_keep_alive connect successful!\n"); fflush(stdout);
+    //             cur_active_id = const_active_id;
+    //         }
 
-            while (client_keep_alive.sendData("a", 1) == -1) {
-                // cur_active_id = active_id = INT_MAX;
-            }
-        }
+    //         while (client_keep_alive.sendData("a", 1) == -1) {
+    //             // cur_active_id = active_id = INT_MAX;
+    //         }
+    //     }
 
-        if (cur_active_id != INT_MAX) {
-            while (client_keep_alive.sendData("q", 1) == -1);
-            client_keep_alive.Close();
-        }
+    //     if (cur_active_id != INT_MAX) {
+    //         while (client_keep_alive.sendData("q", 1) == -1);
+    //         client_keep_alive.Close();
+    //     }
 
-        for (int i = 0; i < (int) server_wrappers.size(); i++) {
-            if (i != cur_active_id && client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
-                while (client_keep_alive.sendData("q", 1) == -1);
-                client_keep_alive.Close();
-            }
-        }
-    });
+    //     for (int i = 0; i < (int) server_wrappers.size(); i++) {
+    //         if (i != cur_active_id && client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
+    //             while (client_keep_alive.sendData("q", 1) == -1);
+    //             client_keep_alive.Close();
+    //         }
+    //     }
+    // });
 
-    thread_keep_alive.detach();
+    // thread_keep_alive.detach();
 
     // std::thread thread_mouse([&](){
     //     while (!quit) {

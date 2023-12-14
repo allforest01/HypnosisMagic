@@ -1,9 +1,3 @@
 .DS_Store
 .vscode/
-build_mac/
-build_win/
-server/server
-server/server.exe
-client/client
-client/client.exe
-imgui.ini
+build/

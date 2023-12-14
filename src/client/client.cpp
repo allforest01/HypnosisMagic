@@ -73,7 +73,9 @@ void connectButtonHandle() {
             }
         );
 
-        while (server_passcode.receiveData(15) <= 0);
+        printf("----------- start receive ports info -----------------\n"); fflush(stdout);
+        while (server_passcode.receiveData(15) == -1);
+         printf("------------- end receive ports info ----------------\n"); fflush(stdout);
 
         server_passcode.Close();
 
@@ -93,39 +95,39 @@ void connectButtonHandle() {
         client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
         printf("[Screen connected]\n");
 
-        std::thread thread_keep_alive([&](){
-            printf("server_keep_alive start listen!\n"); fflush(stdout);
-            while (!server_keep_alive.Listen((char*)PORT_B, "UDP"));
-            printf("server_keep_alive listen successful!\n"); fflush(stdout);
+        // std::thread thread_keep_alive([&](){
+        //     printf("server_keep_alive start listen!\n"); fflush(stdout);
+        //     while (!server_keep_alive.Listen((char*)PORT_B, "UDP"));
+        //     printf("server_keep_alive listen successful!\n"); fflush(stdout);
 
-            server_keep_alive.setReceiveCallback(
-                [&](SOCKET sock, char data[], int size, char host[]) {
-                    if (data[0] == 'q') {
-                        quit = true;
-                        connected = false;
-                        alive = false;
-                        server_keep_alive.Close();
-                        printf("QUIT\n"); fflush(stdout);
-                    }
-                    else if (data[0] == 'a') {
-                        alive = true;
-                        printf("ALIVE\n"); fflush(stdout);
-                    }
-                    else if (data[0] == 'd') {
-                        alive = false;
-                        printf("DEAD\n"); fflush(stdout);
-                    }
-                }
-            );
+        //     server_keep_alive.setReceiveCallback(
+        //         [&](SOCKET sock, char data[], int size, char host[]) {
+        //             if (data[0] == 'q') {
+        //                 quit = true;
+        //                 connected = false;
+        //                 alive = false;
+        //                 server_keep_alive.Close();
+        //                 // printf("QUIT\n"); fflush(stdout);
+        //             }
+        //             else if (data[0] == 'a') {
+        //                 alive = true;
+        //                 // printf("ALIVE\n"); fflush(stdout);
+        //             }
+        //             else if (data[0] == 'd') {
+        //                 alive = false;
+        //                 // printf("DEAD\n"); fflush(stdout);
+        //             }
+        //         }
+        //     );
 
-            while (!quit)
-            {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                server_keep_alive.receiveData(1);
-            }
-        });
+        //     while (!quit)
+        //     {
+        //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        //         server_keep_alive.receiveData(1);
+        //     }
+        // });
 
-        thread_keep_alive.detach();
+        // thread_keep_alive.detach();
 
         // std::thread thread_mouse([&]()
         // {

@@ -62,7 +62,7 @@ ifeq ($(OS), Windows_NT)
 
 	LIBS += -LC:/msys64/ucrt64/lib
 
-	LIBS += -lgdi32 -lws2_32
+	LIBS += -luser32 -lgdi32 -lws2_32
 	LIBS += -lopengl32 -limm32 `pkg-config --static --libs sdl2`
 	LIBS += -lopencv_core -lopencv_imgcodecs -lopencv_imgproc
 
