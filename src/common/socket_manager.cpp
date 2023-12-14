@@ -102,7 +102,7 @@ bool ServerSocketManager::UDPListen(char* port) {
     }
     SOCKET ListenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (ListenSocket == INVALID_SOCKET) {
-        printf("socket failed!\n");
+        printf("udp listen socket failed!\n");
         freeaddrinfo(result);
         return false;
     }
@@ -212,7 +212,7 @@ bool ClientSocketManager::TCPConnect(char* host, char* port) {
     // inet_ntop(AF_INET, result->ai_addr, ipv4, INET_ADDRSTRLEN);
     freeaddrinfo(result);
     if (err == SOCKET_ERROR) {
-        printf("(%d) ", err); fflush(stdout);
+        // printf("(%d) ", err); fflush(stdout);
         closesocket(connect_socket);
         return false;
     }
@@ -234,7 +234,7 @@ bool ClientSocketManager::UDPConnect(char* host, char* port) {
     }
     SOCKET connect_socket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
     if (connect_socket == INVALID_SOCKET) {
-        printf("socket failed!\n");
+        // printf("udp connect socket failed!\n");
         freeaddrinfo(result);
         return false;
     }

@@ -1,9 +1,9 @@
 #include "server.h"
 
 #define SECRET "HYPNO"
-#define PORT_A "46940"
-#define PORT_B "46941"
-#define PORT_C "46942"
+#define PORT_A "40010"
+#define PORT_B "40011"
+#define PORT_C "40012"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
@@ -114,7 +114,7 @@ void newConnectionHandle(char data[], char host[]) {
             std::unique_lock<std::mutex> lock_frame(mtx_frame);
             std::queue<std::vector<uchar>>().swap(server_wrappers[i].frame_wrapper.frame_queue);
             server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
-            printf("[PUSHED] "); fflush(stdout);
+            // printf("[PUSHED] "); fflush(stdout);
             lock_frame.unlock();
         });
 
@@ -151,39 +151,49 @@ void startListen() {
 
     thread_passcode.detach();
 
-    // std::thread thread_keep_alive([&]()
-    // {
-    //     int cur_active_id = INT_MAX;
+    std::thread thread_keep_alive([&]()
+    {
+        int cur_active_id = INT_MAX;
 
-    //     while (!quit) {
-    //         if (active_id == INT_MAX) continue;
+        while (!quit)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
-    //         if (cur_active_id != active_id) {
-    //             if (cur_active_id != INT_MAX) {
-    //                 client_keep_alive.sendData("d", 1);
-    //                 client_keep_alive.Close();
-    //             }
-    //             client_keep_alive.Connect((char*)server_wrappers[active_id].client_host.c_str(), (char*)PORT_B, "UDP");
-    //             cur_active_id = active_id;
-    //         }
+            const int const_active_id = active_id;
 
-    //         if (!client_keep_alive.sendData("a", 1)) {
-    //             cur_active_id = active_id = INT_MAX;
-    //         }
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //     }
+            if (const_active_id < 0 || const_active_id >= (int)server_wrappers.size()) continue;
 
-    //     if (cur_active_id != INT_MAX) client_keep_alive.Close();
+            if (cur_active_id != const_active_id) {
+                printf("[Changed]\n"); fflush(stdout);
+                if (cur_active_id != INT_MAX) {
+                    while (client_keep_alive.sendData("d", 1) == -1);
+                    client_keep_alive.Close();
+                }
+                printf("client_keep_alive start connect!\n"); fflush(stdout);
+                while (!client_keep_alive.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
+                printf("client_keep_alive connect successful!\n"); fflush(stdout);
+                cur_active_id = const_active_id;
+            }
 
-    //     for (int i = 0; i < (int) server_wrappers.size(); i++) {
-    //         if (client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
-    //             client_keep_alive.sendData("q", 1);
-    //             client_keep_alive.Close();
-    //         }
-    //     }
-    // });
+            while (client_keep_alive.sendData("a", 1) == -1) {
+                // cur_active_id = active_id = INT_MAX;
+            }
+        }
 
-    // thread_keep_alive.detach();
+        if (cur_active_id != INT_MAX) {
+            while (client_keep_alive.sendData("q", 1) == -1);
+            client_keep_alive.Close();
+        }
+
+        for (int i = 0; i < (int) server_wrappers.size(); i++) {
+            if (i != cur_active_id && client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
+                while (client_keep_alive.sendData("q", 1) == -1);
+                client_keep_alive.Close();
+            }
+        }
+    });
+
+    thread_keep_alive.detach();
 
     // std::thread thread_mouse([&](){
     //     while (!quit) {
@@ -354,7 +364,7 @@ void clientListWindow() {
             if ((i == active_id || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
                 server_wrappers[i].frame_wrapper.pushToTexture();
-                printf("[POPED] "); fflush(stdout);
+                // printf("[POPED] "); fflush(stdout);
                 lock_frame.unlock();
             }
 
