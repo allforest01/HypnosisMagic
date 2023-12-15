@@ -13,8 +13,8 @@ brew install glew
 
 ### Windows (MSYS2/UCRT)
 ```
+pacman -S base-devel
 pacman -S mingw-w64-ucrt-x86_64-toolchain
-pacman -S mingw-w64-ucrt-x86_64-make
 pacman -S mingw-w64-ucrt-x86_64-opencv
 pacman -S mingw-w64-ucrt-x86_64-SDL2
 pacman -S mingw-w64-ucrt-x86_64-glew
