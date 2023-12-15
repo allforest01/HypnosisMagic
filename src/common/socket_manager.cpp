@@ -113,7 +113,7 @@ bool ServerSocketManager::UDPListen(char* port) {
         closesocket(ListenSocket);
         return false;
     }
-    int bufferSize = 1024 * 1024; // set your desired buffer size
+    int bufferSize = 5 * 1024 * 1024; // set your desired buffer size
     if (setsockopt(ListenSocket, SOL_SOCKET, SO_RCVBUF, (char*)&bufferSize, sizeof(bufferSize)) < 0) {
         printf("udp listen setsockopt failed!\n");
         return false;
@@ -238,7 +238,7 @@ bool ClientSocketManager::UDPConnect(char* host, char* port) {
         freeaddrinfo(result);
         return false;
     }
-    int sendBufferSize = 1024 * 1024; // set your desired send buffer size
+    int sendBufferSize = 5 * 1024 * 1024; // set your desired send buffer size
     if (setsockopt(connect_socket, SOL_SOCKET, SO_SNDBUF, (char*)&sendBufferSize, sizeof(sendBufferSize)) < 0) {
         printf("udp connect setsockopt failed!\n");
         closesocket(connect_socket);

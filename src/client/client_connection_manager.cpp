@@ -86,13 +86,15 @@ void ClientConnectionManager::send(PacketBox& box) {
                             // printf("CHECK = %d\n", check);
                         }
                     );
-                    while (this->server_checker.receiveData(1) == -1 || !check);
+                    while (this->server_checker.receiveData(1) == -1 || !check) {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                        // printf("re recv check\n"); fflush(stdout);
+                    }
                     // printf("---END RECV CHECK----\n");
                 }
 
                 while (this->clients[i].sendData((char*)box.data[j].data(), box.data[j].size()) == -1);
                 // printf("[%d] ", j); fflush(stdout);
-
             }
         }));
     }
