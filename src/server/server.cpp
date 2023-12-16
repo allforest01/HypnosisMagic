@@ -299,7 +299,7 @@ void menuBar() {
 
 void clientScreenWindow() {
     ImGui::SetNextWindowPos(ImVec2(10, 30));
-    ImGui::SetNextWindowSize(ImVec2(1000, 630));
+    ImGui::SetNextWindowSize(ImVec2(1632, 930));
 
     ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
@@ -372,8 +372,8 @@ void guiRendering() {
 }
 
 void clientListWindow() {
-    ImGui::SetNextWindowPos(ImVec2(1020, 30));
-    ImGui::SetNextWindowSize(ImVec2(230, 630));
+    ImGui::SetNextWindowPos(ImVec2(1655, 30));
+    ImGui::SetNextWindowSize(ImVec2(230, 930));
     ImGui::Begin("Client List", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     if (connected) {
@@ -407,7 +407,7 @@ void clientListWindow() {
 int main(int argc, char** argv)
 {
     initSocketManager();
-    imgui_wrapper = ImGuiWrapper(1260, 670, (char*)"Server");
+    imgui_wrapper = ImGuiWrapper(1900, 970, (char*)"Server");
     initImGui(imgui_wrapper);
 
     server_wrappers.reserve(16);

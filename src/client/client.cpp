@@ -232,7 +232,7 @@ void connectButtonHandle() {
                     // resize(mat, mat, cv::Size(), 1, 1);
 
                     std::vector<uchar> frame;
-                    compressImage(mat, frame, 80);
+                    compressImage(mat, frame, 100);
 
                     static int id = 0;
 
