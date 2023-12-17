@@ -1,16 +1,16 @@
 #include "data_manager.h"
 
-void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int dataize) {
-    dataize -= 7;
-    int num = (int) buf.size() / dataize + (((int) buf.size() % dataize) != 0);
+void BufToPacketBox(std::vector<uchar> &buf, PacketBox &box, int id, char type, int datasize) {
+    datasize -= 7;
+    int num = (int) buf.size() / datasize + (((int) buf.size() % datasize) != 0);
     box.data.clear();
     box.id = id;
     box.type = type;
     box.size = num;
     box.data.resize(num);
     for (short i = 0; i < num; i++) {
-        auto segBeg = buf.begin() + i * dataize;
-        auto segEnd = std::min(buf.begin() + (i + 1) * dataize, buf.end());
+        auto segBeg = buf.begin() + i * datasize;
+        auto segEnd = std::min(buf.begin() + (i + 1) * datasize, buf.end());
         box.data[i].assign((char*)&id, (char*)&id + 2);
         box.data[i].push_back(type);
         box.data[i].insert(box.data[i].end(), (char*)&num, (char*)&num + 2);
