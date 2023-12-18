@@ -104,6 +104,8 @@ int16_t SDLKeycodeToOSKeyCode(SDL_Keycode sdlKeycode) {
         case SDLK_RALT: return VK_RMENU;  
         case SDLK_LSHIFT: return VK_LSHIFT; 
         case SDLK_RSHIFT: return VK_RSHIFT;
+        case SDLK_LGUI: return VK_LWIN;
+        case SDLK_RGUI: return VK_RWIN;
     }
     return -1;
 }
@@ -211,6 +213,8 @@ int16_t SDLKeycodeToOSKeyCode(SDL_Keycode sdlKeycode) {
         case SDLK_LCTRL: return kVK_Control;
         case SDLK_LSHIFT: return kVK_Shift; 
         case SDLK_RSHIFT: return kVK_RightShift;
+        case SDLK_LGUI: return kVK_LeftCommand;
+        case SDLK_RGUI: return kVK_RightCommand;
     }
     return -1;
 }
