@@ -61,27 +61,37 @@ bool ServerSocketManager::TCPListen(char* port) {
         return false;
     }
     printf("Listening port %s...\n", port);
-    SOCKET ClientSocket;
+
+    #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
+        int timeout = 3000; // 3 seconds
+    #else
+        struct timeval timeout;
+        timeout.tv_sec = 3; // 3 seconds
+        timeout.tv_usec = 0;
+    #endif
+
+    int res = select(ListenSocket + 1, nullptr, nullptr, nullptr, &timeout);
+    if (res <= 0) {
+        printf("time out!\n");
+        closesocket(ListenSocket);
+        return false;
+    }
+
     socklen_t client_address_size = sizeof(this->client_address);
-    ClientSocket = accept(ListenSocket, (sockaddr*)(&this->client_address), &client_address_size);
+    SOCKET ClientSocket = accept(ListenSocket, (sockaddr*)(&this->client_address), &client_address_size);
     if (ClientSocket == INVALID_SOCKET) {
         printf("accept failed!\n");
         closesocket(ListenSocket);
         return false;
     }
     this->listen_socket = ClientSocket;
-    // #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-    //     int timeout = 60000; // 1 seconds
-    // #else
-    //     struct timeval timeout;
-    //     timeout.tv_sec = 60; // 1 seconds
-    //     timeout.tv_usec = 0;
-    // #endif
+
     int flag = 1;
-    if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char *)&flag, sizeof(int)) < 0) {
+    if (setsockopt(this->listen_socket, IPPROTO_TCP, TCP_NODELAY, (char*)&flag, sizeof(int)) < 0) {
         printf("tcp listen setsockopt failed!\n");
         return false;
     }
+
     printf("Client connected!\n");
     return true;
 }

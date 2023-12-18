@@ -22,6 +22,7 @@ ClientWrapper client_wrapper;
 
 bool quit = false, connected = false;
 bool alive = true;
+bool notification_popup = false;
 
 void handleEvents() {
     // SDL poll event
@@ -61,7 +62,20 @@ void connectButtonHandle() {
     {
         broadcastMessage(PORT_A, SECRET, 6, inet_addr(host));
 
-        while (!server_passcode.Listen((char*)PORT_C, "TCP"));
+        auto start = std::chrono::high_resolution_clock::now();
+
+        while (!server_passcode.Listen((char*)PORT_C, "TCP")) {
+
+            auto end = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            printf("duration = %d\n", duration); fflush(stdout);
+
+            if (duration.count() >= 3000) {
+                notification_popup = true;
+                return;
+            }
+        }
 
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), host, INET_ADDRSTRLEN);
 
@@ -282,7 +296,7 @@ void connectButtonHandle() {
 
 void startWindow() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 64));
+    ImGui::SetNextWindowSize(ImVec2(210, 80));
 
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
@@ -296,12 +310,16 @@ void startWindow() {
 
     if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionAvail().x - 1, 20))) { quit = true; }
 
+    if (notification_popup) {
+        ImGui::Text("Can't connect to the server!");
+    }
+
     ImGui::End();
 }
 
 void connectedWindow() {
     ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(ImVec2(200, 64));
+    ImGui::SetNextWindowSize(ImVec2(210, 80));
     ImGui::Begin("Listen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
     // When client is connected from server
@@ -312,7 +330,7 @@ void connectedWindow() {
 int main(int argc, char** argv)
 {
     initSocketManager();
-    imgui_wrapper = ImGuiWrapper(200, 64, (char*)"Client");
+    imgui_wrapper = ImGuiWrapper(210, 80, (char*)"Client");
     initImGui(imgui_wrapper);
 
     while (!quit)
