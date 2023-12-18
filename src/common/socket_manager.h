@@ -15,6 +15,7 @@
     #include <netinet/in.h>
     #include <netinet/tcp.h>
     #include <unistd.h>
+    #include <fcntl.h>
     typedef uint SOCKET;
     #define INVALID_SOCKET	(SOCKET)(~0)
     #define SOCKET_ERROR	(-1)

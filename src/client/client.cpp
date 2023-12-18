@@ -77,6 +77,8 @@ void connectButtonHandle() {
             }
         }
 
+        printf("PORT_C connect successful!");
+
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), host, INET_ADDRSTRLEN);
 
         server_passcode.setReceiveCallback(

@@ -79,6 +79,7 @@ void newConnectionHandle(char data[], char host[]) {
     server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
 
     printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
+    
     while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
     std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;

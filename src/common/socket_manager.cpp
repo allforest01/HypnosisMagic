@@ -62,16 +62,28 @@ bool ServerSocketManager::TCPListen(char* port) {
     }
     printf("Listening port %s...\n", port);
 
+    struct timeval timeout;
+    timeout.tv_sec  = 3; // 3 seconds
+    timeout.tv_usec = 0;
+
     #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
-        int timeout = 3000; // 3 seconds
+        u_long mode = 1; // 1 for non-blocking mode, 0 for blocking mode
+        if (ioctlsocket(ListenSocket, FIONBIO, &mode) != 0) {
+            printf("failed to set non-blocking mode!\n");
+            closesocket(ListenSocket);
+            return false;
+        }
     #else
-        struct timeval timeout;
-        timeout.tv_sec = 3; // 3 seconds
-        timeout.tv_usec = 0;
+        int flags = fcntl(ListenSocket, F_GETFL, 0);
+        fcntl(ListenSocket, F_SETFL, flags | O_NONBLOCK);
     #endif
 
-    int res = select(ListenSocket + 1, nullptr, nullptr, nullptr, &timeout);
-    if (res <= 0) {
+    fd_set readSet;
+    FD_ZERO(&readSet);
+    FD_SET(ListenSocket, &readSet);
+
+    int select_result = select(ListenSocket + 1, &readSet, nullptr, nullptr, &timeout);
+    if (select_result <= 0 || !FD_ISSET(ListenSocket, &readSet)) {
         printf("time out!\n");
         closesocket(ListenSocket);
         return false;
