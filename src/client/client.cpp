@@ -7,7 +7,7 @@
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
-#define PACKET_SIZE 1400
+#define PACKET_SIZE 65432
 
 char host[INET_ADDRSTRLEN] = "10.211.55.255";
 char debug_message[256] = "Debug message...";
@@ -69,7 +69,7 @@ void connectButtonHandle() {
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            printf("duration = %d\n", duration); fflush(stdout);
+            // printf("duration = %d\n", duration); // fflush(stdout);
 
             if (duration.count() >= 3000) {
                 notification_popup = true;
@@ -77,7 +77,7 @@ void connectButtonHandle() {
             }
         }
 
-        printf("PORT_C connect successful!");
+        // printf("PORT_C connect successful!");
 
         inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), host, INET_ADDRSTRLEN);
 
@@ -89,34 +89,34 @@ void connectButtonHandle() {
             }
         );
 
-        printf("----------- start receive ports info -----------------\n"); fflush(stdout);
+        // printf("----------- start receive ports info -----------------\n"); // fflush(stdout);
         while (server_passcode.receiveData(15) == -1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        printf("------------- end receive ports info ----------------\n"); fflush(stdout);
+        // printf("------------- end receive ports info ----------------\n"); // fflush(stdout);
 
         server_passcode.Close();
 
-        printf("[server_host] = %s\n", host);
-        printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
-        printf("PORT_K = %s\n", client_wrapper.PORT_K.c_str());
-        printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
+        // printf("[server_host] = %s\n", host);
+        // printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
+        // printf("PORT_K = %s\n", client_wrapper.PORT_K.c_str());
+        // printf("PORT_S = %s\n", client_wrapper.PORT_S.c_str());
 
         // ---------------------------------------------------
 
         while (!client_wrapper.server_mouse.Listen((char*)client_wrapper.PORT_M.c_str(), "TCP"));
-        printf("[Mouse connected]\n");
+        // printf("[Mouse connected]\n");
 
         while (!client_wrapper.server_keyboard.Listen((char*)client_wrapper.PORT_K.c_str(), "TCP"));
-        printf("[Keyboard connected]\n");
+        // printf("[Keyboard connected]\n");
 
         client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
-        printf("[Screen connected]\n");
+        // printf("[Screen connected]\n");
 
         std::thread thread_keep_alive([&](){
-            printf("server_keep_alive start listen!\n"); fflush(stdout);
+            // printf("server_keep_alive start listen!\n"); // fflush(stdout);
             while (!server_keep_alive.Listen((char*)PORT_B, "UDP"));
-            printf("server_keep_alive listen successful!\n"); fflush(stdout);
+            // printf("server_keep_alive listen successful!\n"); // fflush(stdout);
 
             server_keep_alive.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
@@ -124,15 +124,15 @@ void connectButtonHandle() {
                         quit = true;
                         alive = false;
                         server_keep_alive.Close();
-                        printf("QUIT\n"); fflush(stdout);
+                        // printf("QUIT\n"); // fflush(stdout);
                     }
                     else if (data[0] == 'a') {
                         alive = true;
-                        printf("ALIVE\n"); fflush(stdout);
+                        // printf("ALIVE\n"); // fflush(stdout);
                     }
                     else if (data[0] == 'd') {
                         alive = false;
-                        printf("DEAD\n"); fflush(stdout);
+                        // printf("DEAD\n"); // fflush(stdout);
                     }
                 }
             );
@@ -158,7 +158,7 @@ void connectButtonHandle() {
                             int x = round(me.x * 40);
                             int y = round(me.y * 40);
 
-                            printf("Send Wheel %f %f\n", me.x, me.y); fflush(stdout);
+                            // printf("Send Wheel %f %f\n", me.x, me.y); // fflush(stdout);
 
                             EventsManager::getInstance().emitWheel(x, y);
                         }
@@ -167,7 +167,7 @@ void connectButtonHandle() {
                             int x = round(me.x * EventsManager::getInstance().width);
                             int y = round(me.y * EventsManager::getInstance().height);
 
-                            snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
+                            // snprintf(debug_message, sizeof(debug_message), "Send Mouse %d %d\n", x, y);
 
                             if (me.type == MouseMove) EventsManager::getInstance().emitMove(x, y);
                             else if (me.type == LDown) EventsManager::getInstance().emitLDown(x, y);
@@ -176,63 +176,32 @@ void connectButtonHandle() {
                             else if (me.type == RUp) EventsManager::getInstance().emitRUp(x, y);
                         }
                     }
-                    else std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             );
 
             while (!quit) {
-                if (alive) {
-                    client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
-                    printf("recv mouse!\n");
-                }
-                else std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (alive) client_wrapper.server_mouse.receiveData(sizeof(MouseEvent));
             }
         });
 
         thread_mouse.detach();
-
-        std::thread thread_keyboard_events([&]() {
-            while (!quit)
-            {
-                std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!client_wrapper.keyboard_events.size()) {
-                    mtx_keyboard.unlock();
-                    continue;
-                }
-
-                KeyboardEvent ke = client_wrapper.keyboard_events.front(); client_wrapper.keyboard_events.pop();
-                mtx_keyboard.unlock();
-
-                if (alive)
-                {
-                    if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
-                    else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
-                }
-                else std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        });
-
-        thread_keyboard_events.detach();
 
         std::thread thread_keyboard_socket([&]()
         {
             client_wrapper.server_keyboard.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
                     if (alive) {
-                        std::unique_lock<std::mutex> lock(mtx_keyboard);
-                        client_wrapper.keyboard_events.push(*(KeyboardEvent*)data);
-                        mtx_keyboard.unlock();
+                        KeyboardEvent &ke = *(KeyboardEvent*)data;
+                        if (ke.type == KeyDown) EventsManager::getInstance().emitKeyDown(SDLKeycodeToOSKeyCode(ke.keyCode));
+                        else if (ke.type == KeyUp) EventsManager::getInstance().emitKeyUp(SDLKeycodeToOSKeyCode(ke.keyCode));
                     }
-                    else std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
             );
 
             while (!quit) {
-                if (alive) {
-                    client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
-                    printf("recv keyboard!\n");
-                }
-                else std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (alive) client_wrapper.server_keyboard.receiveData(sizeof(KeyboardEvent));
             }
         });
 
@@ -271,18 +240,15 @@ void connectButtonHandle() {
 
             while (!quit)
             {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                
                 std::unique_lock<std::mutex> lock(mtx_screen);
                 if (!client_wrapper.frame_box_queue.size()) continue;
 
                 PacketBox box = client_wrapper.frame_box_queue.front(); client_wrapper.frame_box_queue.pop();
                 mtx_screen.unlock();
 
-                if (alive)
-                {
-                    client_wrapper.client_screen.send(box);
-                    printf("Sent!\n"); fflush(stdout);
-                }
-                else std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                if (alive) client_wrapper.client_screen.send(box);
             }
 
         });

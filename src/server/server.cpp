@@ -68,9 +68,9 @@ void newConnectionHandle(char data[], char host[]) {
     server_wrappers.push_back(ServerWrapper());
     server_wrappers.back().client_host = std::string(host, host + INET_ADDRSTRLEN);
 
-    printf("host = %s\n", server_wrappers.back().client_host.c_str());
-    printf("data = %s\n", data);
-    fflush(stdout);
+    // printf("host = %s\n", server_wrappers.back().client_host.c_str());
+    // printf("data = %s\n", data);
+    // fflush(stdout);
 
     int i = (int) server_wrappers.size() - 1;
 
@@ -78,36 +78,36 @@ void newConnectionHandle(char data[], char host[]) {
     server_wrappers[i].PORT_K = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 1);
     server_wrappers[i].PORT_S = std::to_string(atoi(PORT_A) + (i + 1) * 10 + 2);
 
-    printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
+    // printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
     
     while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
     std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
 
-    printf("----------- start send ports info -----------------\n"); fflush(stdout);
+    // printf("----------- start send ports info -----------------\n"); // fflush(stdout);
     while (client_passcode.sendData((char*)ports.data(), 15) == -1) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    printf("------------- end send ports info -----------------\n"); fflush(stdout);
+    // printf("------------- end send ports info -----------------\n"); // fflush(stdout);
 
     client_passcode.Close();
 
-    printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
+    // printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
 
-    printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
-    printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
-    printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
+    // printf("PORT_M = %s\n", server_wrappers[i].PORT_M.c_str());
+    // printf("PORT_K = %s\n", server_wrappers[i].PORT_K.c_str());
+    // printf("PORT_S = %s\n", server_wrappers[i].PORT_S.c_str());
 
-    fflush(stdout);
+    // fflush(stdout);
 
     while (!server_wrappers[i].client_mouse.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_M.c_str(), "TCP"));
-    printf("[Mouse connected for %d]\n", i); fflush(stdout);
+    // printf("[Mouse connected for %d]\n", i); // fflush(stdout);
 
     while (!server_wrappers[i].client_keyboard.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)server_wrappers[i].PORT_K.c_str(), "TCP"));
-    printf("[Keyboard connected for %d]\n", i); fflush(stdout);
+    // printf("[Keyboard connected for %d]\n", i); // fflush(stdout);
 
     server_wrappers[i].server_screen.listen((char*)server_wrappers[i].client_host.c_str(), atoi((char*)server_wrappers[i].PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
-    printf("[Screen connected for %d]\n", i); fflush(stdout);
+    // printf("[Screen connected for %d]\n", i); // fflush(stdout);
 
     // Receive screen capture
     std::thread thread_screen([&, i]()
@@ -119,14 +119,14 @@ void newConnectionHandle(char data[], char host[]) {
             std::unique_lock<std::mutex> lock_frame(mtx_frame);
             std::queue<std::vector<uchar>>().swap(server_wrappers[i].frame_wrapper.frame_queue);
             server_wrappers[i].frame_wrapper.frame_queue.push(image_data);
-            // printf("[PUSHED] "); fflush(stdout);
+            // // printf("[PUSHED] "); // fflush(stdout);
             lock_frame.unlock();
         });
 
         while (!quit) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
             server_wrappers[i].server_screen.receive();
-            // printf("frame_queue_size = %d\n", server_wrappers[i].frame_wrapper.frame_queue.size());
+            // // printf("frame_queue_size = %d\n", server_wrappers[i].frame_wrapper.frame_queue.size());
         }
     });
 
@@ -172,14 +172,14 @@ void startListen() {
             if (const_active_id < 0 || const_active_id >= (int)server_wrappers.size()) continue;
 
             if (cur_active_id != const_active_id) {
-                printf("[Changed]\n"); fflush(stdout);
+                // printf("[Changed]\n"); // fflush(stdout);
                 if (cur_active_id != INT_MAX) {
                     while (client_keep_alive.sendData("d", 1) == -1);
                     client_keep_alive.Close();
                 }
-                printf("client_keep_alive start connect!\n"); fflush(stdout);
+                // printf("client_keep_alive start connect!\n"); // fflush(stdout);
                 while (!client_keep_alive.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
-                printf("client_keep_alive connect successful!\n"); fflush(stdout);
+                // printf("client_keep_alive connect successful!\n"); // fflush(stdout);
                 cur_active_id = const_active_id;
             }
 
@@ -210,14 +210,9 @@ void startListen() {
     std::thread thread_mouse([&](){
         while (!quit)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
             if (connected && active_id < server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_mouse);
-                if (!server_wrappers[active_id].mouse_events.size()) {
-                    mtx_mouse.unlock();
-                    continue;
-                }
+                if (!server_wrappers[active_id].mouse_events.size()) continue;
 
                 MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
                 mtx_mouse.unlock();
@@ -230,13 +225,14 @@ void startListen() {
                     if (me.x < 0.0 || me.x > 1.0 || me.y < 0.0 || me.y > 1.0) continue;
                 }
 
-                // printf("Mouse event %lf %lf\n", me.x, me.y);
+                // // printf("Mouse event %lf %lf\n", me.x, me.y);
 
                 static int id = 0;
 
                 server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
-                printf("sent mouse!\n"); fflush(stdout);
+                // printf("sent mouse!\n"); // fflush(stdout);
             }
+            else std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
 
@@ -245,14 +241,9 @@ void startListen() {
     std::thread thread_keyboard([&](){
         while (!quit)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
             if (connected && active_id < server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!server_wrappers[active_id].keyboard_events.size()) {
-                    mtx_keyboard.unlock();
-                    continue;
-                }
+                if (!server_wrappers[active_id].keyboard_events.size()) continue;
 
                 KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
                 mtx_keyboard.unlock();
@@ -263,8 +254,9 @@ void startListen() {
                 static int id = 0;
 
                 server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
-                printf("sent keyboard!\n"); fflush(stdout);
+                // printf("sent keyboard!\n"); // fflush(stdout);
             }
+            else std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
     });
 
@@ -384,7 +376,7 @@ void clientListWindow() {
             if ((i == active_id || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
                 server_wrappers[i].frame_wrapper.pushToTexture();
-                // printf("[POPED] "); fflush(stdout);
+                // // printf("[POPED] "); // fflush(stdout);
                 lock_frame.unlock();
             }
 
