@@ -197,7 +197,7 @@ void connectButtonHandle() {
 
         thread_mouse.detach();
 
-        std::thread thread_keyboard_socket([&]()
+        std::thread thread_keyboard([&]()
         {
             client_wrapper.server_keyboard.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
@@ -215,7 +215,7 @@ void connectButtonHandle() {
             }
         });
 
-        thread_keyboard_socket.detach();
+        thread_keyboard.detach();
 
         std::thread thread_screen_events([&]() {
 
