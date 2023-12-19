@@ -65,7 +65,7 @@ void ServerConnectionManager::receive()
     PacketBox box;
     box.size = data_size;
 
-    static int cnt = 0;
+    // static int cnt = 0;
 
     // printf("-------SESSION [%d]------\n", cnt++);
     // printf("data_size = %d\n", (int)data_size);
@@ -107,6 +107,7 @@ void ServerConnectionManager::receive()
                 while (packet_size) {
                     bytesRead = this->servers[i].receiveData(packet_size);
                     if (bytesRead == -1) continue;
+                    if (bytesRead == 0) break;
                     // printf("(%d) ", bytesRead);
                     packet_size -= bytesRead;
                 }
@@ -121,9 +122,12 @@ void ServerConnectionManager::receive()
 
     // printf("\n");
 
-    int last_size = total_size % cur_packet_size;
-    if (last_size == 0) last_size = cur_packet_size;
-    box.data.back().resize(last_size);
+    if (box.data.size()) {
+        int last_size = total_size % cur_packet_size;
+        if (last_size == 0) last_size = cur_packet_size;
+        // printf("box.data.size() = %d\n", box.data.size());
+        box.data.back().resize(last_size);
+    }
 
     onComplete(box);
 

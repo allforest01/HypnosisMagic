@@ -1,6 +1,4 @@
 #include "socket_manager.h"
-#include <chrono>
-#include <thread>
 
 // #define DEBUG
 
@@ -285,17 +283,29 @@ int ClientSocketManager::sendData(char* data, int size) {
     SOCKET connect_socket = this->connect_socket;
     struct addrinfo* server_address = this->server_address;
     if (server_address == NULL) {
-        int bytesSend = send(connect_socket, data, size, 0);
+        int bytesSend = send(connect_socket, data, size, MSG_NOSIGNAL);
         #ifdef DEBUG
         printf("TCP bytesSend = %d\n", bytesSend);
         #endif
         return bytesSend;
     }
-    int bytesSend = sendto(connect_socket, data, size, 0, server_address->ai_addr, server_address->ai_addrlen);
+    int bytesSend = sendto(connect_socket, data, size, MSG_NOSIGNAL, server_address->ai_addr, server_address->ai_addrlen);
     #ifdef DEBUG
     printf("UDP bytesSend = %d\n", bytesSend);
     #endif
     return bytesSend;
+}
+
+bool ClientSocketManager::isSocketAlive() {
+    fd_set write_fds;
+    FD_ZERO(&write_fds);
+    FD_SET(this->connect_socket, &write_fds);
+
+    struct timeval timeout;
+    timeout.tv_sec  = 0; // seconds
+    timeout.tv_usec = 0; // microseconds
+
+    return select(this->connect_socket + 1, NULL, &write_fds, NULL, &timeout) > 0;
 }
 
 void ClientSocketManager::Close() {

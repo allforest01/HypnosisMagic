@@ -48,7 +48,7 @@ void ClientConnectionManager::send(PacketBox& box) {
     int cur_packet_size = box.data[0].size();
     box.data.back().resize(cur_packet_size);
 
-    static int cnt = 0;
+    // static int cnt = 0;
 
     // printf("-------SESSION [%d]------\n", cnt++);
     // printf("data_size = %d\n", (int)data_size);

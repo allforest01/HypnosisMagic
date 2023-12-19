@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <functional>
+#include <csignal>
 
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     #define WIN32_LEAN_AND_MEAN
@@ -56,6 +57,7 @@ public:
     bool Connect(char*, char*, const char*);
     void Close();
     int sendData(char*, int);
+    bool isSocketAlive();
 };
 
 bool broadcastMessage(char*, char*, int, int host);

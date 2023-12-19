@@ -1,28 +1,33 @@
 #include "client.h"
 
 #define SECRET "HYPNO"
+
 #define PORT_A "40020"
 #define PORT_B "40021"
 #define PORT_C "40022"
+// #define PORT_D "40023"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
 #define PACKET_SIZE 65432
 
-char host[INET_ADDRSTRLEN] = "10.211.55.255";
+char host[INET_ADDRSTRLEN] = "255.255.255.255";
 char debug_message[256] = "Debug message...";
 
-std::mutex mtx_keyboard, mtx_screen;
+std::mutex mtx_keyboard;
+std::mutex mtx_screen;
 
-ServerSocketManager server_passcode;
-ServerSocketManager server_keep_alive;
+ServerSocketManager server_conn_handler;
+ServerSocketManager server_heartbeat;
+// ClientSocketManager client_heartbeat;
 
 ImGuiWrapper imgui_wrapper;
 ClientWrapper client_wrapper;
 
-bool quit = false, connected = false;
+bool quit = false;
+bool connected = false;
 bool alive = true;
-bool notification_popup = false;
+bool noti_popup = false;
 
 void handleEvents() {
     // SDL poll event
@@ -54,17 +59,17 @@ void guiRendering() {
     SDL_GL_SwapWindow(imgui_wrapper.window);
 
     // Introduce a delay to reduce CPU usage
-    SDL_Delay(16);
+    SDL_Delay(10);
 }
 
 void connectButtonHandle() {
-    std::thread thread_passcode([&]()
+    std::thread thread_conn_handler([&]()
     {
-        broadcastMessage(PORT_A, SECRET, 6, inet_addr(host));
+        broadcastMessage((char*)PORT_A, (char*)SECRET, 6, inet_addr(host));
 
         auto start = std::chrono::high_resolution_clock::now();
 
-        while (!server_passcode.Listen((char*)PORT_C, "TCP")) {
+        while (!server_conn_handler.Listen((char*)PORT_C, "TCP")) {
 
             auto end = std::chrono::high_resolution_clock::now();
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
@@ -72,16 +77,16 @@ void connectButtonHandle() {
             // printf("duration = %d\n", duration); // fflush(stdout);
 
             if (duration.count() >= 3000) {
-                notification_popup = true;
+                noti_popup = true;
                 return;
             }
         }
 
         // printf("PORT_C connect successful!");
 
-        inet_ntop(AF_INET, &(server_passcode.client_address.sin_addr), host, INET_ADDRSTRLEN);
+        inet_ntop(AF_INET, &(server_conn_handler.client_address.sin_addr), host, INET_ADDRSTRLEN);
 
-        server_passcode.setReceiveCallback(
+        server_conn_handler.setReceiveCallback(
             [&](SOCKET sock, char data[], int size, char host[]) {
                 client_wrapper.PORT_M = std::string(data +  0, data +  5);
                 client_wrapper.PORT_K = std::string(data +  5, data + 10);
@@ -90,12 +95,12 @@ void connectButtonHandle() {
         );
 
         // printf("----------- start receive ports info -----------------\n"); // fflush(stdout);
-        while (server_passcode.receiveData(15) == -1) {
+        while (server_conn_handler.receiveData(15) == -1) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         // printf("------------- end receive ports info ----------------\n"); // fflush(stdout);
 
-        server_passcode.Close();
+        server_conn_handler.Close();
 
         // printf("[server_host] = %s\n", host);
         // printf("PORT_M = %s\n", client_wrapper.PORT_M.c_str());
@@ -113,21 +118,26 @@ void connectButtonHandle() {
         client_wrapper.client_screen.connect(host, atoi((char*)client_wrapper.PORT_S.c_str()), SCREEN_STREAM_TYPE, NUM_OF_THREADS);
         // printf("[Screen connected]\n");
 
-        std::thread thread_keep_alive([&](){
-            // printf("server_keep_alive start listen!\n"); // fflush(stdout);
-            while (!server_keep_alive.Listen((char*)PORT_B, "UDP"));
-            // printf("server_keep_alive listen successful!\n"); // fflush(stdout);
+        std::thread thread_heartbeat([&]()
+        {
+            // while (!client_heartbeat.Connect(host, (char*)PORT_D, "UDP"));
 
-            server_keep_alive.setReceiveCallback(
+            // printf("server_heartbeat start listen!\n"); // fflush(stdout);
+            while (!server_heartbeat.Listen((char*)PORT_B, "UDP"));
+            // printf("server_heartbeat listen successful!\n"); // fflush(stdout);
+
+            server_heartbeat.setReceiveCallback(
                 [&](SOCKET sock, char data[], int size, char host[]) {
                     if (data[0] == 'q') {
                         quit = true;
                         alive = false;
-                        server_keep_alive.Close();
+                        server_heartbeat.Close();
                         // printf("QUIT\n"); // fflush(stdout);
                     }
                     else if (data[0] == 'a') {
                         alive = true;
+
+                        // while (client_heartbeat.sendData((char*)"a", 1) == -1);
                         // printf("ALIVE\n"); // fflush(stdout);
                     }
                     else if (data[0] == 'd') {
@@ -140,11 +150,11 @@ void connectButtonHandle() {
             while (!quit)
             {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                server_keep_alive.receiveData(1);
+                server_heartbeat.receiveData(1);
             }
         });
 
-        thread_keep_alive.detach();
+        thread_heartbeat.detach();
 
         std::thread thread_mouse([&]()
         {
@@ -259,7 +269,7 @@ void connectButtonHandle() {
 
     });
     
-    thread_passcode.detach();
+    thread_conn_handler.detach();
 }
 
 void startWindow() {
@@ -278,7 +288,7 @@ void startWindow() {
 
     if (ImGui::Button("Exit", ImVec2(ImGui::GetContentRegionAvail().x - 1, 20))) { quit = true; }
 
-    if (notification_popup) {
+    if (noti_popup) {
         ImGui::Text("Can't connect to the server!");
     }
 

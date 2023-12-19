@@ -1,25 +1,32 @@
 #include "server.h"
 
 #define SECRET "HYPNO"
+
 #define PORT_A "40020"
 #define PORT_B "40021"
 #define PORT_C "40022"
+// #define PORT_D "40023"
 
 #define SCREEN_STREAM_TYPE "UDP"
 #define NUM_OF_THREADS 1
 
 char host[INET_ADDRSTRLEN];
 
-std::mutex mtx_mouse, mtx_keyboard, mtx_frame;
+std::mutex mtx_mouse;
+std::mutex mtx_keyboard;
+std::mutex mtx_frame;
 
-ServerSocketManager server_passcode;
-ClientSocketManager client_passcode;
-ClientSocketManager client_keep_alive;
+ServerSocketManager server_conn_handler;
+ClientSocketManager client_conn_handler;
+ClientSocketManager client_heartbeat;
+// ServerSocketManager server_heartbeat;
 
 ImGuiWrapper imgui_wrapper;
 std::vector<ServerWrapper> server_wrappers;
 
-bool quit = false, connected = false;
+bool quit = false;
+bool connected = false;
+
 int active_id = INT_MAX;
 
 void pushMouseEvent(MouseEvent me) {
@@ -42,7 +49,7 @@ void handleEvents() {
         if (event.type == SDL_QUIT) {
             quit = true;
         }
-        else if (connected && active_id < server_wrappers.size() && server_wrappers[active_id].frame_wrapper.is_hovered)
+        else if (connected && active_id < (int) server_wrappers.size() && server_wrappers[active_id].frame_wrapper.is_hovered)
         {
             if (event.type == SDL_MOUSEMOTION) pushMouseEvent(MouseEvent(MouseMove, event.button.x - server_wrappers[active_id].frame_wrapper.start_x,  event.button.y - server_wrappers[active_id].frame_wrapper.start_y));
             else if (event.type == SDL_MOUSEWHEEL) pushMouseEvent(MouseEvent(MouseWheel, event.wheel.preciseX, event.wheel.preciseY));
@@ -80,17 +87,17 @@ void newConnectionHandle(char data[], char host[]) {
 
     // printf("[%s] [%s]\n", (char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C);
     
-    while (!client_passcode.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
+    while (!client_conn_handler.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_C, "TCP"));
 
     std::string ports = server_wrappers[i].PORT_M + server_wrappers[i].PORT_K + server_wrappers[i].PORT_S;
 
     // printf("----------- start send ports info -----------------\n"); // fflush(stdout);
-    while (client_passcode.sendData((char*)ports.data(), 15) == -1) {
+    while (client_conn_handler.sendData((char*)ports.data(), 15) == -1) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     // printf("------------- end send ports info -----------------\n"); // fflush(stdout);
 
-    client_passcode.Close();
+    client_conn_handler.Close();
 
     // printf("[client_host] = %s\n", (char*)server_wrappers[i].client_host.c_str());
 
@@ -125,8 +132,7 @@ void newConnectionHandle(char data[], char host[]) {
 
         while (!quit) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            server_wrappers[i].server_screen.receive();
-            // // printf("frame_queue_size = %d\n", server_wrappers[i].frame_wrapper.frame_queue.size());
+            if (active_id == i) server_wrappers[i].server_screen.receive();
         }
     });
 
@@ -138,11 +144,11 @@ void newConnectionHandle(char data[], char host[]) {
 }
 
 void startListen() {
-    std::thread thread_passcode([&]()
+    std::thread thread_conn_handler([&]()
     {
-        server_passcode.Listen(PORT_A, "UDP");
+        server_conn_handler.Listen((char*)PORT_A, "UDP");
 
-        server_passcode.setReceiveCallback(
+        server_conn_handler.setReceiveCallback(
             [](SOCKET sock, char data[], int size, char host[]) {
                 std::thread threadNewConnection(newConnectionHandle, data, host);
                 threadNewConnection.join();
@@ -151,16 +157,18 @@ void startListen() {
 
         while (!quit) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            server_passcode.receiveData(6);
+            server_conn_handler.receiveData(6);
         }
 
-        server_passcode.Close();
+        server_conn_handler.Close();
     });
 
-    thread_passcode.detach();
+    thread_conn_handler.detach();
 
-    std::thread thread_keep_alive([&]()
+    std::thread thread_heartbeat([&]()
     {
+        // while (!server_heartbeat.Listen((char*)PORT_D, "UDP"));
+
         int cur_active_id = INT_MAX;
 
         while (!quit)
@@ -169,48 +177,69 @@ void startListen() {
 
             const int const_active_id = active_id;
 
-            if (const_active_id < 0 || const_active_id >= (int)server_wrappers.size()) continue;
+            if (const_active_id == INT_MAX || const_active_id >= (int)server_wrappers.size()) continue;
 
             if (cur_active_id != const_active_id) {
                 // printf("[Changed]\n"); // fflush(stdout);
                 if (cur_active_id != INT_MAX) {
-                    while (client_keep_alive.sendData("d", 1) == -1);
-                    client_keep_alive.Close();
+                    while (client_heartbeat.isSocketAlive() && client_heartbeat.sendData((char*)"d", 1) == -1);
+                    client_heartbeat.Close();
                 }
-                // printf("client_keep_alive start connect!\n"); // fflush(stdout);
-                while (!client_keep_alive.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
-                // printf("client_keep_alive connect successful!\n"); // fflush(stdout);
+                // printf("client_heartbeat start connect!\n"); // fflush(stdout);
+                while (active_id != INT_MAX && const_active_id == active_id && !client_heartbeat.Connect((char*)server_wrappers[const_active_id].client_host.c_str(), (char*)PORT_B, "UDP"));
+                // printf("client_heartbeat connect successful!\n"); // fflush(stdout);
                 cur_active_id = const_active_id;
             }
 
-            while (client_keep_alive.sendData("a", 1) == -1) {
+            while (client_heartbeat.isSocketAlive() && client_heartbeat.sendData((char*)"a", 1) == -1) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+
+            // bool disconnect = false;
+            // auto start = std::chrono::high_resolution_clock::now();
+
+            // while (server_heartbeat.receiveData(1) <= 0) {
+            //     auto end = std::chrono::high_resolution_clock::now();
+            //     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+            //     // printf("duration = %d\n", duration); // fflush(stdout);
+
+            //     if (duration.count() >= 1000) {
+            //         disconnect = true;
+            //         return;
+            //     }
+            // }
+
+            // if (disconnect) {
+            //     cur_active_id = active_id = INT_MAX;
+            //     client_heartbeat.Close();
+            //     continue;
+            // }
         }
 
         if (cur_active_id != INT_MAX) {
-            while (client_keep_alive.sendData("q", 1) == -1) {
+            while (client_heartbeat.isSocketAlive() && client_heartbeat.sendData((char*)"q", 1) == -1) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
-            client_keep_alive.Close();
+            client_heartbeat.Close();
         }
 
         for (int i = 0; i < (int) server_wrappers.size(); i++) {
-            if (i != cur_active_id && client_keep_alive.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
-                while (client_keep_alive.sendData("q", 1) == -1) {
+            if (i != cur_active_id && client_heartbeat.Connect((char*)server_wrappers[i].client_host.c_str(), (char*)PORT_B, "UDP")) {
+                while (client_heartbeat.isSocketAlive() && client_heartbeat.sendData((char*)"q", 1) == -1) {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
-                client_keep_alive.Close();
+                client_heartbeat.Close();
             }
         }
     });
 
-    thread_keep_alive.detach();
+    thread_heartbeat.detach();
 
     std::thread thread_mouse([&](){
         while (!quit)
         {
-            if (connected && active_id < server_wrappers.size()) {
+            if (connected && active_id < (int) server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_mouse);
                 if (!server_wrappers[active_id].mouse_events.size()) continue;
 
@@ -227,9 +256,11 @@ void startListen() {
 
                 // // printf("Mouse event %lf %lf\n", me.x, me.y);
 
-                static int id = 0;
+                // static int id = 0;
 
-                server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
+                if (active_id != INT_MAX && server_wrappers[active_id].client_mouse.isSocketAlive()) {
+                    server_wrappers[active_id].client_mouse.sendData((char*)&me, sizeof(me));
+                }
                 // printf("sent mouse!\n"); // fflush(stdout);
             }
             else std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -241,7 +272,7 @@ void startListen() {
     std::thread thread_keyboard([&](){
         while (!quit)
         {
-            if (connected && active_id < server_wrappers.size()) {
+            if (connected && active_id < (int) server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
                 if (!server_wrappers[active_id].keyboard_events.size()) continue;
 
@@ -251,9 +282,11 @@ void startListen() {
                 // if (ke.type == KeyDown) std::cout << "Key pressed: " << SDL_GetKeyName(ke.keyCode) << std::endl;
                 // else if (ke.type == KeyUp) std::cout << "Key released: " << SDL_GetKeyName(ke.keyCode) << std::endl;
 
-                static int id = 0;
+                // static int id = 0;
 
-                server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
+                if (active_id != INT_MAX && server_wrappers[active_id].client_keyboard.isSocketAlive()) {
+                    server_wrappers[active_id].client_keyboard.sendData((char*)&ke, sizeof(ke));
+                }
                 // printf("sent keyboard!\n"); // fflush(stdout);
             }
             else std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -265,7 +298,7 @@ void startListen() {
 
 void menuBar() {
     bool about_popup = false;
-    bool connect_popup = false;
+    // bool connect_popup = false;
 
     // Menu bar
     if (ImGui::BeginMainMenuBar()) {
@@ -296,7 +329,7 @@ void clientScreenWindow() {
 
     ImGui::Begin("Screen", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar);
 
-    if (connected && active_id < server_wrappers.size())
+    if (connected && active_id < (int) server_wrappers.size())
     {
         if (server_wrappers[active_id].frame_wrapper.isTexturePushed() && !server_wrappers[active_id].frame_wrapper.scale_calculated) {
             server_wrappers[active_id].frame_wrapper.scale_calculated = true;
@@ -361,7 +394,7 @@ void guiRendering() {
     SDL_GL_SwapWindow(imgui_wrapper.window);
 
     // Introduce a delay to reduce CPU usage
-    SDL_Delay(16);
+    SDL_Delay(10);
 }
 
 void clientListWindow() {
@@ -373,7 +406,7 @@ void clientListWindow() {
         for (int i = 0; i < (int) server_wrappers.size(); i++) {
             ImGui::Text("%s", server_wrappers[i].client_host.c_str());
 
-            if ((i == active_id || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
+            if ((active_id == i || !server_wrappers[i].frame_wrapper.isTexturePushed()) && server_wrappers[i].frame_wrapper.frame_queue.size()) {
                 std::unique_lock<std::mutex> lock_frame(mtx_frame);
                 server_wrappers[i].frame_wrapper.pushToTexture();
                 // // printf("[POPED] "); // fflush(stdout);
