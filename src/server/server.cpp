@@ -241,7 +241,10 @@ void startListen() {
         {
             if (connected && active_id < (int) server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_mouse);
-                if (!server_wrappers[active_id].mouse_events.size()) continue;
+                if (!server_wrappers[active_id].mouse_events.size()) {
+                    lock.unlock();
+                    continue;
+                }
 
                 MouseEvent me = server_wrappers[active_id].mouse_events.front(); server_wrappers[active_id].mouse_events.pop();
                 mtx_mouse.unlock();
@@ -274,7 +277,10 @@ void startListen() {
         {
             if (connected && active_id < (int) server_wrappers.size()) {
                 std::unique_lock<std::mutex> lock(mtx_keyboard);
-                if (!server_wrappers[active_id].keyboard_events.size()) continue;
+                if (!server_wrappers[active_id].keyboard_events.size()) {
+                    lock.unlock();
+                    continue;
+                }
 
                 KeyboardEvent ke = server_wrappers[active_id].keyboard_events.front(); server_wrappers[active_id].keyboard_events.pop();
                 mtx_keyboard.unlock();
@@ -363,11 +369,17 @@ void clientScreenWindow() {
 
         if (!server_wrappers[active_id].frame_wrapper.is_hovered || !server_wrappers[active_id].frame_wrapper.is_focused) {
             std::unique_lock<std::mutex> lock_mouse(mtx_mouse);
-            std::queue<MouseEvent>().swap(server_wrappers[active_id].mouse_events);
+            // std::queue<MouseEvent>().swap(server_wrappers[active_id].mouse_events);
+            while (server_wrappers[active_id].mouse_events.size()) {
+                server_wrappers[active_id].mouse_events.pop();
+            }
             lock_mouse.unlock();
 
             std::unique_lock<std::mutex> lock_keyboard(mtx_mouse);
-            std::queue<KeyboardEvent>().swap(server_wrappers[active_id].keyboard_events);
+            // std::queue<KeyboardEvent>().swap(server_wrappers[active_id].keyboard_events);
+            while (server_wrappers[active_id].keyboard_events.size()) {
+                server_wrappers[active_id].keyboard_events.pop();
+            }
             lock_keyboard.unlock();
         }
     }
