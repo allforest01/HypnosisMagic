@@ -323,7 +323,7 @@ ClientSocketManager::~ClientSocketManager() {
 
 bool broadcastMessage(char* port, char* message, int size, int host = INADDR_BROADCAST) {
     SOCKET udpSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    if (udpSocket == -1) {
+    if ((int) udpSocket == -1) {
         printf("Socket creation failed");
         return false;
     }
